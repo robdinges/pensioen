@@ -162,15 +162,18 @@ class TestBox3:
         assert heffing == Decimal("0")
 
     def test_boven_vrijstelling_positieve_heffing(self) -> None:
-        """Vermogen boven de vrijstelling levert heffing op."""
+        """Vermogen boven de vrijstelling levert heffing op via forfaitair rendement."""
         config, _ = laad_tarieven(2026)
+        # Volledig spaargeld (standaard): forfait 1,5% × belastbaar × 36%
         heffing, disclaimer = bereken_box3_heffing(
             spaarsaldo=Decimal("200000"),
             config=config,
             heeft_partner=False,
+            spaargeld_fractie=Decimal("1"),
         )
         belastbaar = Decimal("200000") - config.box3.vrijstelling_per_persoon
-        verwacht = belastbaar * config.box3.tarief
+        fictief = belastbaar * config.box3.forfaitair_spaargeld
+        verwacht = fictief * config.box3.tarief
         assert float(heffing) == pytest.approx(float(verwacht), rel=1e-3)
         assert len(disclaimer) > 0  # disclaimer altijd aanwezig
 

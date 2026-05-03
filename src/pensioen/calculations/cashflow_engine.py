@@ -215,7 +215,8 @@ def _bereken_jaar(
     box3_disclaimer = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
         box3_jaar, box3_disclaimer = belasting_engine.bereken_box3_heffing(
-            saldo_begin_jaar, belasting_config, heeft_partner
+            saldo_begin_jaar, belasting_config, heeft_partner,
+            spaargeld_fractie=scenario.box3_spaargeld_fractie,
         )
         box3_maand = _rond_af(box3_jaar / Decimal("12"))
 

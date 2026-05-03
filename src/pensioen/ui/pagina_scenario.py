@@ -76,6 +76,16 @@ def toon_scenario_pagina() -> None:
         box3_meenemen = st.checkbox(
             "Box 3 heffing meenemen (indicatief)", value=True, key="box3"
         )
+        if box3_meenemen:
+            box3_spaargeld_pct = st.slider(
+                "Box 3: % vermogen op spaarrekening",
+                min_value=0, max_value=100, value=100, step=5,
+                key="box3_spaargeld_pct",
+                help="100% = volledig spaargeld (forfait ~1,5%). 0% = volledig beleggingen (forfait ~6%). "
+                     "De belasting is 36% over het fictieve rendement.",
+            )
+        else:
+            box3_spaargeld_pct = 100
 
     st.divider()
     st.subheader("Incidentele cashflows")
@@ -129,6 +139,7 @@ def toon_scenario_pagina() -> None:
                 jaarlijkse_inleg=Decimal(str(jaarlijkse_inleg)),
                 rendement_pct=Decimal(str(rendement)),
                 box3_meenemen=box3_meenemen,
+                box3_spaargeld_fractie=Decimal(str(box3_spaargeld_pct)) / Decimal("100"),
                 incidentele_items=incidentele_items,
             )
             if "scenario_lijst" not in st.session_state:

@@ -141,7 +141,8 @@ def _bereken_jaar_detail(
     box3_info = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
         box3_heffing, box3_info = belasting_engine.bereken_box3_heffing(
-            saldo_begin_jaar, config, heeft_partner
+            saldo_begin_jaar, config, heeft_partner,
+            spaargeld_fractie=scenario.box3_spaargeld_fractie,
         )
 
     # Vermogensberekening: saldo maand-voor-maand
@@ -210,6 +211,9 @@ def _bereken_jaar_detail(
         "totaal_netto_inkomen": totaal_netto_inkomen,
         "box3_vrijstelling": config.box3.vrijstelling_per_persoon * (2 if heeft_partner else 1),
         "box3_belastbaar": max(Decimal("0"), saldo_begin_jaar - config.box3.vrijstelling_per_persoon * (2 if heeft_partner else 1)),
+        "box3_spaargeld_fractie": scenario.box3_spaargeld_fractie,
+        "box3_forfait_spaargeld": config.box3.forfaitair_spaargeld,
+        "box3_forfait_overig": config.box3.forfaitair_overig,
         "box3_tarief": config.box3.tarief,
         "box3_heffing": box3_heffing,
         "box3_info": box3_info,
@@ -333,14 +337,33 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None) -> None:
 def _toon_vermogen_detail(d: dict) -> None:
     """Toon de vermogensberekening: box 3 + maandopbouw."""
     st.markdown("#### E. Box 3 heffing")
+    belastbaar = d["box3_belastbaar"]
+    fractie_s = d["box3_spaargeld_fractie"]
+    fractie_o = Decimal("1") - fractie_s
+    deel_spaargeld = (belastbaar * fractie_s).quantize(Decimal("0.01"))
+    deel_overig = (belastbaar * fractie_o).quantize(Decimal("0.01"))
+    fictief_s = (deel_spaargeld * d["box3_forfait_spaargeld"]).quantize(Decimal("0.01"))
+    fictief_o = (deel_overig * d["box3_forfait_overig"]).quantize(Decimal("0.01"))
+    fictief_totaal = fictief_s + fictief_o
     rijen_e = [
-        ["Vermogen begin jaar", _fmt(d["saldo_begin_jaar"])],
-        ["Belastingvrij (vrijstelling)", _fmt(d["box3_vrijstelling"])],
-        ["Belastbaar vermogen", _fmt(d["box3_belastbaar"])],
-        [f"× Box 3 tarief ({float(d['box3_tarief'])*100:.0f}%)", ""],
-        ["**= Box 3 heffing (jaar)**", f"**{_fmt(d['box3_heffing'])}**"],
+        ["Vermogen begin jaar", _fmt(d["saldo_begin_jaar"]), ""],
+        ["Af: belastingvrije vrijstelling", _fmt(d["box3_vrijstelling"]), ""],
+        ["**= Belastbaar vermogen**", f"**{_fmt(belastbaar)}**", ""],
+        ["", "", ""],
+        [f"Spaargeld ({float(fractie_s)*100:.0f}% × belastbaar)",
+         _fmt(deel_spaargeld),
+         f"× forfait {float(d['box3_forfait_spaargeld'])*100:.2f}%"],
+        ["= Fictief rendement spaargeld", _fmt(fictief_s), ""],
+        [f"Beleggingen/overig ({float(fractie_o)*100:.0f}% × belastbaar)",
+         _fmt(deel_overig),
+         f"× forfait {float(d['box3_forfait_overig'])*100:.2f}%"],
+        ["= Fictief rendement beleggingen", _fmt(fictief_o), ""],
+        ["**= Totaal fictief rendement**", f"**{_fmt(fictief_totaal)}**", ""],
+        ["", "", ""],
+        [f"× Box 3 belastingtarief", f"{float(d['box3_tarief'])*100:.0f}%", ""],
+        ["**= Box 3 heffing (jaar)**", f"**{_fmt(d['box3_heffing'])}**", ""],
     ]
-    st.table(_maak_tabel(["Post", "Bedrag"], rijen_e))
+    st.table(_maak_tabel(["Post", "Bedrag", "Toelichting"], rijen_e))
     if d["box3_info"]:
         st.caption(f"⚠️ {d['box3_info']}")
 

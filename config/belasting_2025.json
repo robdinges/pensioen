@@ -46,10 +46,12 @@
   },
 
   "box3": {
-    "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken over rechtsherstel box 3.",
+    "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken over rechtsherstel box 3. Belasting = 36% over fictief rendement.",
     "_disclaimer": "Box 3 tarieven zijn onder voorbehoud van rechterlijke uitspraken en lopende wetgeving (Wet werkelijk rendement box 3). Gebruik met grote voorzichtigheid.",
     "vrijstelling_per_persoon": 57000,
-    "tarief": 0.36
+    "tarief": 0.36,
+    "forfaitair_spaargeld": 0.015,
+    "forfaitair_overig": 0.06
   },
 
   "aow_bedrag": {

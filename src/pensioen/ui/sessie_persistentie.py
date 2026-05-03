@@ -159,6 +159,7 @@ def laad_sessie() -> None:
         _zet("inleg", int(s0.jaarlijkse_inleg))
         _zet("rendement", float(s0.rendement_pct))
         _zet("box3", s0.box3_meenemen)
+        _zet("box3_spaargeld_pct", int(s0.box3_spaargeld_fractie * 100))
 
     # --- Incidentele tabel ---
     if rijen := data.get("incidenteel_tabel"):

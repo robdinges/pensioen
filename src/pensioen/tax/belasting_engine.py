@@ -177,17 +177,23 @@ def bereken_box3_heffing(
     spaarsaldo: Decimal,
     config: BelastingConfig,
     heeft_partner: bool,
+    spaargeld_fractie: Decimal = Decimal("1"),
 ) -> tuple[Decimal, str]:
     """
     Bereken de box 3 heffing op vermogen.
 
+    Correcte berekening: belasting = 36% × fictief rendement.
+    Fictief rendement = belastbaar vermogen × gewogen forfaitair rendement.
+    Gewogen rendement = spaargeld_fractie × forfaitair_spaargeld
+                      + (1 - spaargeld_fractie) × forfaitair_overig.
+
     WAARSCHUWING: Box 3 wetgeving is in beweging vanwege rechterlijke uitspraken.
-    Gebruik de uitkomsten met grote voorzichtigheid.
 
     Args:
         spaarsaldo: Totaal spaarsaldo / vermogen in box 3.
-        config: Belastingconfiguratie (bevat vrijstelling en tarief).
+        config: Belastingconfiguratie (bevat vrijstelling, tarieven en forfaits).
         heeft_partner: Of er een fiscaal partner is (verdubbelt de vrijstelling).
+        spaargeld_fractie: Aandeel van het vermogen dat als spaargeld telt (0.0–1.0).
 
     Returns:
         Tuple van (belasting, disclaimer_tekst).
@@ -195,5 +201,14 @@ def bereken_box3_heffing(
     aantallers = 2 if heeft_partner else 1
     vrijstelling = config.box3.vrijstelling_per_persoon * Decimal(str(aantallers))
     belastbaar = max(Decimal("0"), spaarsaldo - vrijstelling)
-    heffing = rond_af(belastbaar * config.box3.tarief)
+
+    spaargeld_fractie = max(Decimal("0"), min(Decimal("1"), spaargeld_fractie))
+    overig_fractie = Decimal("1") - spaargeld_fractie
+
+    gewogen_forfait = (
+        spaargeld_fractie * config.box3.forfaitair_spaargeld
+        + overig_fractie * config.box3.forfaitair_overig
+    )
+    fictief_rendement = rond_af(belastbaar * gewogen_forfait)
+    heffing = rond_af(fictief_rendement * config.box3.tarief)
     return heffing, config.box3.disclaimer

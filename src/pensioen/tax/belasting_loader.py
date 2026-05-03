@@ -53,7 +53,9 @@ class Box3Config:
     """Parameters voor box 3 vermogensrendementsheffing."""
 
     vrijstelling_per_persoon: Decimal
-    tarief: Decimal
+    tarief: Decimal  # belastingpercentage over het fictief rendement (bijv. 0.36)
+    forfaitair_spaargeld: Decimal  # fictief rendement spaargeld (bijv. 0.015)
+    forfaitair_overig: Decimal    # fictief rendement beleggingen/overig (bijv. 0.06)
     disclaimer: str
 
 
@@ -157,6 +159,8 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
         box3=Box3Config(
             vrijstelling_per_persoon=_d(data["box3"]["vrijstelling_per_persoon"]),
             tarief=_d(data["box3"]["tarief"]),
+            forfaitair_spaargeld=_d(data["box3"]["forfaitair_spaargeld"]),
+            forfaitair_overig=_d(data["box3"]["forfaitair_overig"]),
             disclaimer=data["box3"]["_disclaimer"],
         ),
         aow_bedrag=AOWBedragConfig(

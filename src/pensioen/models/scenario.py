@@ -42,6 +42,7 @@ class Scenario(BaseModel):
 
     # Opties
     box3_meenemen: bool = True
+    box3_spaargeld_fractie: Decimal = Decimal("1")  # 0=volledig beleggingen, 1=volledig spaargeld
     partner_heffingskorting_overdracht: bool = False
 
     @model_validator(mode="after")
