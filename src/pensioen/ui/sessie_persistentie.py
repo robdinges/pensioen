@@ -23,18 +23,6 @@ from pensioen.models.scenario import Scenario
 # Sla op in de projectroot (twee niveaus boven src/pensioen/ui/)
 SESSIE_PAD = Path(__file__).parents[4] / ".sessie.json"
 
-# Widget-sleutels die direct als primitieve waarden worden opgeslagen
-_DATUM_SLEUTELS = {"geboortedatum_p1", "geboortedatum_p2", "stopdatum_p1", "stopdatum_p2"}
-_WIDGET_SLEUTELS = [
-    "naam_p1", "geboortedatum_p1", "heeft_partner",
-    "naam_p2", "geboortedatum_p2",
-    "scenario_naam",
-    "stopdatum_p1", "salaris_p1",
-    "stopdatum_p2", "salaris_p2",
-    "salarisgroei", "spaargeld", "inleg", "rendement", "box3",
-    "jaar_van", "jaar_tot",
-]
-
 
 def _serialiseerbaar(obj: Any) -> Any:
     if isinstance(obj, Decimal):
@@ -42,6 +30,12 @@ def _serialiseerbaar(obj: Any) -> Any:
     if isinstance(obj, (date, datetime)):
         return obj.isoformat()
     raise TypeError(f"Niet-serialiseerbaar type: {type(obj)}")
+
+
+def _zet(key: str, waarde: Any) -> None:
+    """Stel een session_state-waarde in, maar overschrijf bestaande widget-state niet."""
+    if key not in st.session_state and waarde is not None:
+        st.session_state[key] = waarde
 
 
 def sla_sessie_op() -> None:
@@ -74,18 +68,11 @@ def sla_sessie_op() -> None:
             df.to_json(orient="records", date_format="iso")
         )
 
-    # Widget-primitieven
-    widgets: dict[str, Any] = {}
-    for sleutel in _WIDGET_SLEUTELS:
+    # Losstaande widgets niet in modellen (prognosehorizon)
+    for sleutel in ("jaar_van", "jaar_tot"):
         waarde = st.session_state.get(sleutel)
         if waarde is not None:
-            if isinstance(waarde, (date, datetime)):
-                widgets[sleutel] = waarde.isoformat()
-            elif isinstance(waarde, Decimal):
-                widgets[sleutel] = str(waarde)
-            else:
-                widgets[sleutel] = waarde
-    data["widgets"] = widgets
+            data.setdefault("widgets", {})[sleutel] = waarde
 
     try:
         SESSIE_PAD.write_text(
@@ -110,19 +97,28 @@ def laad_sessie() -> None:
     except Exception:
         return
 
-    # Personen
+    # --- Personen ---
     if p1_dict := data.get("persoon1"):
         try:
-            st.session_state["persoon1"] = Persoon.model_validate(p1_dict)
-        except Exception:
-            pass
-    if p2_dict := data.get("persoon2"):
-        try:
-            st.session_state["persoon2"] = Persoon.model_validate(p2_dict)
+            p1 = Persoon.model_validate(p1_dict)
+            st.session_state["persoon1"] = p1
+            # Formulierwaarden afleiden uit het model
+            _zet("naam_p1", p1.naam)
+            _zet("geboortedatum_p1", p1.geboortedatum)
+            _zet("heeft_partner", p1.heeft_partner)
         except Exception:
             pass
 
-    # Pensioenrecords
+    if p2_dict := data.get("persoon2"):
+        try:
+            p2 = Persoon.model_validate(p2_dict)
+            st.session_state["persoon2"] = p2
+            _zet("naam_p2", p2.naam)
+            _zet("geboortedatum_p2", p2.geboortedatum)
+        except Exception:
+            pass
+
+    # --- Pensioenrecords ---
     records1 = []
     for r in data.get("records_p1", []):
         try:
@@ -141,7 +137,7 @@ def laad_sessie() -> None:
     if records2:
         st.session_state["records_p2"] = records2
 
-    # Scenario's
+    # --- Scenario's ---
     scenarios = []
     for s in data.get("scenario_lijst", []):
         try:
@@ -150,25 +146,32 @@ def laad_sessie() -> None:
             pass
     if scenarios:
         st.session_state["scenario_lijst"] = scenarios
+        # Formulierwaarden pre-fill vanuit het eerste scenario
+        s0 = scenarios[0]
+        _zet("scenario_naam", s0.naam)
+        _zet("stopdatum_p1", s0.persoon1_stopdatum_werk)
+        _zet("salaris_p1", int(s0.persoon1_bruto_jaarsalaris))
+        if s0.persoon2_stopdatum_werk:
+            _zet("stopdatum_p2", s0.persoon2_stopdatum_werk)
+        _zet("salaris_p2", int(s0.persoon2_bruto_jaarsalaris))
+        _zet("salarisgroei", float(s0.salarisgroei_pct))
+        _zet("spaargeld", int(s0.spaargeld_start))
+        _zet("inleg", int(s0.jaarlijkse_inleg))
+        _zet("rendement", float(s0.rendement_pct))
+        _zet("box3", s0.box3_meenemen)
 
-    # Incidentele tabel
+    # --- Incidentele tabel ---
     if rijen := data.get("incidenteel_tabel"):
         try:
             df = pd.DataFrame(rijen)
             if "datum" in df.columns:
                 df["datum"] = pd.to_datetime(df["datum"])
-            st.session_state["incidenteel_tabel"] = df
+            _zet("incidenteel_tabel", df)
         except Exception:
             pass
 
-    # Widget-waarden voor pre-fill van formulieren
-    widgets = data.get("widgets", {})
-    for sleutel, waarde in widgets.items():
-        if sleutel in st.session_state:
-            continue  # widget is al actief, niet overschrijven
-        if sleutel in _DATUM_SLEUTELS and isinstance(waarde, str):
-            try:
-                waarde = date.fromisoformat(waarde)
-            except Exception:
-                continue
-        st.session_state[sleutel] = waarde
+    # --- Losstaande widgets (prognosehorizon) ---
+    for sleutel in ("jaar_van", "jaar_tot"):
+        if sleutel not in st.session_state:
+            if (waarde := data.get("widgets", {}).get(sleutel)) is not None:
+                st.session_state[sleutel] = int(waarde)
