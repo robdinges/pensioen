@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pensioen"
+version = "0.1.0"
+description = "Nederlandse pensioenplanning en cashflowprognoses voor een huishouden"
+requires-python = ">=3.12"
+dependencies = [
+    "streamlit>=1.35",
+    "pydantic>=2.7",
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "pdfplumber>=0.11",
+    "plotly>=5.22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing -v"
+
+[tool.setuptools.packages.find]
+where = ["src"]

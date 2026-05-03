@@ -1,0 +1,16 @@
+{
+  "_toelichting": "AOW-leeftijden per geboortejaar op basis van Wet verhoging AOW-leeftijd en SVB-tabel. CONTROLEER ALTIJD OP: https://www.svb.nl/nl/aow/wanneer-aow/aow-leeftijd/",
+  "_bron": "SVB / Wet verhoging AOW-leeftijd (indicatief). Geboortejaren na 1955 zijn gekoppeld aan levensverwachting en kunnen wijzigen.",
+  "tabel": [
+    {"max_geboortejaar": 1947, "jaren": 65, "maanden": 0},
+    {"geboortejaar": 1948, "jaren": 65, "maanden": 3},
+    {"geboortejaar": 1949, "jaren": 65, "maanden": 6},
+    {"geboortejaar": 1950, "jaren": 65, "maanden": 9},
+    {"geboortejaar": 1951, "jaren": 66, "maanden": 0},
+    {"geboortejaar": 1952, "jaren": 66, "maanden": 0},
+    {"geboortejaar": 1953, "jaren": 66, "maanden": 4},
+    {"geboortejaar": 1954, "jaren": 66, "maanden": 4},
+    {"geboortejaar": 1955, "jaren": 66, "maanden": 7},
+    {"min_geboortejaar": 1956, "jaren": 67, "maanden": 0}
+  ]
+}
