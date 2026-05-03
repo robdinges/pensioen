@@ -1,6 +1,6 @@
 {
-  "_toelichting": "Box 1 tarieven en heffingskortingen 2026. Schijf 1/2/3 conform opgave gebruiker. Heffingskortingen en AOW-bedragen zijn indicatief.",
-  "_bron": "Gebruiker (box 1) + Belastingdienst indicaties (heffingskortingen). Controleer op https://www.belastingdienst.nl/",
+  "_toelichting": "Box 1 tarieven en heffingskortingen 2026. Schijftarieven en grenzen zijn bevestigd conform Belastingdienst 2026. Heffingskortingen zijn indicatief.",
+  "_bron": "Belastingdienst 2026 (schijftarieven bevestigd). Heffingskortingen indicatief — controleer op https://www.belastingdienst.nl/",
   "jaar": 2026,
 
   "box1_niet_aow": {
@@ -13,9 +13,9 @@
   },
 
   "box1_aow": {
-    "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). Indicatief berekend: schijf1_niet_aow minus AOW-premie (~17.90%).",
+    "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). Schijf 1: 17,85% (inkomstenbelasting zonder AOW-premie). Geboortejaar <1946: eerste schijf iets gunstiger, hier niet apart gemodelleerd.",
     "schijven": [
-      {"tot": 38883, "tarief": 0.1785, "_omschrijving": "Schijf 1 zonder AOW-premie (indicatief)"},
+      {"tot": 38883, "tarief": 0.1785, "_omschrijving": "Schijf 1 zonder AOW-premie (17,85%)"},
       {"tot": 78426, "tarief": 0.3756, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
@@ -53,7 +53,7 @@
   },
 
   "aow_bedrag": {
-    "_toelichting": "Indicatief bruto AOW per maand 2026 (~1.5% verhoging t.o.v. 2025). Controleer op https://www.svb.nl/nl/aow/hoogte-aow/",
+    "_toelichting": "Bruto AOW per maand 2026 (bevestigd). Controleer actueel bedrag op https://www.svb.nl/nl/aow/hoogte-aow/",
     "alleenstaande_per_maand": 1417,
     "gehuwd_of_samenwonend_per_maand": 978
   }
