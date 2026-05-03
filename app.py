@@ -17,6 +17,7 @@ from pensioen.ui.pagina_persoon import toon_persoon_pagina
 from pensioen.ui.pagina_rapport import toon_rapport_pagina
 from pensioen.ui.pagina_resultaten import toon_resultaten_pagina
 from pensioen.ui.pagina_scenario import toon_scenario_pagina
+from pensioen.ui.pagina_accountant import toon_accountant_pagina
 from pensioen.ui.sessie_persistentie import laad_sessie, sla_sessie_op
 
 # Herstel sessie bij (her)start (eenmalig per serversessie)
@@ -28,7 +29,8 @@ PAGINAS = {
     "📂 Pensioengegevens": "import",
     "📋 Scenario": "scenario",
     "📊 Resultaten": "resultaten",
-    "📥 Rapport": "rapport",
+    "� Accountantsoverzicht": "accountant",
+    "�📥 Rapport": "rapport",
     "⚙️ Instellingen": "instellingen",
 }
 
@@ -62,6 +64,8 @@ elif pagina_sleutel == "scenario":
     toon_scenario_pagina()
 elif pagina_sleutel == "resultaten":
     toon_resultaten_pagina()
+elif pagina_sleutel == "accountant":
+    toon_accountant_pagina()
 elif pagina_sleutel == "rapport":
     toon_rapport_pagina()
 elif pagina_sleutel == "instellingen":
