@@ -25,7 +25,7 @@ def toon_import_pagina() -> None:
     """Streamlit-pagina voor het importeren van pensioengegevens."""
     st.header("📂 Pensioengegevens importeren")
     st.write(
-        "Upload uw MijnPensioenoverzicht-export (CSV of Excel). "
+        "Upload uw MijnPensioenoverzicht-export (CSV, Excel of JSON). "
         "Indien u een partner heeft, upload ook diens bestand."
     )
 
@@ -42,12 +42,16 @@ def toon_import_pagina() -> None:
         st.subheader("Persoon 1")
         bestand1 = st.file_uploader(
             "MPO-bestand persoon 1",
-            type=["csv", "xlsx", "xls"],
+            type=["csv", "xlsx", "xls", "json"],
             key="upload_p1",
         )
         if bestand1 is not None:
             try:
-                records1 = _parse_upload(bestand1, peildatum)
+                _p1 = st.session_state.get("persoon1")
+                geboortedatum1 = (
+                    _p1.geboortedatum if _p1 else st.session_state.get("geboortedatum_p1")
+                )
+                records1 = _parse_upload(bestand1, peildatum, geboortedatum1)
                 validatie = valideer_records(records1)
                 _toon_validatiemeldingen(validatie)
                 if records1:
@@ -66,12 +70,16 @@ def toon_import_pagina() -> None:
         st.subheader("Persoon 2 (optioneel)")
         bestand2 = st.file_uploader(
             "MPO-bestand persoon 2",
-            type=["csv", "xlsx", "xls"],
+            type=["csv", "xlsx", "xls", "json"],
             key="upload_p2",
         )
         if bestand2 is not None:
             try:
-                records2 = _parse_upload(bestand2, peildatum)
+                _p2 = st.session_state.get("persoon2")
+                geboortedatum2 = (
+                    _p2.geboortedatum if _p2 else st.session_state.get("geboortedatum_p2")
+                )
+                records2 = _parse_upload(bestand2, peildatum, geboortedatum2)
                 validatie = valideer_records(records2)
                 _toon_validatiemeldingen(validatie)
                 if records2:
@@ -96,13 +104,16 @@ def toon_import_pagina() -> None:
 def _parse_upload(
     bestand: "st.runtime.uploaded_file_manager.UploadedFile",
     peildatum: date,
+    geboortedatum: date | None = None,
 ) -> list[PensioenRecord]:
     """Verwerk een geüpload bestand naar pensioenrecords."""
+    import os
+    import tempfile
+
     naam = bestand.name.lower()
     inhoud = bestand.read()
 
     if naam.endswith(".csv"):
-        import tempfile, os
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
             tmp.write(inhoud)
             tmp_pad = tmp.name
@@ -111,13 +122,20 @@ def _parse_upload(
         finally:
             os.unlink(tmp_pad)
     elif naam.endswith((".xlsx", ".xls")):
-        import tempfile, os
         suffix = ".xlsx" if naam.endswith(".xlsx") else ".xls"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(inhoud)
             tmp_pad = tmp.name
         try:
             records = MPOParser.parse_excel(tmp_pad, peildatum)
+        finally:
+            os.unlink(tmp_pad)
+    elif naam.endswith(".json"):
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            tmp.write(inhoud)
+            tmp_pad = tmp.name
+        try:
+            records = MPOParser.parse_json(tmp_pad, peildatum, geboortedatum)
         finally:
             os.unlink(tmp_pad)
     else:

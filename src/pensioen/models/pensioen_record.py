@@ -25,7 +25,7 @@ class PensioenRecord(BaseModel):
     uitvoerder: str
     regeling: str
     type_pensioen: TypePensioen
-    ingangsdatum: date
+    ingangsdatum: date | None = None
     einddatum: date | None = None
     bruto_per_jaar: Decimal  # in euro's per jaar
     partnerpensioen_pct: Decimal = Decimal("0")  # percentage (0–100)
@@ -60,6 +60,6 @@ class PensioenRecord(BaseModel):
 
     @model_validator(mode="after")
     def valideer_datums(self) -> PensioenRecord:
-        if self.einddatum and self.einddatum <= self.ingangsdatum:
+        if self.einddatum and self.ingangsdatum and self.einddatum <= self.ingangsdatum:
             raise ValueError("einddatum moet na ingangsdatum liggen.")
         return self

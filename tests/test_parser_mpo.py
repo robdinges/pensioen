@@ -134,3 +134,199 @@ class TestValidator:
         """Een lege lijst records geeft een WAARSCHUWING."""
         resultaat = valideer_records([])
         assert not resultaat.is_geldig or len(resultaat.waarschuwingen) > 0
+
+
+class TestValidatorEdgeCases:
+    """Regressietests voor validator-randgevallen."""
+
+    def test_partner_pensioen_zonder_ingangsdatum_geen_waarschuwing(self) -> None:
+        """PARTNER-type zonder ingangsdatum geeft GEEN waarschuwing (ingangsdatum is n.v.t.)."""
+        from pensioen.models.pensioen_record import PensioenRecord
+
+        record = PensioenRecord(
+            uitvoerder="Test Fonds",
+            regeling="PP-001",
+            type_pensioen=TypePensioen.PARTNER,
+            ingangsdatum=None,
+            bruto_per_jaar=Decimal("10000"),
+        )
+        resultaat = valideer_records([record])
+        ingangsdatum_warns = [
+            w for w in resultaat.waarschuwingen if w.veld == "ingangsdatum"
+        ]
+        assert len(ingangsdatum_warns) == 0
+
+    def test_nabestaanden_pensioen_zonder_ingangsdatum_geen_waarschuwing(self) -> None:
+        """NABESTAANDEN-type zonder ingangsdatum geeft GEEN waarschuwing."""
+        from pensioen.models.pensioen_record import PensioenRecord
+
+        record = PensioenRecord(
+            uitvoerder="Test Fonds",
+            regeling="NP-001",
+            type_pensioen=TypePensioen.NABESTAANDEN,
+            ingangsdatum=None,
+            bruto_per_jaar=Decimal("5000"),
+        )
+        resultaat = valideer_records([record])
+        ingangsdatum_warns = [
+            w for w in resultaat.waarschuwingen if w.veld == "ingangsdatum"
+        ]
+        assert len(ingangsdatum_warns) == 0
+
+    def test_ouderdoms_pensioen_zonder_ingangsdatum_geeft_waarschuwing(self) -> None:
+        """OUDERDOMS-type zonder ingangsdatum geeft WEL een WAARSCHUWING."""
+        from pensioen.models.pensioen_record import PensioenRecord
+
+        record = PensioenRecord(
+            uitvoerder="Test Fonds",
+            regeling="OP-001",
+            type_pensioen=TypePensioen.OUDERDOMS,
+            ingangsdatum=None,
+            bruto_per_jaar=Decimal("20000"),
+        )
+        resultaat = valideer_records([record])
+        ingangsdatum_warns = [
+            w for w in resultaat.waarschuwingen if w.veld == "ingangsdatum"
+        ]
+        assert len(ingangsdatum_warns) == 1
+        assert ingangsdatum_warns[0].ernst == "WAARSCHUWING"
+
+
+class TestMPOParserJSON:
+    """Tests voor het inlezen van JSON-exports (Stichting Pensioenregister-formaat)."""
+
+    def _schrijf_mpo_json(self, tmp_path: Path, data: dict) -> Path:
+        import json
+
+        bestand = tmp_path / "mpo.json"
+        bestand.write_text(json.dumps(data), encoding="utf-8")
+        return bestand
+
+    def _minimale_json(self) -> dict:
+        """Minimale geldige JSON-structuur conform het SPR-datamodel."""
+        return {
+            "TijdstipAanmakenBericht": "2026-05-03T16:27:43+02:00",
+            "Totalen": {},
+            "Details": {
+                "OuderdomsPensioenDetails": {
+                    "OuderdomsPensioen": [
+                        {
+                            "Van": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                            "Tot": {"OuderdomsPensioenEvent": "Overlijden"},
+                            "Pensioen": [
+                                {
+                                    "TeBereiken": 41457,
+                                    "Opgebouwd": 41457,
+                                    "PensioenUitvoerder": "St. Pensioenfonds F. van Lanschot",
+                                    "HerkenningsNummer": "0000001375-1",
+                                    "StandPer": "2026-03-31",
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "PartnerPensioenDetails": {"PartnerPensioen": []},
+                "WezenPensioenDetails": {"WezenPensioen": []},
+            },
+        }
+
+    def test_parse_json_ouderdomspensioen(self, tmp_path: Path) -> None:
+        """Leest een ouderdomspensioenrecord correct in vanuit JSON."""
+        bestand = self._schrijf_mpo_json(tmp_path, self._minimale_json())
+        records = MPOParser.parse_json(bestand)
+        ouderdoms = [r for r in records if r.type_pensioen == TypePensioen.OUDERDOMS]
+        assert len(ouderdoms) == 1
+        assert ouderdoms[0].uitvoerder == "St. Pensioenfonds F. van Lanschot"
+        assert ouderdoms[0].bruto_per_jaar == Decimal("41457")
+        assert ouderdoms[0].einddatum is None  # eindigt bij overlijden
+
+    def test_parse_json_ingangsdatum_via_geboortedatum(self, tmp_path: Path) -> None:
+        """Ingangsdatum wordt correct afgeleid uit leeftijd + geboortedatum."""
+        bestand = self._schrijf_mpo_json(tmp_path, self._minimale_json())
+        records = MPOParser.parse_json(bestand, geboortedatum=date(1958, 1, 1))
+        ouderdoms = [r for r in records if r.type_pensioen == TypePensioen.OUDERDOMS]
+        assert ouderdoms[0].ingangsdatum == date(2026, 1, 1)  # 1958 + 68j0m
+
+    def test_parse_json_ingangsdatum_none_zonder_geboortedatum(self, tmp_path: Path) -> None:
+        """Zonder geboortedatum blijft ingangsdatum None."""
+        bestand = self._schrijf_mpo_json(tmp_path, self._minimale_json())
+        records = MPOParser.parse_json(bestand)
+        assert all(r.ingangsdatum is None for r in records if r.type_pensioen == TypePensioen.OUDERDOMS)
+
+    def test_parse_json_partnerpensioen(self, tmp_path: Path) -> None:
+        """Partnerpensioen wordt als TypePensioen.PARTNER ingelezen."""
+        data = self._minimale_json()
+        data["Details"]["PartnerPensioenDetails"] = {
+            "PartnerPensioen": [
+                {
+                    "Van": {"PartnerEvent": "OverlijdenPartner"},
+                    "Tot": {"PartnerEvent": "Overlijden"},
+                    "Pensioen": [
+                        {
+                            "Bedragen": {"VerzekerdBedragNaPens": 10242, "VerzekerdBedrag": 5000},
+                            "PensioenUitvoerder": "St. Pensioenfonds F. van Lanschot",
+                            "HerkenningsNummer": "0000001375-1",
+                            "StandPer": "2026-03-31",
+                        }
+                    ],
+                }
+            ]
+        }
+        bestand = self._schrijf_mpo_json(tmp_path, data)
+        records = MPOParser.parse_json(bestand)
+        partner = [r for r in records if r.type_pensioen == TypePensioen.PARTNER]
+        assert len(partner) == 1
+        # VerzekerdBedragNaPens heeft voorkeur boven VerzekerdBedrag
+        assert partner[0].bruto_per_jaar == Decimal("10242")
+
+    def test_parse_json_meerdere_tijdvakken_deduplicatie(self, tmp_path: Path) -> None:
+        """Eén uitvoerder met meerdere tijdvakken levert één record op."""
+        data = self._minimale_json()
+        data["Details"]["OuderdomsPensioenDetails"]["OuderdomsPensioen"] = [
+            {
+                "Van": {"Leeftijd": {"Jaren": 65, "Maanden": 0}},
+                "Tot": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                "Pensioen": [
+                    {
+                        "TeBereiken": 515,
+                        "Opgebouwd": 515,
+                        "PensioenUitvoerder": "AEGON",
+                        "HerkenningsNummer": "DLN-001",
+                        "StandPer": "2026-03-01",
+                    }
+                ],
+            },
+            {
+                "Van": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                "Tot": {"OuderdomsPensioenEvent": "Overlijden"},
+                "Pensioen": [
+                    {
+                        "TeBereiken": 515,
+                        "Opgebouwd": 515,
+                        "PensioenUitvoerder": "AEGON",
+                        "HerkenningsNummer": "DLN-001",
+                        "StandPer": "2026-03-01",
+                    }
+                ],
+            },
+        ]
+        bestand = self._schrijf_mpo_json(tmp_path, data)
+        records = MPOParser.parse_json(bestand)
+        aegon = [r for r in records if r.uitvoerder == "AEGON"]
+        assert len(aegon) == 1
+        assert aegon[0].einddatum is None  # eindigt bij overlijden
+
+    def test_parse_json_peildatum_uit_bericht(self, tmp_path: Path) -> None:
+        """Peildatum wordt afgeleid uit TijdstipAanmakenBericht."""
+        bestand = self._schrijf_mpo_json(tmp_path, self._minimale_json())
+        records = MPOParser.parse_json(bestand)
+        assert all(r.peildatum == date(2026, 5, 3) for r in records)
+
+    def test_auto_parse_detecteert_json(self, tmp_path: Path) -> None:
+        """De .parse()-methode detecteert .json op basis van extensie."""
+        import json
+
+        bestand = tmp_path / "mpo.json"
+        bestand.write_text(json.dumps(self._minimale_json()), encoding="utf-8")
+        records = MPOParser.parse(bestand)
+        assert len(records) > 0

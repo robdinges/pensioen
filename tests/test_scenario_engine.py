@@ -13,6 +13,36 @@ from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
 
 
+class TestScenarioModel:
+    """Regressietests voor het Scenario-model zelf."""
+
+    def test_persoon2_salaris_nul_is_geldig(self) -> None:
+        """persoon2_bruto_jaarsalaris=0 mag geen ValidationError geven (was None-bug)."""
+        scenario = Scenario(
+            naam="Test",
+            persoon1_stopdatum_werk=date(2030, 1, 1),
+            persoon2_bruto_jaarsalaris=Decimal("0"),
+        )
+        assert scenario.persoon2_bruto_jaarsalaris == Decimal("0")
+
+    def test_persoon2_salaris_default_nul(self) -> None:
+        """persoon2_bruto_jaarsalaris heeft standaard Decimal('0'), niet None."""
+        scenario = Scenario(
+            naam="Alleenstaand",
+            persoon1_stopdatum_werk=date(2030, 1, 1),
+        )
+        assert scenario.persoon2_bruto_jaarsalaris == Decimal("0")
+
+    def test_persoon2_salaris_positief(self) -> None:
+        """persoon2_bruto_jaarsalaris accepteert een positief bedrag."""
+        scenario = Scenario(
+            naam="Stel",
+            persoon1_stopdatum_werk=date(2030, 1, 1),
+            persoon2_bruto_jaarsalaris=Decimal("40000"),
+        )
+        assert scenario.persoon2_bruto_jaarsalaris == Decimal("40000")
+
+
 class TestVergelijkScenarios:
     """Tests voor de scenariovergelijkingsfunctie."""
 

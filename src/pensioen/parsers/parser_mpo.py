@@ -1,7 +1,9 @@
-"""Parser voor MijnPensioenoverzicht exports (CSV, Excel, optioneel PDF)."""
+"""Parser voor MijnPensioenoverzicht exports (CSV, Excel, JSON, optioneel PDF)."""
 
 from __future__ import annotations
 
+import calendar
+import json
 import logging
 from datetime import date
 from decimal import Decimal
@@ -123,6 +125,26 @@ def _df_naar_records(
     return records
 
 
+def _leeftijd_blok_naar_datum(blok: dict, geboortedatum: date | None) -> date | None:
+    """
+    Zet een Van/Tot-blok (met Leeftijd.Jaren en Leeftijd.Maanden) om naar een date.
+
+    Zonder geboortedatum kan de conversie niet worden gemaakt en wordt None teruggegeven.
+    De datum is de eerste dag van de maand die correspondeert met de leeftijd.
+    """
+    leeftijd = blok.get("Leeftijd")
+    if not leeftijd or geboortedatum is None:
+        return None
+    jaren = int(leeftijd.get("Jaren", 0))
+    maanden = int(leeftijd.get("Maanden", 0))
+    # Tel jaren en maanden op bij geboortedatum
+    doelmaand = geboortedatum.month + maanden + jaren * 12
+    doeljaar = geboortedatum.year + (doelmaand - 1) // 12
+    doelmaand = (doelmaand - 1) % 12 + 1
+    # Gebruik de eerste dag van die maand als ingangsdatum
+    return date(doeljaar, doelmaand, 1)
+
+
 class MPOParser:
     """Parser voor MijnPensioenoverzicht-exports."""
 
@@ -199,12 +221,204 @@ class MPOParser:
         df = pd.DataFrame(rijen)
         return _df_naar_records(df, str(pad), peildatum)
 
+    @staticmethod
+    def parse_json(
+        pad: Path,
+        peildatum: date | None = None,
+        geboortedatum: date | None = None,
+    ) -> list[PensioenRecord]:
+        """
+        Parseer een JSON-export van mijnpensioenoverzicht.nl (Stichting Pensioenregister).
+
+        Het JSON-formaat bevat tijdvakken per leeftijdsperiode. Per uitvoerder en
+        regelingscode worden records gedupeerd tot één PensioenRecord per aanspraak:
+        - ingangsdatum: afgeleid van de vroegste Van.Leeftijd (vereist geboortedatum).
+        - bruto_per_jaar: TeBereiken uit het laatste (hoogste leeftijd) tijdvak.
+        - einddatum: None als het tijdvak eindigt met 'Overlijden'.
+
+        Args:
+            pad: Pad naar het .json-bestand.
+            peildatum: Peildatum van de export; wordt afgeleid uit TijdstipAanmakenBericht
+                als niet opgegeven.
+            geboortedatum: Geboortedatum van de deelnemer. Nodig om leeftijden om te zetten
+                naar kalenderdatums. Zonder geboortedatum blijft ingangsdatum None.
+
+        Returns:
+            Lijst van PensioenRecord-objecten (OUDERDOMS en PARTNER).
+        """
+        with open(pad, encoding="utf-8") as f:
+            data = json.load(f)
+
+        bronbestand = str(pad)
+
+        # Peildatum uit bericht afleiden als niet opgegeven
+        if peildatum is None:
+            tijdstip = data.get("TijdstipAanmakenBericht", "")
+            if tijdstip:
+                try:
+                    peildatum = date.fromisoformat(tijdstip[:10])
+                except ValueError:
+                    pass
+
+        records: list[PensioenRecord] = []
+        details = data.get("Details", {})
+
+        # --- Ouderdomspensioen ---
+        # Dedupliceer per (HerkenningsNummer, type_sleutel): neem de vroegste ingangsdatum
+        # en het TeBereiken-bedrag uit het laatste (meest volledige) tijdvak.
+        ouderdoms_tijdvakken = (
+            details.get("OuderdomsPensioenDetails", {}).get("OuderdomsPensioen", []) or []
+        )
+        # Gesorteerd op Van.Leeftijd.Jaren zodat iteratievolgorde altijd vroeg→laat is
+        ouderdoms_tijdvakken = sorted(
+            ouderdoms_tijdvakken,
+            key=lambda t: (
+                t.get("Van", {}).get("Leeftijd", {}).get("Jaren", 999),
+                t.get("Van", {}).get("Leeftijd", {}).get("Maanden", 0),
+            ),
+        )
+
+        # Bijhouden per (herkenning, sleutel): {ingangsdatum, einddatum, item_data}
+        ouderdoms_map: dict[tuple[str, str], dict] = {}
+
+        for tijdvak in ouderdoms_tijdvakken:
+            van_blok = tijdvak.get("Van", {})
+            tot_blok = tijdvak.get("Tot", {})
+
+            ingangsdatum = _leeftijd_blok_naar_datum(van_blok, geboortedatum)
+            # einddatum is None als Tot een OuderdomsPensioenEvent (bijv. "Overlijden") bevat
+            einddatum = (
+                _leeftijd_blok_naar_datum(tot_blok, geboortedatum)
+                if "Leeftijd" in tot_blok
+                else None
+            )
+
+            for type_sleutel in ("Pensioen", "IndicatiefPensioen"):
+                for item in tijdvak.get(type_sleutel, []) or []:
+                    herkenning = item.get("HerkenningsNummer", "")
+                    sleutel = (herkenning, type_sleutel)
+
+                    if sleutel not in ouderdoms_map:
+                        # Eerste (vroegste) tijdvak: sla ingangsdatum op
+                        ouderdoms_map[sleutel] = {
+                            "ingangsdatum": ingangsdatum,
+                            "einddatum": einddatum,
+                            "item": item,
+                        }
+                    else:
+                        # Later tijdvak: werk einddatum en item (TeBereiken) bij
+                        ouderdoms_map[sleutel]["einddatum"] = einddatum
+                        ouderdoms_map[sleutel]["item"] = item
+
+        for (herkenning, type_sleutel), entry in ouderdoms_map.items():
+            item = entry["item"]
+            uitvoerder = item.get("PensioenUitvoerder", "")
+            stand_per = item.get("StandPer")
+            item_peildatum = peildatum
+            if stand_per and item_peildatum is None:
+                try:
+                    item_peildatum = date.fromisoformat(stand_per)
+                except ValueError:
+                    pass
+
+            te_bereiken = Decimal(str(item.get("TeBereiken") or 0))
+            opgebouwd = Decimal(str(item.get("Opgebouwd") or 0))
+
+            try:
+                record = PensioenRecord(
+                    uitvoerder=uitvoerder,
+                    regeling=herkenning,
+                    type_pensioen=TypePensioen.OUDERDOMS,
+                    ingangsdatum=entry["ingangsdatum"],
+                    einddatum=entry["einddatum"],
+                    bruto_per_jaar=te_bereiken,
+                    bronbestand=bronbestand,
+                    peildatum=item_peildatum,
+                    scenario_bedragen={"opgebouwd": opgebouwd},
+                )
+                records.append(record)
+            except Exception as exc:
+                logger.error(
+                    "Ouderdomspensioen-item overgeslagen: %s | herkenning=%s",
+                    exc,
+                    herkenning,
+                )
+
+        # --- Partnerpensioen ---
+        # Partnerpensioen heeft geen leeftijdsbasis voor de ingangsdatum (ingaat na overlijden).
+        # Dedupliceer op HerkenningsNummer; gebruik VerzekerdBedrag als bruto_per_jaar.
+        partner_tijdvakken = (
+            details.get("PartnerPensioenDetails", {}).get("PartnerPensioen", []) or []
+        )
+        partner_map: dict[tuple[str, str], dict] = {}
+
+        for tijdvak in partner_tijdvakken:
+            for type_sleutel in ("Pensioen", "IndicatiefPensioen"):
+                for item in tijdvak.get(type_sleutel, []) or []:
+                    herkenning = item.get("HerkenningsNummer", "")
+                    sleutel = (herkenning, type_sleutel)
+                    if sleutel not in partner_map:
+                        partner_map[sleutel] = {"item": item}
+
+        for (herkenning, type_sleutel), entry in partner_map.items():
+            item = entry["item"]
+            uitvoerder = item.get("PensioenUitvoerder", "")
+            stand_per = item.get("StandPer")
+            item_peildatum = peildatum
+            if stand_per and item_peildatum is None:
+                try:
+                    item_peildatum = date.fromisoformat(stand_per)
+                except ValueError:
+                    pass
+
+            bedragen = item.get("Bedragen", {}) or {}
+            # VerzekerdBedragNaPens is het meest relevant voor langetermijnplanning
+            te_bereiken = Decimal(
+                str(
+                    bedragen.get("VerzekerdBedragNaPens")
+                    or bedragen.get("VerzekerdBedrag")
+                    or 0
+                )
+            )
+
+            try:
+                record = PensioenRecord(
+                    uitvoerder=uitvoerder,
+                    regeling=herkenning,
+                    type_pensioen=TypePensioen.PARTNER,
+                    ingangsdatum=None,
+                    einddatum=None,
+                    bruto_per_jaar=te_bereiken,
+                    bronbestand=bronbestand,
+                    peildatum=item_peildatum,
+                )
+                records.append(record)
+            except Exception as exc:
+                logger.error(
+                    "Partnerpensioen-item overgeslagen: %s | herkenning=%s",
+                    exc,
+                    herkenning,
+                )
+
+        return records
+
     @classmethod
-    def parse(cls, pad: Path, peildatum: date | None = None) -> list[PensioenRecord]:
+    def parse(
+        cls,
+        pad: Path,
+        peildatum: date | None = None,
+        geboortedatum: date | None = None,
+    ) -> list[PensioenRecord]:
         """
         Parseer automatisch op basis van de bestandsextensie.
 
-        Ondersteunde extensies: .csv, .xlsx, .xls, .pdf
+        Ondersteunde extensies: .csv, .xlsx, .xls, .pdf, .json
+
+        Args:
+            pad: Pad naar het bestand.
+            peildatum: Peildatum van de export (optioneel).
+            geboortedatum: Geboortedatum van de deelnemer; alleen nodig voor .json
+                om leeftijden naar datums te vertalen.
         """
         extensie = pad.suffix.lower()
         if extensie == ".csv":
@@ -213,7 +427,9 @@ class MPOParser:
             return cls.parse_excel(pad, peildatum)
         if extensie == ".pdf":
             return cls.parse_pdf(pad, peildatum)
+        if extensie == ".json":
+            return cls.parse_json(pad, peildatum, geboortedatum)
         raise ValueError(
             f"Onbekende bestandsextensie: '{extensie}'. "
-            "Ondersteunde formaten: .csv, .xlsx, .xls, .pdf"
+            "Ondersteunde formaten: .csv, .xlsx, .xls, .pdf, .json"
         )

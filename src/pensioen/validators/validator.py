@@ -68,9 +68,18 @@ def _valideer_record(
         resultaat.voeg_toe(ValidationFout("FOUT", "uitvoerder", "Uitvoerder is verplicht.", index))
     if not record.regeling.strip():
         resultaat.voeg_toe(ValidationFout("FOUT", "regeling", "Regeling is verplicht.", index))
-    if record.ingangsdatum is None:
+    if record.ingangsdatum is None and record.type_pensioen not in (
+        TypePensioen.PARTNER,
+        TypePensioen.NABESTAANDEN,
+    ):
         resultaat.voeg_toe(
-            ValidationFout("FOUT", "ingangsdatum", "Ingangsdatum ontbreekt.", index)
+            ValidationFout(
+                "WAARSCHUWING",
+                "ingangsdatum",
+                "Ingangsdatum ontbreekt — vul de geboortedatum in op de pagina 'Personen' "
+                "zodat de ingangsdatum automatisch berekend kan worden.",
+                index,
+            )
         )
 
     # Negatieve bedragen

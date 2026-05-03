@@ -85,7 +85,9 @@ def toon_scenario_pagina() -> None:
 
     if "incidenteel_tabel" not in st.session_state:
         st.session_state["incidenteel_tabel"] = pd.DataFrame(
-            columns=["datum", "bedrag", "omschrijving"]
+            {"datum": pd.Series(dtype="datetime64[ns]"),
+             "bedrag": pd.Series(dtype="float64"),
+             "omschrijving": pd.Series(dtype="object")}
         )
 
     incidenteel_df = st.data_editor(
@@ -120,7 +122,7 @@ def toon_scenario_pagina() -> None:
                 persoon1_stopdatum_werk=stopdatum_p1,
                 persoon2_stopdatum_werk=stopdatum_p2,
                 persoon1_bruto_jaarsalaris=Decimal(str(salaris_p1)),
-                persoon2_bruto_jaarsalaris=Decimal(str(salaris_p2)) if salaris_p2 else None,
+                persoon2_bruto_jaarsalaris=Decimal(str(salaris_p2)),
                 salarisgroei_pct=Decimal(str(salarisgroei)),
                 spaargeld_start=Decimal(str(spaargeld)),
                 jaarlijkse_inleg=Decimal(str(jaarlijkse_inleg)),
