@@ -10,13 +10,36 @@ import streamlit as st
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.validators.validator import valideer_records
+from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 
 def _toon_validatiemeldingen(resultaat) -> None:
     for fout in resultaat.fouten:
         st.error(f"**FOUT** [{fout.veld}]: {fout.bericht}")
-    for warn in resultaat.waarschuwingen:
+
+    duplicate_warnings = [
+        warn
+        for warn in resultaat.waarschuwingen
+        if warn.veld == "regeling" and "Duplicaat gevonden" in warn.bericht
+    ]
+    overige_waarschuwingen = [
+        warn
+        for warn in resultaat.waarschuwingen
+        if warn not in duplicate_warnings
+    ]
+
+    for warn in overige_waarschuwingen:
         st.warning(f"**WAARSCHUWING** [{warn.veld}]: {warn.bericht}")
+
+    if duplicate_warnings:
+        st.warning(
+            "**WAARSCHUWING** [regeling]: Er zijn mogelijke duplicaten gevonden. "
+            "Controleer het detail-log als u dit wilt nalopen."
+        )
+        with st.expander("Bekijk detail-log duplicaten"):
+            for warn in duplicate_warnings:
+                st.write(f"- {warn.bericht}")
+
     for info in resultaat.info:
         st.info(f"**INFO**: {info.bericht}")
 
@@ -62,6 +85,7 @@ def toon_import_pagina() -> None:
                         hide_index=True,
                     )
                     st.session_state["records_p1"] = records1
+                    sla_sessie_op()
             except Exception as exc:
                 st.error(f"Fout bij inlezen: {exc}")
 
@@ -90,6 +114,7 @@ def toon_import_pagina() -> None:
                         hide_index=True,
                     )
                     st.session_state["records_p2"] = records2
+                    sla_sessie_op()
             except Exception as exc:
                 st.error(f"Fout bij inlezen: {exc}")
 

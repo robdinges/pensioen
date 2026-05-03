@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from pensioen.models.scenario import IncidenteelItem, Scenario
+from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 
 def toon_scenario_pagina() -> None:
@@ -141,6 +142,7 @@ def toon_scenario_pagina() -> None:
             bestaand.append(scenario)
             st.session_state["scenario_lijst"] = bestaand
             st.success(f"✅ Scenario '{scenario.naam}' opgeslagen")
+            sla_sessie_op()
         except Exception as exc:
             st.error(f"Fout: {exc}")
 

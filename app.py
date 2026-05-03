@@ -17,6 +17,10 @@ from pensioen.ui.pagina_persoon import toon_persoon_pagina
 from pensioen.ui.pagina_rapport import toon_rapport_pagina
 from pensioen.ui.pagina_resultaten import toon_resultaten_pagina
 from pensioen.ui.pagina_scenario import toon_scenario_pagina
+from pensioen.ui.sessie_persistentie import laad_sessie, sla_sessie_op
+
+# Herstel sessie bij (her)start (eenmalig per serversessie)
+laad_sessie()
 
 # --- Sidebar navigatie ---
 PAGINAS = {
@@ -37,6 +41,10 @@ geselecteerde_pagina = st.sidebar.radio(
     key="navigatie",
 )
 
+st.sidebar.markdown("---")
+if st.sidebar.button("💾 Sessie opslaan", use_container_width=True):
+    sla_sessie_op()
+    st.sidebar.success("✅ Sessie opgeslagen")
 st.sidebar.markdown("---")
 st.sidebar.caption(
     "Alle berekeningen zijn indicatief. "

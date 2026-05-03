@@ -8,6 +8,7 @@ import streamlit as st
 
 from pensioen.models.persoon import Persoon
 from pensioen.tax.aow_engine import bereken_aow_datum
+from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 
 def toon_persoon_pagina() -> None:
@@ -72,5 +73,6 @@ def toon_persoon_pagina() -> None:
                 st.session_state.pop("persoon2", None)
 
             st.success("✅ Persoonsgegevens opgeslagen")
+            sla_sessie_op()
         except Exception as exc:
             st.error(f"Fout: {exc}")
