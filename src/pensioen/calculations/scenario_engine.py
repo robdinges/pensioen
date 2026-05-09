@@ -8,10 +8,22 @@ from statistics import median
 
 from pensioen.calculations.cashflow_engine import bereken_huishouden
 from pensioen.models.cashflow import HuishoudCashflow
+from pensioen.models.component import CategorieComponent
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven_bereik
+
+
+def _stopdatum_werk(scenario: Scenario) -> str:
+    """Vroegste einddatum van ARBEIDSINKOMEN-P1 componenten, of 'onbepaald'."""
+    stops = [
+        c.einddatum for c in scenario.componenten
+        if c.categorie == CategorieComponent.ARBEIDSINKOMEN
+        and c.persoon == "P1"
+        and c.einddatum is not None
+    ]
+    return str(min(stops)) if stops else "onbepaald"
 
 
 @dataclass
@@ -79,7 +91,7 @@ def _bereken_samenvatting(
 
     return ScenarioResultaat(
         scenario_naam=scenario.naam,
-        stopdatum_werk=str(scenario.persoon1_stopdatum_werk),
+        stopdatum_werk=_stopdatum_werk(scenario),
         netto_per_maand_mediaan=mediaan,
         netto_laagste_jaar=laagste_jaar_netto,
         laagste_inkomensjaar=laagste_jaar_nr,

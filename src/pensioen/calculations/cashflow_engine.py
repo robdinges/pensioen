@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
-from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.models.cashflow import HuishoudCashflow, JaarResultaat, MaandResultaat
-from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
+from pensioen.models.component import BedragType, CategorieComponent
+from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
 from pensioen.tax import aow_engine, belasting_engine
@@ -24,31 +23,10 @@ def _rond_af(bedrag: Decimal) -> Decimal:
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def _bereken_jaarsalaris(
-    scenario: Scenario,
-    persoon_nr: int,
-    jaar: int,
-    startjaar: int,
-) -> Decimal:
-    """Bereken het gecorrigeerde bruto jaarsalaris voor een jaar (inclusief salarisgroei)."""
-    basis = (
-        scenario.persoon1_bruto_jaarsalaris
-        if persoon_nr == 1
-        else (scenario.persoon2_bruto_jaarsalaris or Decimal("0"))
-    )
-    groeifactor = (
-        (Decimal("1") + scenario.salarisgroei_pct / Decimal("100"))
-        ** max(0, jaar - startjaar)
-    )
-    return _rond_af(basis * groeifactor)
-
-
 def _incidentele_items_voor_maand(
     scenario: Scenario, jaar: int, maand: int
 ) -> tuple[Decimal, Decimal]:
-    """
-    Retourneer (ontvangsten, uitgaven) voor incidentele items in de gegeven maand.
-    """
+    """Retourneer (ontvangsten, uitgaven) voor incidentele items in de gegeven maand."""
     ontvangst = Decimal("0")
     uitgave = Decimal("0")
     for item in scenario.incidentele_items:
@@ -58,6 +36,27 @@ def _incidentele_items_voor_maand(
             else:
                 uitgave += abs(item.bedrag)
     return ontvangst, uitgave
+
+
+def _component_som_maand(
+    scenario: Scenario,
+    categorie: CategorieComponent,
+    persoon: str | None,
+    jaar: int,
+    maand: int,
+    bedrag_type: BedragType | None = None,
+) -> Decimal:
+    """Som van alle component-maandbedragen voor een categorie en optioneel persoon."""
+    totaal = Decimal("0")
+    for c in scenario.componenten:
+        if c.categorie != categorie:
+            continue
+        if persoon is not None and c.persoon != persoon:
+            continue
+        if bedrag_type is not None and c.bedrag_type != bedrag_type:
+            continue
+        totaal += c.bedrag_per_maand_actief(jaar, maand)
+    return totaal
 
 
 def _bereken_jaar(
@@ -76,8 +75,8 @@ def _bereken_jaar(
     Bereken alle cashflows voor één kalenderjaar voor het huishouden.
 
     Aanpak:
-    1. Bereken maandelijkse bruto inkomsten (pro-rata) voor beide personen.
-    2. Sommeer tot jaarbedragen.
+    1. Bereken maandelijkse bruto inkomsten voor beide personen.
+    2. Sommeer tot jaarbedragen voor belastingberekening.
     3. Bereken jaarbelasting per persoon.
     4. Verdeel belasting evenredig over maanden.
     5. Bereken maandelijks vermogen inclusief rendement.
@@ -88,7 +87,7 @@ def _bereken_jaar(
         aow_engine.bereken_aow_datum(persoon2.geboortedatum) if persoon2 else None
     )
 
-    # --- AOW-bedragen per maand (afhankelijk van samenwonen) ---
+    # --- AOW-bedragen per maand ---
     heeft_partner = persoon2 is not None
     aow_maandbedrag_p1 = (
         belasting_config.aow_bedrag.gehuwd_of_samenwonend_per_maand
@@ -101,24 +100,15 @@ def _bereken_jaar(
         else belasting_config.aow_bedrag.alleenstaande_per_maand
     )
 
-    # --- Stopdatums werk ---
-    stopdatum_p1 = scenario.persoon1_stopdatum_werk
-    stopdatum_p2 = scenario.persoon2_stopdatum_werk
-
-    # --- Jaarsalarissen (met groei) ---
-    salaris_p1 = _bereken_jaarsalaris(scenario, 1, jaar, startjaar)
-    salaris_p2 = (
-        _bereken_jaarsalaris(scenario, 2, jaar, startjaar) if persoon2 else Decimal("0")
-    )
-
     # --- Stap 1: Maandelijkse bruto berekening ---
     maandresultaten: list[MaandResultaat] = []
     saldo = saldo_begin_jaar
 
-    # Jaarbelasting wordt EENMALIG berekend; verdelen over maanden
-    # Eerst verzamelen we jaarlijkse bruto-inkomsten
+    # Accumuleer jaarlijkse totalen voor belastingberekening
     jaar_arbeid_p1 = Decimal("0")
     jaar_arbeid_p2 = Decimal("0")
+    jaar_overig_p1 = Decimal("0")
+    jaar_overig_p2 = Decimal("0")
     jaar_aow_p1 = Decimal("0")
     jaar_aow_p2 = Decimal("0")
     jaar_pensioen_p1 = Decimal("0")
@@ -127,12 +117,63 @@ def _bereken_jaar(
     maand_bruto: list[dict] = []
 
     for maand in range(1, 13):
-        # Arbeid persoon 1
-        arbeid_p1 = pensioen_engine.bereken_arbeid_maand(salaris_p1, stopdatum_p1, jaar, maand)
-        # Arbeid persoon 2
-        arbeid_p2 = Decimal("0")
-        if persoon2 and stopdatum_p2:
-            arbeid_p2 = pensioen_engine.bereken_arbeid_maand(salaris_p2, stopdatum_p2, jaar, maand)
+        # Arbeidsinkomen uit componenten (bruto wordt belast, netto niet)
+        arbeid_bruto_p1 = _component_som_maand(
+            scenario, CategorieComponent.ARBEIDSINKOMEN, "P1", jaar, maand, BedragType.BRUTO
+        )
+        arbeid_bruto_p2 = (
+            _component_som_maand(
+                scenario, CategorieComponent.ARBEIDSINKOMEN, "P2", jaar, maand, BedragType.BRUTO
+            )
+            if persoon2 else Decimal("0")
+        )
+        arbeid_netto_p1 = _component_som_maand(
+            scenario, CategorieComponent.ARBEIDSINKOMEN, "P1", jaar, maand, BedragType.NETTO
+        )
+        arbeid_netto_p2 = (
+            _component_som_maand(
+                scenario, CategorieComponent.ARBEIDSINKOMEN, "P2", jaar, maand, BedragType.NETTO
+            )
+            if persoon2 else Decimal("0")
+        )
+
+        # Overig inkomen (pensioen_inkomen + overig_inkomen)
+        overig_bruto_p1 = (
+            _component_som_maand(
+                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
+            )
+            + _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
+            )
+        )
+        overig_bruto_p2 = Decimal("0")
+        if persoon2:
+            overig_bruto_p2 = (
+                _component_som_maand(
+                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
+                )
+                + _component_som_maand(
+                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
+                )
+            )
+        overig_netto_p1 = (
+            _component_som_maand(
+                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.NETTO
+            )
+            + _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
+            )
+        )
+        overig_netto_p2 = Decimal("0")
+        if persoon2:
+            overig_netto_p2 = (
+                _component_som_maand(
+                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.NETTO
+                )
+                + _component_som_maand(
+                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
+                )
+            )
 
         # AOW
         aow_p1 = pensioen_engine.bereken_aow_maand(
@@ -144,15 +185,22 @@ def _bereken_jaar(
                 persoon2.geboortedatum, aow_datum_p2, aow_maandbedrag_p2, jaar, maand
             )
 
-        # Pensioen persoon 1
+        # Pensioen uit records (MPO import)
         pen_p1 = sum(
             pensioen_engine.bereken_pensioen_maand(r, jaar, maand)
             for r in records1
         )
-        # Pensioen persoon 2
         pen_p2 = sum(
             pensioen_engine.bereken_pensioen_maand(r, jaar, maand)
             for r in records2
+        )
+
+        # Uitgaven en inhoudingen uit componenten
+        uitgaven_maand = (
+            _component_som_maand(scenario, CategorieComponent.UITGAVE, None, jaar, maand)
+        )
+        inhoudingen_maand = (
+            _component_som_maand(scenario, CategorieComponent.INHOUDING, None, jaar, maand)
         )
 
         # Incidenteel
@@ -160,26 +208,36 @@ def _bereken_jaar(
 
         maand_bruto.append({
             "maand": maand,
-            "arbeid_p1": arbeid_p1,
-            "arbeid_p2": arbeid_p2,
+            "arbeid_p1": arbeid_bruto_p1,
+            "arbeid_p2": arbeid_bruto_p2,
+            "arbeid_netto_p1": arbeid_netto_p1,
+            "arbeid_netto_p2": arbeid_netto_p2,
+            "overig_p1": overig_bruto_p1,
+            "overig_p2": overig_bruto_p2,
+            "overig_netto_p1": overig_netto_p1,
+            "overig_netto_p2": overig_netto_p2,
             "aow_p1": aow_p1,
             "aow_p2": aow_p2,
             "pen_p1": Decimal(str(pen_p1)),
             "pen_p2": Decimal(str(pen_p2)),
+            "uitgaven": uitgaven_maand,
+            "inhoudingen": inhoudingen_maand,
             "ontvangst": ontvangst,
             "uitgave": uitgave,
         })
 
-        jaar_arbeid_p1 += arbeid_p1
-        jaar_arbeid_p2 += arbeid_p2
+        jaar_arbeid_p1 += arbeid_bruto_p1
+        jaar_arbeid_p2 += arbeid_bruto_p2
+        jaar_overig_p1 += overig_bruto_p1
+        jaar_overig_p2 += overig_bruto_p2
         jaar_aow_p1 += aow_p1
         jaar_aow_p2 += aow_p2
         jaar_pensioen_p1 += Decimal(str(pen_p1))
         jaar_pensioen_p2 += Decimal(str(pen_p2))
 
     # --- Stap 2: Jaarbelasting per persoon ---
-    bruto_jaar_p1 = jaar_arbeid_p1 + jaar_aow_p1 + jaar_pensioen_p1
-    bruto_jaar_p2 = jaar_arbeid_p2 + jaar_aow_p2 + jaar_pensioen_p2
+    bruto_jaar_p1 = jaar_arbeid_p1 + jaar_overig_p1 + jaar_aow_p1 + jaar_pensioen_p1
+    bruto_jaar_p2 = jaar_arbeid_p2 + jaar_overig_p2 + jaar_aow_p2 + jaar_pensioen_p2
 
     belasting_p1 = belasting_engine.netto_uit_bruto(
         bruto=bruto_jaar_p1,
@@ -210,7 +268,7 @@ def _bereken_jaar(
         if belasting_p2_resultaat else Decimal("0")
     )
 
-    # --- Stap 3: Box 3 heffing (jaarlijks, gesplitst over maanden) ---
+    # --- Stap 3: Box 3 heffing ---
     box3_maand = Decimal("0")
     box3_disclaimer = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
@@ -220,8 +278,7 @@ def _bereken_jaar(
         )
         box3_maand = _rond_af(box3_jaar / Decimal("12"))
 
-    # --- Stap 4: Jaarlijkse inleg op spaargeld ---
-    # Inleg wordt pro-rata over maanden verdeeld (alleen gedurende werkzame periode)
+    # --- Stap 4: Jaarlijkse inleg ---
     inleg_per_maand = Decimal("0")
     if scenario.jaarlijkse_inleg > Decimal("0"):
         inleg_per_maand = _rond_af(scenario.jaarlijkse_inleg / Decimal("12"))
@@ -236,17 +293,20 @@ def _bereken_jaar(
     for mb in maand_bruto:
         maand = mb["maand"]
 
-        # Rente over beginsaldo van de maand
         rente = vermogen_engine.bereken_rente_maand(saldo, scenario.rendement_pct)
 
-        # Saldo muteren
         netto_cashflow = (
             mb["arbeid_p1"] + mb["arbeid_p2"]
+            + mb["overig_p1"] + mb["overig_p2"]
+            + mb["arbeid_netto_p1"] + mb["arbeid_netto_p2"]
+            + mb["overig_netto_p1"] + mb["overig_netto_p2"]
             + mb["aow_p1"] + mb["aow_p2"]
             + mb["pen_p1"] + mb["pen_p2"]
             - maand_bel_p1 - maand_bel_p2
             + maand_hk_p1 + maand_hk_p2
             - box3_maand
+            - mb["inhoudingen"]
+            - mb["uitgaven"]
             + mb["ontvangst"] - mb["uitgave"]
             + rente
             + inleg_per_maand
@@ -262,6 +322,13 @@ def _bereken_jaar(
             aow_p2_bruto=mb["aow_p2"],
             pensioen_p1_bruto=mb["pen_p1"],
             pensioen_p2_bruto=mb["pen_p2"],
+            overig_bruto=mb["overig_p1"] + mb["overig_p2"],
+            inkomen_componenten_netto=(
+                mb["arbeid_netto_p1"]
+                + mb["arbeid_netto_p2"]
+                + mb["overig_netto_p1"]
+                + mb["overig_netto_p2"]
+            ),
             rente_bruto=rente,
             eenmalig_ontvangst=mb["ontvangst"],
             eenmalig_uitgave=mb["uitgave"],
@@ -269,6 +336,9 @@ def _bereken_jaar(
             heffingskorting_p1=maand_hk_p1,
             belasting_p2=maand_bel_p2,
             heffingskorting_p2=maand_hk_p2,
+            box3_heffing=box3_maand,
+            inhoudingen=mb["inhoudingen"],
+            huishoudelijke_uitgaven=mb["uitgaven"],
             vermogen_einde_maand=saldo,
             aannames=list(aannames),
             gebruikte_tarieven=belasting_p1.gebruikte_tarieven,
@@ -298,11 +368,11 @@ def bereken_huishouden(
     Bereken de volledige cashflowprognose voor het huishouden.
 
     Args:
-        scenario: Planningsscenario met parameters.
+        scenario: Planningsscenario met financiële componenten.
         persoon1: Eerste persoon (hoofd).
         persoon2: Tweede persoon (partner), of None.
-        records1: Pensioenrecords van persoon1.
-        records2: Pensioenrecords van persoon2.
+        records1: Pensioenrecords van persoon1 (uit MPO).
+        records2: Pensioenrecords van persoon2 (uit MPO).
         jaar_van: Eerste prognosejaar.
         jaar_tot: Laatste prognosejaar (inclusief).
         belasting_configs: Dict van {jaar: (BelastingConfig, aanname_melding)}.
@@ -330,11 +400,8 @@ def bereken_huishouden(
             startjaar=startjaar,
         )
         cashflow.jaren.append(jaar_resultaat)
-
-        # Saldo aan het einde van het jaar doorsturen naar het volgende jaar
         saldo = jaar_resultaat.vermogen_einde_jaar
 
-    # Aannames samenvatten
     alle_aannames: set[str] = set()
     for jr in cashflow.jaren:
         if jr.tarieven_aanname:
@@ -342,3 +409,6 @@ def bereken_huishouden(
     cashflow.aannames = sorted(alle_aannames)
 
     return cashflow
+
+
+

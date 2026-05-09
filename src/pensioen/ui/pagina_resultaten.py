@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 
 import pandas as pd
 import plotly.express as px
@@ -13,12 +12,25 @@ import streamlit as st
 from pensioen.calculations.cashflow_engine import bereken_huishouden
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.models.cashflow import HuishoudCashflow
+from pensioen.ui.scenario_context import get_actief_scenario
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
 
 
 def toon_resultaten_pagina() -> None:
     """Streamlit-pagina voor het berekenen en weergeven van de prognose."""
     st.header("📊 Resultaten")
+
+    actieve_scenario_raw = get_actief_scenario(st.session_state.get("scenario_lijst", []))
+    if actieve_scenario_raw is not None:
+        actieve_scenario = actieve_scenario_raw.effectief_scenario(
+            st.session_state.get("scenario_lijst", [])
+        )
+        label = actieve_scenario_raw.naam
+        if actieve_scenario_raw.parent_naam:
+            label += f" (erft van {actieve_scenario_raw.parent_naam})"
+        st.caption(f"Actief scenario: {label}")
+    else:
+        actieve_scenario = None
 
     # Valideer dat vereiste invoer aanwezig is
     persoon1 = st.session_state.get("persoon1")
@@ -29,6 +41,9 @@ def toon_resultaten_pagina() -> None:
         return
     if not scenario_lijst:
         st.warning("⚠️ Definieer eerst minstens één scenario (stap: Scenario).")
+        return
+    if actieve_scenario is None:
+        st.warning("⚠️ Kies eerst een actief scenario in de scenario-pagina.")
         return
 
     persoon2 = st.session_state.get("persoon2")
@@ -51,10 +66,17 @@ def toon_resultaten_pagina() -> None:
             try:
                 configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
                 _voer_berekening_uit(
-                    persoon1, persoon2, records1, records2,
-                    scenario_lijst, int(jaar_van), int(jaar_tot), configs
+                    persoon1,
+                    persoon2,
+                    records1,
+                    records2,
+                    actieve_scenario,
+                    scenario_lijst,
+                    int(jaar_van),
+                    int(jaar_tot),
+                    configs,
                 )
-            except Exception as exc:
+            except (TypeError, ValueError) as exc:
                 st.error(f"Berekeningsfout: {exc}")
                 return
 
@@ -71,12 +93,20 @@ def toon_resultaten_pagina() -> None:
             _toon_vergelijking(vergelijking)
 
 
-def _voer_berekening_uit(persoon1, persoon2, records1, records2, scenario_lijst, jaar_van, jaar_tot, configs):
+def _voer_berekening_uit(
+    persoon1,
+    persoon2,
+    records1,
+    records2,
+    actief_scenario,
+    scenario_lijst,
+    jaar_van,
+    jaar_tot,
+    configs,
+):
     """Bereken en sla op in session_state."""
-    # Hoofd-scenario = eerste in de lijst
-    hoofd_scenario = scenario_lijst[0]
     cashflow = bereken_huishouden(
-        scenario=hoofd_scenario,
+        scenario=actief_scenario,
         persoon1=persoon1,
         persoon2=persoon2,
         records1=records1,
@@ -109,10 +139,22 @@ def _toon_tarieven_banner(cashflow: HuishoudCashflow) -> None:
     aannames = [a for a in cashflow.aannames if a]
     if aannames:
         st.warning(
-            "**Tarievenassumptie**: Voor een of meer jaren zijn geen actuele "
-            "belastingtarieven beschikbaar. Er wordt teruggevallen op het meest "
-            "recente bekende jaar.\n\n" + "\n".join(f"- {a}" for a in aannames)
+            "**Tarievenassumptie**: Er zijn geen tarieven gevonden, dus we gaan uit "
+            "van default-waarden."
         )
+
+        # Detailmeldingen blijven beschikbaar op verzoek van de gebruiker.
+        detailregels = sorted(
+            {
+                jr.tarieven_aanname
+                for jr in cashflow.jaren
+                if jr.tarieven_aanname
+            }
+        )
+        if detailregels:
+            with st.expander("Bekijk detail-log belastingaannames"):
+                for regel in detailregels:
+                    st.write(f"- {regel}")
 
 
 def _toon_inkomensgrafiek(cashflow: HuishoudCashflow) -> None:
@@ -122,7 +164,7 @@ def _toon_inkomensgrafiek(cashflow: HuishoudCashflow) -> None:
     for jr in cashflow.jaren:
         data.append({
             "Jaar": jr.jaar,
-            "Arbeid": float(jr.arbeid_bruto),
+            "Arbeidsinkomen": float(jr.arbeid_bruto),
             "AOW": float(jr.aow_bruto),
             "Pensioen": float(jr.pensioen_bruto),
             "Netto": float(jr.netto),
@@ -130,7 +172,7 @@ def _toon_inkomensgrafiek(cashflow: HuishoudCashflow) -> None:
     df = pd.DataFrame(data)
 
     fig = go.Figure()
-    for bron in ["Arbeid", "AOW", "Pensioen"]:
+    for bron in ["Arbeidsinkomen", "AOW", "Pensioen"]:
         fig.add_trace(go.Bar(name=bron, x=df["Jaar"], y=df[bron]))
     fig.add_trace(
         go.Scatter(

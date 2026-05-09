@@ -16,6 +16,7 @@ os.environ.setdefault(
 )
 
 from pensioen.models.cashflow import HuishoudCashflow
+from pensioen.models.component import CategorieComponent, FinancieelComponent, Frequentie
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import IncidenteelItem, Scenario
@@ -74,14 +75,28 @@ def scenario_standaard(persoon1: Persoon, persoon2: Persoon) -> Scenario:
     """Standaardscenario: stoppen op 62, spaargeld €50.000, rendement 3%."""
     return Scenario(
         naam="Stoppen op 62",
-        persoon1_stopdatum_werk=date(2025, 4, 1),
-        persoon2_stopdatum_werk=date(2027, 6, 30),
-        persoon1_bruto_jaarsalaris=Decimal("60000"),
-        persoon2_bruto_jaarsalaris=Decimal("40000"),
-        salarisgroei_pct=Decimal("2"),
         spaargeld_start=Decimal("50000"),
         jaarlijkse_inleg=Decimal("5000"),
         rendement_pct=Decimal("3"),
+        componenten=[
+            FinancieelComponent(
+                omschrijving="Salaris P1",
+                categorie=CategorieComponent.ARBEIDSINKOMEN,
+                persoon="P1",
+                bedrag=Decimal("5000"),
+                frequentie=Frequentie.MAANDELIJKS,
+                einddatum=date(2025, 4, 1),
+                groei_pct=Decimal("2"),
+            ),
+            FinancieelComponent(
+                omschrijving="Salaris P2",
+                categorie=CategorieComponent.ARBEIDSINKOMEN,
+                persoon="P2",
+                bedrag=Decimal("3333.33"),
+                frequentie=Frequentie.MAANDELIJKS,
+                einddatum=date(2027, 6, 30),
+            ),
+        ],
     )
 
 
@@ -90,8 +105,6 @@ def scenario_geen_pensioen() -> Scenario:
     """Scenario voor iemand zonder pensioenrekeningen."""
     return Scenario(
         naam="Geen pensioen",
-        persoon1_stopdatum_werk=date(2035, 1, 1),
-        persoon1_bruto_jaarsalaris=Decimal("0"),
         spaargeld_start=Decimal("200000"),
         rendement_pct=Decimal("3"),
     )

@@ -24,6 +24,7 @@ class MaandResultaat:
     lijfrente_bruto: Decimal = Decimal("0")
     rente_bruto: Decimal = Decimal("0")
     overig_bruto: Decimal = Decimal("0")
+    inkomen_componenten_netto: Decimal = Decimal("0")
 
     # Eenmalige items (exacte datumplaatsing)
     eenmalig_ontvangst: Decimal = Decimal("0")
@@ -34,6 +35,11 @@ class MaandResultaat:
     heffingskorting_p1: Decimal = Decimal("0")
     belasting_p2: Decimal = Decimal("0")
     heffingskorting_p2: Decimal = Decimal("0")
+    box3_heffing: Decimal = Decimal("0")
+
+    # Overige inhoudingen en uitgaven (jaarlijkse regels omgerekend naar maand)
+    inhoudingen: Decimal = Decimal("0")
+    huishoudelijke_uitgaven: Decimal = Decimal("0")
 
     # Vermogen
     vermogen_einde_maand: Decimal = Decimal("0")
@@ -58,7 +64,7 @@ class MaandResultaat:
 
     @property
     def totaal_belasting(self) -> Decimal:
-        return self.belasting_p1 + self.belasting_p2
+        return self.belasting_p1 + self.belasting_p2 + self.box3_heffing
 
     @property
     def totaal_heffingskorting(self) -> Decimal:
@@ -68,8 +74,11 @@ class MaandResultaat:
     def netto(self) -> Decimal:
         return (
             self.totaal_bruto
+            + self.inkomen_componenten_netto
             - self.totaal_belasting
             + self.totaal_heffingskorting
+            - self.inhoudingen
+            - self.huishoudelijke_uitgaven
             + self.eenmalig_ontvangst
             - self.eenmalig_uitgave
         )

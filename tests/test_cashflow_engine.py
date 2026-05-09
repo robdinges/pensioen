@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.models.component import BedragType, CategorieComponent, FinancieelComponent, Frequentie
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import IncidenteelItem, Scenario
@@ -16,6 +17,16 @@ from pensioen.tax.belasting_loader import laad_tarieven_bereik
 
 def _maak_configs(jaar_van: int, jaar_tot: int):
     return laad_tarieven_bereik(jaar_van, jaar_tot)
+
+
+def _uitgave_comp(bedrag_per_jaar: Decimal) -> FinancieelComponent:
+    return FinancieelComponent(
+        omschrijving="Vaste lasten",
+        categorie=CategorieComponent.UITGAVE,
+        persoon="Huishouden",
+        bedrag=(bedrag_per_jaar / 12).quantize(Decimal("0.01")),
+        frequentie=Frequentie.MAANDELIJKS,
+    )
 
 
 class TestCashflowHuishouden:
@@ -76,8 +87,6 @@ class TestCashflowHuishouden:
 
         scenario = Scenario(
             naam="Test",
-            persoon1_stopdatum_werk=date(2022, 1, 1),
-            persoon2_stopdatum_werk=date(2032, 1, 1),
             spaargeld_start=Decimal("100000"),
             rendement_pct=Decimal("3"),
         )
@@ -116,7 +125,7 @@ class TestCashflowHuishouden:
             jaar_tot=2040,
             belasting_configs=configs,
         )
-        # Na stopdatum geen arbeidsinkomen, maar vermogen groeit via rendement
+        # Geen arbeidsinkomen-componenten → arbeid_bruto = 0
         for jr in cashflow.jaren:
             assert jr.arbeid_bruto == Decimal("0")
         assert cashflow.jaren[-1].vermogen_einde_jaar > Decimal("0")
@@ -126,7 +135,6 @@ class TestCashflowHuishouden:
         persoon = Persoon(naam="Test", geboortedatum=date(1963, 1, 1))
         scenario = Scenario(
             naam="Test incidenteel",
-            persoon1_stopdatum_werk=date(2025, 1, 1),
             spaargeld_start=Decimal("0"),
             incidentele_items=[
                 IncidenteelItem(
@@ -155,7 +163,6 @@ class TestCashflowHuishouden:
         persoon = Persoon(naam="Tekort", geboortedatum=date(1963, 1, 1))
         scenario = Scenario(
             naam="Vroeg stoppen, geen pensioen",
-            persoon1_stopdatum_werk=date(2026, 1, 1),
             spaargeld_start=Decimal("1"),  # bijna geen spaargeld
             rendement_pct=Decimal("0"),
             incidentele_items=[
@@ -200,7 +207,6 @@ class TestCashflowHuishouden:
         )
         scenario = Scenario(
             naam="Twee pensioenen",
-            persoon1_stopdatum_werk=date(2026, 1, 1),
             spaargeld_start=Decimal("0"),
         )
         configs = _maak_configs(2030, 2030)
@@ -222,7 +228,6 @@ class TestCashflowHuishouden:
         """Voor een jaar zonder config wordt fallback gebruikt en melding opgeslagen."""
         scenario = Scenario(
             naam="Ver toekomst",
-            persoon1_stopdatum_werk=date(2090, 1, 1),
             spaargeld_start=Decimal("100000"),
         )
         configs = _maak_configs(2090, 2090)
@@ -238,3 +243,99 @@ class TestCashflowHuishouden:
         )
         # De aanname-melding moet aanwezig zijn
         assert any("2090" in a for a in cashflow.aannames)
+
+    def test_huishoudelijke_uitgaven_verlagen_netto(self, persoon1: Persoon) -> None:
+        """Huishoudelijke uitgaven verlagen netto cashflow."""
+        scenario_zonder = Scenario(
+            naam="Zonder uitgaven",
+            spaargeld_start=Decimal("0"),
+            rendement_pct=Decimal("0"),
+        )
+        scenario_met = Scenario(
+            naam="Met uitgaven",
+            spaargeld_start=Decimal("0"),
+            rendement_pct=Decimal("0"),
+            componenten=[_uitgave_comp(Decimal("12000"))],
+        )
+
+        configs = _maak_configs(2027, 2027)
+        zonder = bereken_huishouden(
+            scenario=scenario_zonder,
+            persoon1=persoon1,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        )
+        met = bereken_huishouden(
+            scenario=scenario_met,
+            persoon1=persoon1,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        )
+
+        assert met.jaren[0].netto < zonder.jaren[0].netto
+        verschil = zonder.jaren[0].netto - met.jaren[0].netto
+        assert float(verschil) == pytest.approx(12000.0, rel=1e-3)
+
+    def test_bruto_component_wordt_belast_en_netto_niet(self) -> None:
+        """Bruto inkomenscomponent telt mee voor box 1, netto inkomenscomponent niet."""
+        persoon = Persoon(naam="Inkomen", geboortedatum=date(1990, 1, 1))
+        comp_bruto = FinancieelComponent(
+            omschrijving="Loon bruto",
+            categorie=CategorieComponent.ARBEIDSINKOMEN,
+            persoon="P1",
+            bedrag=Decimal("10000"),
+            bedrag_type=BedragType.BRUTO,
+            frequentie=Frequentie.MAANDELIJKS,
+        )
+        comp_netto = FinancieelComponent(
+            omschrijving="Loon netto",
+            categorie=CategorieComponent.ARBEIDSINKOMEN,
+            persoon="P1",
+            bedrag=Decimal("10000"),
+            bedrag_type=BedragType.NETTO,
+            frequentie=Frequentie.MAANDELIJKS,
+        )
+        scenario_bruto = Scenario(
+            naam="Bruto component",
+            box3_meenemen=False,
+            componenten=[comp_bruto],
+        )
+        scenario_netto = Scenario(
+            naam="Netto component",
+            box3_meenemen=False,
+            componenten=[comp_netto],
+        )
+
+        configs = _maak_configs(2027, 2027)
+        resultaat_bruto = bereken_huishouden(
+            scenario=scenario_bruto,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        ).jaren[0]
+        resultaat_netto = bereken_huishouden(
+            scenario=scenario_netto,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        ).jaren[0]
+
+        assert resultaat_bruto.totaal_belasting > Decimal("0")
+        assert resultaat_netto.totaal_belasting == Decimal("0")
+        assert resultaat_bruto.netto < resultaat_netto.netto

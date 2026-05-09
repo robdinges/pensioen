@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
+from pensioen.models.component import CategorieComponent, FinancieelComponent, Frequentie
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
@@ -16,31 +17,45 @@ from pensioen.models.scenario import Scenario
 class TestScenarioModel:
     """Regressietests voor het Scenario-model zelf."""
 
-    def test_persoon2_salaris_nul_is_geldig(self) -> None:
-        """persoon2_bruto_jaarsalaris=0 mag geen ValidationError geven (was None-bug)."""
-        scenario = Scenario(
-            naam="Test",
-            persoon1_stopdatum_werk=date(2030, 1, 1),
-            persoon2_bruto_jaarsalaris=Decimal("0"),
-        )
-        assert scenario.persoon2_bruto_jaarsalaris == Decimal("0")
+    def test_lege_componenten_is_geldig(self) -> None:
+        """Scenario zonder componenten is geldig (standaard lege lijst)."""
+        scenario = Scenario(naam="Leeg")
+        assert scenario.componenten == []
 
-    def test_persoon2_salaris_default_nul(self) -> None:
-        """persoon2_bruto_jaarsalaris heeft standaard Decimal('0'), niet None."""
-        scenario = Scenario(
-            naam="Alleenstaand",
-            persoon1_stopdatum_werk=date(2030, 1, 1),
+    def test_component_toevoegen(self) -> None:
+        """Scenario accepteert een FinancieelComponent in de lijst."""
+        comp = FinancieelComponent(
+            omschrijving="Salaris",
+            categorie=CategorieComponent.ARBEIDSINKOMEN,
+            persoon="P1",
+            bedrag=Decimal("5000"),
         )
-        assert scenario.persoon2_bruto_jaarsalaris == Decimal("0")
+        scenario = Scenario(naam="Met salaris", componenten=[comp])
+        assert len(scenario.componenten) == 1
+        assert scenario.componenten[0].omschrijving == "Salaris"
 
-    def test_persoon2_salaris_positief(self) -> None:
-        """persoon2_bruto_jaarsalaris accepteert een positief bedrag."""
-        scenario = Scenario(
-            naam="Stel",
-            persoon1_stopdatum_werk=date(2030, 1, 1),
-            persoon2_bruto_jaarsalaris=Decimal("40000"),
+    def test_helper_arbeidsinkomen_componenten(self) -> None:
+        """arbeidsinkomen_componenten filtert correct op persoon en categorie."""
+        comp_arbeid = FinancieelComponent(
+            omschrijving="Salaris P1",
+            categorie=CategorieComponent.ARBEIDSINKOMEN,
+            persoon="P1",
+            bedrag=Decimal("5000"),
         )
-        assert scenario.persoon2_bruto_jaarsalaris == Decimal("40000")
+        comp_uitgave = FinancieelComponent(
+            omschrijving="Huur",
+            categorie=CategorieComponent.UITGAVE,
+            persoon="Huishouden",
+            bedrag=Decimal("1500"),
+        )
+        scenario = Scenario(naam="Test", componenten=[comp_arbeid, comp_uitgave])
+        assert scenario.arbeidsinkomen_componenten("P1") == [comp_arbeid]
+        assert scenario.arbeidsinkomen_componenten("P2") == []
+
+    def test_spaargeld_default_nul(self) -> None:
+        """spaargeld_start heeft standaard Decimal('0')."""
+        scenario = Scenario(naam="Test")
+        assert scenario.spaargeld_start == Decimal("0")
 
 
 class TestVergelijkScenarios:
@@ -52,7 +67,6 @@ class TestVergelijkScenarios:
         """Eén scenario levert een ScenarioVergelijking met één resultaat."""
         scenario = Scenario(
             naam="Vroeg stoppen",
-            persoon1_stopdatum_werk=date(2025, 4, 1),
             spaargeld_start=Decimal("100000"),
         )
         vergelijking = vergelijk_scenarios(
@@ -71,19 +85,24 @@ class TestVergelijkScenarios:
         self, persoon1: Persoon, pensioenrecord_p1: PensioenRecord
     ) -> None:
         """
-        Twee scenario's (vroeg vs. laat stoppen) leveren vergelijkbare resultaten.
-        Laat stoppen geeft doorgaans hoger netto door meer arbeidsinkomen.
+        Twee scenario's (weinig vs. veel spaargeld) leveren vergelijkbare resultaten.
         """
         vroeg = Scenario(
             naam="Stoppen op 62",
-            persoon1_stopdatum_werk=date(2025, 4, 1),
             spaargeld_start=Decimal("50000"),
         )
         laat = Scenario(
             naam="Stoppen op 67",
-            persoon1_stopdatum_werk=date(2030, 3, 15),
-            persoon1_bruto_jaarsalaris=Decimal("60000"),
             spaargeld_start=Decimal("50000"),
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Salaris P1",
+                    categorie=CategorieComponent.ARBEIDSINKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("5000"),
+                    einddatum=date(2030, 3, 15),
+                ),
+            ],
         )
         vergelijking = vergelijk_scenarios(
             scenarios=[vroeg, laat],
@@ -103,12 +122,10 @@ class TestVergelijkScenarios:
         """beste_scenario_netto wijst het scenario met hoogste mediaan netto aan."""
         arm = Scenario(
             naam="Weinig",
-            persoon1_stopdatum_werk=date(2025, 1, 1),
             spaargeld_start=Decimal("0"),
         )
         rijk = Scenario(
             naam="Veel",
-            persoon1_stopdatum_werk=date(2025, 1, 1),
             spaargeld_start=Decimal("1000000"),
             rendement_pct=Decimal("5"),
         )
@@ -131,7 +148,6 @@ class TestVergelijkScenarios:
         """Vermogen op leeftijden 70 en 80 worden bepaald."""
         scenario = Scenario(
             naam="Test vermogen",
-            persoon1_stopdatum_werk=date(2025, 4, 1),
             spaargeld_start=Decimal("100000"),
             rendement_pct=Decimal("3"),
         )
@@ -153,7 +169,6 @@ class TestVergelijkScenarios:
         """Scenario zonder inkomen en weinig spaargeld heeft tekortjaren."""
         scenario = Scenario(
             naam="Geen inkomen",
-            persoon1_stopdatum_werk=date(2025, 1, 1),
             spaargeld_start=Decimal("1"),
         )
         vergelijking = vergelijk_scenarios(

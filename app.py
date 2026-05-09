@@ -18,7 +18,8 @@ from pensioen.ui.pagina_rapport import toon_rapport_pagina
 from pensioen.ui.pagina_resultaten import toon_resultaten_pagina
 from pensioen.ui.pagina_scenario import toon_scenario_pagina
 from pensioen.ui.pagina_accountant import toon_accountant_pagina
-from pensioen.ui.sessie_persistentie import laad_sessie, sla_sessie_op
+from pensioen.ui.sessie_persistentie import autosla_sessie_op, laad_sessie, sla_sessie_op
+from pensioen.ui.scenario_context import get_actief_scenario_naam
 
 # Herstel sessie bij (her)start (eenmalig per serversessie)
 laad_sessie()
@@ -35,6 +36,11 @@ PAGINAS = {
 }
 
 st.sidebar.title("🏦 Pensioenplanner")
+actieve_scenario_naam = get_actief_scenario_naam()
+if actieve_scenario_naam is None:
+    st.sidebar.warning("Geen actief scenario")
+else:
+    st.sidebar.success(f"Actief: {actieve_scenario_naam}")
 st.sidebar.markdown("---")
 
 geselecteerde_pagina = st.sidebar.radio(
@@ -70,3 +76,6 @@ elif pagina_sleutel == "rapport":
     toon_rapport_pagina()
 elif pagina_sleutel == "instellingen":
     toon_instellingen_pagina()
+
+# Autosave na iedere render — stil, atomisch, alleen bij wijzigingen
+autosla_sessie_op()

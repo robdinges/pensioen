@@ -7,7 +7,9 @@ automatisch hersteld in session_state.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -74,13 +76,65 @@ def sla_sessie_op() -> None:
         if waarde is not None:
             data.setdefault("widgets", {})[sleutel] = waarde
 
+    tekst = json.dumps(data, default=_serialiseerbaar, ensure_ascii=False, indent=2)
+    nieuw_hash = hashlib.md5(tekst.encode()).hexdigest()
+    if st.session_state.get("_sessie_hash") == nieuw_hash:
+        return  # Geen wijzigingen — sla schrijven over
+
+    tmp_pad = SESSIE_PAD.with_suffix(".tmp.json")
     try:
-        SESSIE_PAD.write_text(
-            json.dumps(data, default=_serialiseerbaar, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        tmp_pad.write_text(tekst, encoding="utf-8")
+        os.replace(tmp_pad, SESSIE_PAD)
+        st.session_state["_sessie_hash"] = nieuw_hash
     except OSError as exc:
         st.warning(f"⚠️ Sessie kon niet opgeslagen worden: {exc}")
+        tmp_pad.unlink(missing_ok=True)
+
+
+def autosla_sessie_op() -> None:
+    """Sla de sessie stilletjes op — geen UI-feedback, geen exceptions naar de gebruiker."""
+    tmp_pad = SESSIE_PAD.with_suffix(".tmp.json")
+    data: dict[str, Any] = {}
+
+    if p1 := st.session_state.get("persoon1"):
+        data["persoon1"] = p1.model_dump(mode="json")
+    if p2 := st.session_state.get("persoon2"):
+        data["persoon2"] = p2.model_dump(mode="json")
+
+    data["records_p1"] = [
+        r.model_dump(mode="json")
+        for r in st.session_state.get("records_p1", [])
+    ]
+    data["records_p2"] = [
+        r.model_dump(mode="json")
+        for r in st.session_state.get("records_p2", [])
+    ]
+    data["scenario_lijst"] = [
+        s.model_dump(mode="json")
+        for s in st.session_state.get("scenario_lijst", [])
+    ]
+
+    import pandas as pd  # lokale import om circulaire afhankelijkheid te vermijden
+    df: pd.DataFrame | None = st.session_state.get("incidenteel_tabel")
+    if df is not None and not df.empty:
+        data["incidenteel_tabel"] = json.loads(
+            df.to_json(orient="records", date_format="iso")
+        )
+
+    for sleutel in ("jaar_van", "jaar_tot"):
+        if (waarde := st.session_state.get(sleutel)) is not None:
+            data.setdefault("widgets", {})[sleutel] = waarde
+
+    try:
+        tekst = json.dumps(data, default=_serialiseerbaar, ensure_ascii=False, indent=2)
+        nieuw_hash = hashlib.md5(tekst.encode()).hexdigest()
+        if st.session_state.get("_sessie_hash") == nieuw_hash:
+            return
+        tmp_pad.write_text(tekst, encoding="utf-8")
+        os.replace(tmp_pad, SESSIE_PAD)
+        st.session_state["_sessie_hash"] = nieuw_hash
+    except OSError:
+        tmp_pad.unlink(missing_ok=True)
 
 
 def laad_sessie() -> None:
@@ -94,7 +148,7 @@ def laad_sessie() -> None:
 
     try:
         data = json.loads(SESSIE_PAD.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return
 
     # --- Personen ---
@@ -106,7 +160,7 @@ def laad_sessie() -> None:
             _zet("naam_p1", p1.naam)
             _zet("geboortedatum_p1", p1.geboortedatum)
             _zet("heeft_partner", p1.heeft_partner)
-        except Exception:
+        except (TypeError, ValueError):
             pass
 
     if p2_dict := data.get("persoon2"):
@@ -115,7 +169,7 @@ def laad_sessie() -> None:
             st.session_state["persoon2"] = p2
             _zet("naam_p2", p2.naam)
             _zet("geboortedatum_p2", p2.geboortedatum)
-        except Exception:
+        except (TypeError, ValueError):
             pass
 
     # --- Pensioenrecords ---
@@ -123,7 +177,7 @@ def laad_sessie() -> None:
     for r in data.get("records_p1", []):
         try:
             records1.append(PensioenRecord.model_validate(r))
-        except Exception:
+        except (TypeError, ValueError):
             pass
     if records1:
         st.session_state["records_p1"] = records1
@@ -132,7 +186,7 @@ def laad_sessie() -> None:
     for r in data.get("records_p2", []):
         try:
             records2.append(PensioenRecord.model_validate(r))
-        except Exception:
+        except (TypeError, ValueError):
             pass
     if records2:
         st.session_state["records_p2"] = records2
@@ -142,24 +196,10 @@ def laad_sessie() -> None:
     for s in data.get("scenario_lijst", []):
         try:
             scenarios.append(Scenario.model_validate(s))
-        except Exception:
+        except (TypeError, ValueError):
             pass
     if scenarios:
         st.session_state["scenario_lijst"] = scenarios
-        # Formulierwaarden pre-fill vanuit het eerste scenario
-        s0 = scenarios[0]
-        _zet("scenario_naam", s0.naam)
-        _zet("stopdatum_p1", s0.persoon1_stopdatum_werk)
-        _zet("salaris_p1", int(s0.persoon1_bruto_jaarsalaris))
-        if s0.persoon2_stopdatum_werk:
-            _zet("stopdatum_p2", s0.persoon2_stopdatum_werk)
-        _zet("salaris_p2", int(s0.persoon2_bruto_jaarsalaris))
-        _zet("salarisgroei", float(s0.salarisgroei_pct))
-        _zet("spaargeld", int(s0.spaargeld_start))
-        _zet("inleg", int(s0.jaarlijkse_inleg))
-        _zet("rendement", float(s0.rendement_pct))
-        _zet("box3", s0.box3_meenemen)
-        _zet("box3_spaargeld_pct", int(s0.box3_spaargeld_fractie * 100))
 
     # --- Incidentele tabel ---
     if rijen := data.get("incidenteel_tabel"):
@@ -168,7 +208,7 @@ def laad_sessie() -> None:
             if "datum" in df.columns:
                 df["datum"] = pd.to_datetime(df["datum"])
             _zet("incidenteel_tabel", df)
-        except Exception:
+        except (TypeError, ValueError):
             pass
 
     # --- Losstaande widgets (prognosehorizon) ---
