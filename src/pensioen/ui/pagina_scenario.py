@@ -8,9 +8,10 @@ from decimal import Decimal, InvalidOperation
 import pandas as pd
 import streamlit as st
 
-from pensioen.models.component import BedragType, CategorieComponent, FinancieelComponent, Frequentie
+from pensioen.models.component import BedragType, CategorieComponent, ComponentSjabloon, COMPONENT_SJABLONEN, FinancieelComponent, Frequentie
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.scenario import IncidenteelItem, Scenario
+from pensioen.ui.helpers import fmt_eur
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 _CATEGORIE_LABELS = {
@@ -300,6 +301,35 @@ def toon_scenario_pagina() -> None:
         st.session_state["component_tabel"] = standaard_comp_df
         st.session_state["_sc_geladen"] = scenario_selectie
 
+    # Sjabloon toevoegen
+    with st.expander("➕ Voeg sjabloon toe", expanded=False):
+        sj_col, sj_btn_col = st.columns([4, 1])
+        with sj_col:
+            sj_keuze = st.selectbox(
+                "Kies een sjabloon",
+                options=[s.label for s in COMPONENT_SJABLONEN],
+                key="sj_selectie",
+                label_visibility="collapsed",
+            )
+        with sj_btn_col:
+            if st.button("Voeg toe", key="sj_toevoegen"):
+                sj = next(s for s in COMPONENT_SJABLONEN if s.label == sj_keuze)
+                nieuwe_rij = pd.DataFrame([{
+                    "omschrijving": sj.omschrijving,
+                    "categorie": _CATEGORIE_LABELS[sj.categorie],
+                    "persoon": sj.persoon,
+                    "bedrag_type": _BEDRAG_TYPE_LABELS[sj.bedrag_type],
+                    "bedrag": float(sj.bedrag),
+                    "frequentie": _FREQUENTIE_LABELS[sj.frequentie],
+                    "begindatum": "",
+                    "einddatum": "",
+                    "groei_pct": float(sj.groei_pct),
+                }])
+                st.session_state["component_tabel"] = pd.concat(
+                    [st.session_state["component_tabel"], nieuwe_rij], ignore_index=True
+                )
+                st.rerun()
+
     component_df = st.data_editor(
         st.session_state["component_tabel"],
         num_rows="dynamic",
@@ -373,6 +403,12 @@ def toon_scenario_pagina() -> None:
             float(bestaand.rendement_pct) if bestaand else 3.0,
             0.1, key="sc_rendement",
         )
+        inflatie = st.slider(
+            "Verwachte inflatie (%)", 0.0, 10.0,
+            float(bestaand.inflatie_pct) if bestaand else 2.0,
+            0.1, key="sc_inflatie",
+            help="Gebruikt voor de reële koopkrachtkolom in de resultaten.",
+        )
         box3_meenemen = st.checkbox(
             "Box 3 heffing meenemen (indicatief)",
             value=bestaand.box3_meenemen if bestaand else True,
@@ -430,92 +466,111 @@ def toon_scenario_pagina() -> None:
         opslaan = st.button("💾 Scenario opslaan", key="sc_opslaan", type="primary")
 
     if opslaan:
-        try:
-            componenten = _df_naar_componenten(component_df)
+        # Vroege validatie — voor Pydantic-constructie
+        fouten: list[str] = []
+        if not scenario_naam or not scenario_naam.strip():
+            fouten.append("Naam mag niet leeg zijn.")
+        if scenario_naam.strip() == "— Nieuw scenario —":
+            fouten.append("Kies een andere naam dan de standaard.")
+        # Controleer of alle rijen in component_df een omschrijving hebben
+        if not component_df.empty:
+            lege_rijen = component_df[component_df["omschrijving"].astype(str).str.strip() == ""]
+            if not lege_rijen.empty:
+                fouten.append(f"{len(lege_rijen)} component(en) zonder omschrijving — vul alle rijen in of verwijder ze.")
+        if fouten:
+            for f in fouten:
+                st.error(f"❌ {f}")
+        else:
+            try:
+                componenten = _df_naar_componenten(component_df)
 
-            def _datum_uit_tekst(s: str | None) -> date | None:
-                if not s or str(s).strip() == "":
+                def _datum_uit_tekst(s: str | None) -> date | None:
+                    if not s or str(s).strip() == "":
+                        return None
+                    for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
+                        try:
+                            return __import__("datetime").datetime.strptime(str(s).strip(), fmt).date()
+                        except ValueError:
+                            continue
                     return None
-                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
-                    try:
-                        return __import__("datetime").datetime.strptime(str(s).strip(), fmt).date()
-                    except ValueError:
-                        continue
-                return None
 
-            incidentele_items = []
-            for _, rij in incidenteel_df.iterrows():
-                d = _datum_uit_tekst(rij.get("datum"))
-                b = rij.get("bedrag")
-                if d is not None and b is not None:
-                    try:
-                        incidentele_items.append(IncidenteelItem(
-                            datum=d,
-                            bedrag=Decimal(str(b)),
-                            omschrijving=str(rij.get("omschrijving", "")),
-                        ))
-                    except (ValueError, InvalidOperation):
-                        pass
+                incidentele_items = []
+                for _, rij in incidenteel_df.iterrows():
+                    d = _datum_uit_tekst(rij.get("datum"))
+                    b = rij.get("bedrag")
+                    if d is not None and b is not None:
+                        try:
+                            incidentele_items.append(IncidenteelItem(
+                                datum=d,
+                                bedrag=Decimal(str(b)),
+                                omschrijving=str(rij.get("omschrijving", "")),
+                            ))
+                        except (ValueError, InvalidOperation):
+                            pass
 
-            # Bepaal welke velden expliciet zijn ingevuld t.o.v. de parent
-            overschreven: list[str] = []
-            if parent_naam_waarde:
-                parent_eff = next(
-                    (s.effectief_scenario(scenario_lijst) for s in scenario_lijst if s.naam == parent_naam_waarde),
-                    None,
+                # Bepaal welke velden expliciet zijn ingevuld t.o.v. de parent
+                overschreven: list[str] = []
+                if parent_naam_waarde:
+                    parent_eff = next(
+                        (s.effectief_scenario(scenario_lijst) for s in scenario_lijst if s.naam == parent_naam_waarde),
+                        None,
+                    )
+                    if parent_eff:
+                        _veld_waarden = {
+                            "spaargeld_start": Decimal(str(spaargeld)),
+                            "jaarlijkse_inleg": Decimal(str(jaarlijkse_inleg)),
+                            "rendement_pct": Decimal(str(rendement)),
+                            "inflatie_pct": Decimal(str(inflatie)),
+                            "box3_meenemen": box3_meenemen,
+                            "box3_spaargeld_fractie": Decimal(str(box3_spaargeld_pct)) / Decimal("100"),
+                        }
+                        for veld, waarde in _veld_waarden.items():
+                            if waarde != getattr(parent_eff, veld):
+                                overschreven.append(veld)
+                        # Componenten als overschreven markeren als ze van de parent afwijken
+                        if componenten != parent_eff.componenten:
+                            overschreven.append("componenten")
+                        if incidentele_items != parent_eff.incidentele_items:
+                            overschreven.append("incidentele_items")
+
+                scenario = Scenario(
+                    naam=scenario_naam,
+                    parent_naam=parent_naam_waarde,
+                    overschreven_velden=overschreven,
+                    spaargeld_start=Decimal(str(spaargeld)),
+                    jaarlijkse_inleg=Decimal(str(jaarlijkse_inleg)),
+                    rendement_pct=Decimal(str(rendement)),
+                    inflatie_pct=Decimal(str(inflatie)),
+                    box3_meenemen=box3_meenemen,
+                    box3_spaargeld_fractie=Decimal(str(box3_spaargeld_pct)) / Decimal("100"),
+                    componenten=componenten,
+                    incidentele_items=incidentele_items,
                 )
-                if parent_eff:
-                    _veld_waarden = {
-                        "spaargeld_start": Decimal(str(spaargeld)),
-                        "jaarlijkse_inleg": Decimal(str(jaarlijkse_inleg)),
-                        "rendement_pct": Decimal(str(rendement)),
-                        "box3_meenemen": box3_meenemen,
-                        "box3_spaargeld_fractie": Decimal(str(box3_spaargeld_pct)) / Decimal("100"),
-                    }
-                    for veld, waarde in _veld_waarden.items():
-                        if waarde != getattr(parent_eff, veld):
-                            overschreven.append(veld)
-                    # Componenten als overschreven markeren als ze van de parent afwijken
-                    if componenten != parent_eff.componenten:
-                        overschreven.append("componenten")
-                    if incidentele_items != parent_eff.incidentele_items:
-                        overschreven.append("incidentele_items")
 
-            scenario = Scenario(
-                naam=scenario_naam,
-                parent_naam=parent_naam_waarde,
-                overschreven_velden=overschreven,
-                spaargeld_start=Decimal(str(spaargeld)),
-                jaarlijkse_inleg=Decimal(str(jaarlijkse_inleg)),
-                rendement_pct=Decimal(str(rendement)),
-                box3_meenemen=box3_meenemen,
-                box3_spaargeld_fractie=Decimal(str(box3_spaargeld_pct)) / Decimal("100"),
-                componenten=componenten,
-                incidentele_items=incidentele_items,
-            )
+                # Vervang bestaand geselecteerd scenario, ook bij hernoemen.
+                oude_naam = bestaand.naam if bestaand else None
+                bestaand_lijst = [
+                    s for s in scenario_lijst
+                    if s.naam != scenario_naam and (oude_naam is None or s.naam != oude_naam)
+                ]
+                bestaand_lijst.append(scenario)
+                st.session_state["scenario_lijst"] = bestaand_lijst
+                st.session_state["scenario_selectie_doel"] = scenario_naam
+                st.session_state["_naam_geladen_voor"] = scenario_naam
 
-            # Vervang bestaand geselecteerd scenario, ook bij hernoemen.
-            oude_naam = bestaand.naam if bestaand else None
-            bestaand_lijst = [
-                s for s in scenario_lijst
-                if s.naam != scenario_naam and (oude_naam is None or s.naam != oude_naam)
-            ]
-            bestaand_lijst.append(scenario)
-            st.session_state["scenario_lijst"] = bestaand_lijst
-            st.session_state["scenario_selectie_doel"] = scenario_naam
-            st.session_state["_naam_geladen_voor"] = scenario_naam
+                # Pensioenrecords bijwerken (met gewijzigde ingangsdatums)
+                st.session_state["records_p1"] = records_p1
+                if heeft_partner:
+                    st.session_state["records_p2"] = records_p2
 
-            # Pensioenrecords bijwerken (met gewijzigde ingangsdatums)
-            st.session_state["records_p1"] = records_p1
-            if heeft_partner:
-                st.session_state["records_p2"] = records_p2
+                sla_sessie_op()
+                st.success(f"✅ Scenario '{scenario_naam}' opgeslagen ({len(componenten)} componenten)")
+                st.rerun()
 
-            sla_sessie_op()
-            st.success(f"✅ Scenario '{scenario_naam}' opgeslagen ({len(componenten)} componenten)")
-            st.rerun()
-
-        except (TypeError, ValueError) as exc:
-            st.error(f"Fout bij opslaan: {exc}")
+            except ValueError as exc:
+                st.error(f"❌ Ongeldige waarde: {exc}")
+            except TypeError as exc:
+                st.error(f"❌ Onverwacht gegevenstype: {exc}")
 
     # ─── Overzicht opgeslagen scenario's ─────────────────────────────────────
     scenario_lijst_actueel: list[Scenario] = st.session_state.get("scenario_lijst", [])
@@ -523,8 +578,6 @@ def toon_scenario_pagina() -> None:
         st.divider()
         st.subheader("📂 Opgeslagen scenario's")
         for s in scenario_lijst_actueel:
-            n_comp = len(s.componenten)
-            n_inc = len(s.incidentele_items)
             n_ink = sum(1 for c in s.componenten if c.categorie in (
                 CategorieComponent.ARBEIDSINKOMEN,
                 CategorieComponent.PENSIOEN_INKOMEN,
@@ -533,10 +586,13 @@ def toon_scenario_pagina() -> None:
             n_uit = sum(1 for c in s.componenten if c.categorie in (
                 CategorieComponent.UITGAVE, CategorieComponent.INHOUDING
             ))
+            n_inc = len(s.incidentele_items)
+            parent_info = f" ↳ erft van **{s.parent_naam}**" if s.parent_naam else ""
+            actief_marker = " 🟢" if s.naam == st.session_state.get("scenario_selectie") else ""
             st.markdown(
-                f"**{s.naam}** — "
+                f"**{s.naam}**{actief_marker}{parent_info} — "
                 f"{n_ink} inkomsten, {n_uit} uitgaven/inhoudingen, {n_inc} eenmalig  |  "
-                f"Spaargeld: {_fmt_eur(s.spaargeld_start)}  |  "
+                f"Spaargeld: {fmt_eur(s.spaargeld_start)}  |  "
                 f"Rendement: {s.rendement_pct}%"
             )
 

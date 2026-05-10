@@ -39,6 +39,9 @@ class Scenario(BaseModel):
     # Incidentele eenmalige cashflows (niet belastbaar)
     incidentele_items: list[IncidenteelItem] = []
 
+    # Inflatie
+    inflatie_pct: Decimal = Decimal("2")  # verwachte jaarlijkse inflatie in %
+
     # Box 3
     box3_meenemen: bool = True
     box3_spaargeld_fractie: Decimal = Decimal("1")  # 0=beleggingen, 1=spaargeld
@@ -49,6 +52,8 @@ class Scenario(BaseModel):
             raise ValueError("spaargeld_start mag niet negatief zijn.")
         if not (Decimal("0") <= self.rendement_pct <= Decimal("30")):
             raise ValueError("rendement_pct moet tussen 0% en 30% liggen.")
+        if not (Decimal("0") <= self.inflatie_pct <= Decimal("20")):
+            raise ValueError("inflatie_pct moet tussen 0% en 20% liggen.")
         return self
 
     # ------------------------------------------------------------------
@@ -56,7 +61,7 @@ class Scenario(BaseModel):
     # ------------------------------------------------------------------
 
     _ERFBARE_VELDEN = frozenset({
-        "spaargeld_start", "jaarlijkse_inleg", "rendement_pct",
+        "spaargeld_start", "jaarlijkse_inleg", "rendement_pct", "inflatie_pct",
         "componenten", "incidentele_items", "box3_meenemen", "box3_spaargeld_fractie",
     })
 

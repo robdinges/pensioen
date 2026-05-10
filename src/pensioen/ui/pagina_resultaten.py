@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 
 import pandas as pd
 import plotly.express as px
@@ -88,7 +89,7 @@ def toon_resultaten_pagina() -> None:
         _toon_tarieven_banner(cashflow_hoofd)
         _toon_inkomensgrafiek(cashflow_hoofd)
         _toon_vermogensgrafiek(cashflow_hoofd)
-        _toon_jaaroverzicht_tabel(cashflow_hoofd)
+        _toon_jaaroverzicht_tabel(cashflow_hoofd, actieve_scenario.inflatie_pct)
         if vergelijking and len(vergelijking.scenario_resultaten) > 1:
             _toon_vergelijking(vergelijking)
 
@@ -207,9 +208,10 @@ def _toon_vermogensgrafiek(cashflow: HuishoudCashflow) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def _toon_jaaroverzicht_tabel(cashflow: HuishoudCashflow) -> None:
+def _toon_jaaroverzicht_tabel(cashflow: HuishoudCashflow, inflatie_pct: Decimal = Decimal("2")) -> None:
     """Tabel met jaaroverzicht."""
     st.subheader("Jaaroverzicht")
+    startjaar = cashflow.jaren[0].jaar if cashflow.jaren else 0
     data = [
         {
             "Jaar": jr.jaar,
@@ -218,6 +220,9 @@ def _toon_jaaroverzicht_tabel(cashflow: HuishoudCashflow) -> None:
             "Heffingskorting (€)": float(jr.totaal_heffingskorting),
             "Netto (€)": float(jr.netto),
             "Netto p/m (€)": float(jr.netto_per_maand),
+            "Reëel netto p/m (€)": float(
+                jr.netto_per_maand / (Decimal("1") + inflatie_pct / Decimal("100")) ** (jr.jaar - startjaar)
+            ),
             "Eff. tarief (%)": float(jr.effectief_tarief),
             "Vermogen (€)": float(jr.vermogen_einde_jaar),
             "Tekortjaar": "⚠️" if jr.is_tekortjaar else "",
@@ -226,6 +231,9 @@ def _toon_jaaroverzicht_tabel(cashflow: HuishoudCashflow) -> None:
     ]
     df = pd.DataFrame(data)
     st.dataframe(df, use_container_width=True, hide_index=True)
+    st.caption(
+        f"Reëel netto p/m = koopkracht in euro's van {startjaar} bij {float(inflatie_pct):.1f}% jaarlijkse inflatie."
+    )
 
 
 def _toon_vergelijking(vergelijking) -> None:

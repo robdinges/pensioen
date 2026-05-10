@@ -173,6 +173,15 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
     return config, aanname_melding
 
 
+def beschikbare_jaren() -> set[int]:
+    """Geef de jaren terug waarvoor een eigen belastingconfig-bestand beschikbaar is."""
+    return {
+        int(p.stem.split("_")[1])
+        for p in _CONFIG_DIR.glob("belasting_*.json")
+        if p.stem.split("_")[1].isdigit()
+    }
+
+
 def laad_tarieven_bereik(jaar_van: int, jaar_tot: int) -> dict[int, tuple[BelastingConfig, str]]:
     """Laad belastingconfiguraties voor een reeks jaren (jaar_van t/m jaar_tot inclusief)."""
     return {jaar: laad_tarieven(jaar) for jaar in range(jaar_van, jaar_tot + 1)}

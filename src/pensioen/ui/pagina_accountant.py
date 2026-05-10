@@ -11,6 +11,7 @@ from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.models.component import BedragType, CategorieComponent
 from pensioen.tax import aow_engine, belasting_engine, heffingskorting
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven
+from pensioen.ui.scenario_context import get_actief_scenario
 
 
 def _fmt(bedrag: Decimal | float | int) -> str:
@@ -605,7 +606,11 @@ def toon_accountant_pagina() -> None:
     records1 = st.session_state.get("records_p1", [])
     records2 = st.session_state.get("records_p2", [])
     scenario_namen = [s.naam for s in scenario_lijst]
-    default_index = 0
+
+    # Gebruik het actief scenario als standaard; val terug op eerste
+    actief = get_actief_scenario(scenario_lijst)
+    actief_naam = actief.naam if actief else scenario_namen[0]
+    default_index = scenario_namen.index(actief_naam) if actief_naam in scenario_namen else 0
     huidige_keuze = st.session_state.get("acc_scenario_naam")
     if huidige_keuze in scenario_namen:
         default_index = scenario_namen.index(huidige_keuze)
@@ -615,7 +620,11 @@ def toon_accountant_pagina() -> None:
         index=default_index,
         key="acc_scenario_naam",
     )
-    scenario = next((s for s in scenario_lijst if s.naam == gekozen_scenario_naam), scenario_lijst[0])
+    # Materialiseer inheritance
+    scenario_ruw = next((s for s in scenario_lijst if s.naam == gekozen_scenario_naam), scenario_lijst[0])
+    scenario = scenario_ruw.effectief_scenario(scenario_lijst)
+    if scenario_ruw.parent_naam:
+        st.caption(f"↳ Erft van: {scenario_ruw.parent_naam}")
     naam_p2 = persoon2.naam if persoon2 else None
 
     col1, col2 = st.columns(2)

@@ -170,3 +170,38 @@ class FinancieelComponent(BaseModel):
             )
             for p in cast(list[BedragPeriode], self.waarde_periodes)
         ]
+
+
+# ---------------------------------------------------------------------------
+# Component-sjablonen
+# ---------------------------------------------------------------------------
+
+from dataclasses import dataclass  # noqa: E402
+
+
+@dataclass(frozen=True)
+class ComponentSjabloon:
+    """Eén sjabloon — waarden zijn aanpasbaar na toevoegen in de UI."""
+
+    label: str
+    categorie: CategorieComponent
+    bedrag_type: BedragType
+    frequentie: Frequentie
+    bedrag: Decimal
+    groei_pct: Decimal
+    persoon: str
+    omschrijving: str
+
+
+COMPONENT_SJABLONEN: list[ComponentSjabloon] = [
+    ComponentSjabloon(label="Salaris (bruto, maandelijks)", categorie=CategorieComponent.ARBEIDSINKOMEN, bedrag_type=BedragType.BRUTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("4000"), groei_pct=Decimal("2"), persoon="P1", omschrijving="Salaris"),
+    ComponentSjabloon(label="AOW-aanvulling (netto, maandelijks)", categorie=CategorieComponent.OVERIG_INKOMEN, bedrag_type=BedragType.NETTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("1000"), groei_pct=Decimal("0"), persoon="P1", omschrijving="AOW-aanvulling"),
+    ComponentSjabloon(label="Werkgeverspensioen (bruto, maandelijks)", categorie=CategorieComponent.PENSIOEN_INKOMEN, bedrag_type=BedragType.BRUTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("1500"), groei_pct=Decimal("0"), persoon="P1", omschrijving="Werkgeverspensioen"),
+    ComponentSjabloon(label="Hypotheek (netto, maandelijks)", categorie=CategorieComponent.UITGAVE, bedrag_type=BedragType.NETTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("1200"), groei_pct=Decimal("0"), persoon="Huishouden", omschrijving="Hypotheek"),
+    ComponentSjabloon(label="Vaste lasten (netto, maandelijks)", categorie=CategorieComponent.UITGAVE, bedrag_type=BedragType.NETTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("800"), groei_pct=Decimal("2"), persoon="Huishouden", omschrijving="Vaste lasten"),
+    ComponentSjabloon(label="Freelance / ZZP (bruto, maandelijks)", categorie=CategorieComponent.ARBEIDSINKOMEN, bedrag_type=BedragType.BRUTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("2000"), groei_pct=Decimal("1"), persoon="P1", omschrijving="Freelance inkomen"),
+    ComponentSjabloon(label="Jaarlijkse bonus (bruto, jaarlijks)", categorie=CategorieComponent.ARBEIDSINKOMEN, bedrag_type=BedragType.BRUTO, frequentie=Frequentie.JAARLIJKS, bedrag=Decimal("5000"), groei_pct=Decimal("0"), persoon="P1", omschrijving="Jaarbonus"),
+    ComponentSjabloon(label="Lease-bijdrage auto (netto, maandelijks)", categorie=CategorieComponent.INHOUDING, bedrag_type=BedragType.NETTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("250"), groei_pct=Decimal("0"), persoon="P1", omschrijving="Lease-bijdrage auto"),
+    ComponentSjabloon(label="Huurinkomsten (netto, maandelijks)", categorie=CategorieComponent.OVERIG_INKOMEN, bedrag_type=BedragType.NETTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("600"), groei_pct=Decimal("2"), persoon="Huishouden", omschrijving="Huurinkomsten"),
+    ComponentSjabloon(label="Partner-salaris (bruto, maandelijks)", categorie=CategorieComponent.ARBEIDSINKOMEN, bedrag_type=BedragType.BRUTO, frequentie=Frequentie.MAANDELIJKS, bedrag=Decimal("3000"), groei_pct=Decimal("2"), persoon="P2", omschrijving="Salaris partner"),
+]

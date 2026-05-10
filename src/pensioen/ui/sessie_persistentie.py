@@ -25,6 +25,9 @@ from pensioen.models.scenario import Scenario
 # Sla op in de projectroot (twee niveaus boven src/pensioen/ui/)
 SESSIE_PAD = Path(__file__).parents[4] / ".sessie.json"
 
+# Schema-versienummer: verhoog bij incompatibele wijzigingen in de opslagstructuur
+SESSIE_VERSIE = 2
+
 
 def _serialiseerbaar(obj: Any) -> Any:
     if isinstance(obj, Decimal):
@@ -42,7 +45,7 @@ def _zet(key: str, waarde: Any) -> None:
 
 def sla_sessie_op() -> None:
     """Sla de huidige sessie-invoer op naar .sessie.json."""
-    data: dict[str, Any] = {}
+    data: dict[str, Any] = {"_versie": SESSIE_VERSIE}
 
     # Pydantic-modellen
     if p1 := st.session_state.get("persoon1"):
@@ -94,7 +97,7 @@ def sla_sessie_op() -> None:
 def autosla_sessie_op() -> None:
     """Sla de sessie stilletjes op — geen UI-feedback, geen exceptions naar de gebruiker."""
     tmp_pad = SESSIE_PAD.with_suffix(".tmp.json")
-    data: dict[str, Any] = {}
+    data: dict[str, Any] = {"_versie": SESSIE_VERSIE}
 
     if p1 := st.session_state.get("persoon1"):
         data["persoon1"] = p1.model_dump(mode="json")
@@ -150,6 +153,14 @@ def laad_sessie() -> None:
         data = json.loads(SESSIE_PAD.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return
+
+    # Versiecheck — laad altijd, maar waarschuw bij verouderd schema
+    opgeslagen_versie = data.get("_versie", 1)
+    if opgeslagen_versie < SESSIE_VERSIE:
+        st.info(
+            f"ℹ️ Sessiebestand is opgeslagen in schema v{opgeslagen_versie} "
+            f"(huidig: v{SESSIE_VERSIE}). Gegevens worden ingelezen; sla daarna opnieuw op."
+        )
 
     # --- Personen ---
     if p1_dict := data.get("persoon1"):
