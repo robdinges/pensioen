@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 
 import pandas as pd
@@ -10,11 +9,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from pensioen.calculations.cashflow_engine import bereken_huishouden
-from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.models.cashflow import HuishoudCashflow
+from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
-from pensioen.tax.belasting_loader import laad_tarieven_bereik
 
 
 def toon_resultaten_pagina() -> None:
@@ -23,12 +20,8 @@ def toon_resultaten_pagina() -> None:
 
     actieve_scenario_raw = get_actief_scenario(st.session_state.get("scenario_lijst", []))
     if actieve_scenario_raw is not None:
-        actieve_scenario = actieve_scenario_raw.effectief_scenario(
-            st.session_state.get("scenario_lijst", [])
-        )
+        actieve_scenario = actieve_scenario_raw
         label = actieve_scenario_raw.naam
-        if actieve_scenario_raw.parent_naam:
-            label += f" (erft van {actieve_scenario_raw.parent_naam})"
         st.caption(f"Actief scenario: {label}")
     else:
         actieve_scenario = None
@@ -47,43 +40,16 @@ def toon_resultaten_pagina() -> None:
         st.warning("⚠️ Kies eerst een actief scenario in de scenario-pagina.")
         return
 
-    persoon2 = st.session_state.get("persoon2")
-    records1 = st.session_state.get("records_p1", [])
-    records2 = st.session_state.get("records_p2", [])
-
-    # Prognosehorizon
-    col1, col2 = st.columns(2)
-    with col1:
-        jaar_van = st.number_input("Prognose van jaar", value=date.today().year, step=1, key="jaar_van")
-    with col2:
-        jaar_tot = st.number_input("Prognose tot jaar", value=date.today().year + 35, step=1, key="jaar_tot")
-
-    if jaar_tot <= jaar_van:
-        st.error("'Tot jaar' moet na 'Van jaar' liggen.")
-        return
-
-    if st.button("▶ Berekening uitvoeren", type="primary", key="bereken"):
-        with st.spinner("Bezig met berekenen..."):
-            try:
-                configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
-                _voer_berekening_uit(
-                    persoon1,
-                    persoon2,
-                    records1,
-                    records2,
-                    actieve_scenario,
-                    scenario_lijst,
-                    int(jaar_van),
-                    int(jaar_tot),
-                    configs,
-                )
-            except (TypeError, ValueError) as exc:
-                st.error(f"Berekeningsfout: {exc}")
-                return
-
     # Resultaten tonen (indien beschikbaar)
     cashflow_hoofd = st.session_state.get("cashflow_hoofd")
     vergelijking = st.session_state.get("vergelijking")
+
+    if not cashflow_hoofd:
+        st.info(
+            "Noch geen berekeningsresultaten beschikbaar. "
+            "Voer eerst een berekening uit via de vorige stap (Bereken)."
+        )
+        return
 
     if cashflow_hoofd:
         _toon_tarieven_banner(cashflow_hoofd)
@@ -93,46 +59,21 @@ def toon_resultaten_pagina() -> None:
         if vergelijking and len(vergelijking.scenario_resultaten) > 1:
             _toon_vergelijking(vergelijking)
 
+    # ─── Vorige/Volgende knoppen ─────────────────────────────────────────────
+    st.divider()
+    col_vorige, col_volgende = st.columns(2)
+    
+    with col_vorige:
+        if st.button("⬅️ Vorige"):
+            set_huidge_stap(Stap.BEREKEN, validatie_ok=False)
+            st.rerun()
+    
+    with col_volgende:
+        if st.button("Volgende ➡️", use_container_width=True):
+            set_huidge_stap(Stap.ACCOUNTANT, validatie_ok=True)
+            st.rerun()
 
-def _voer_berekening_uit(
-    persoon1,
-    persoon2,
-    records1,
-    records2,
-    actief_scenario,
-    scenario_lijst,
-    jaar_van,
-    jaar_tot,
-    configs,
-):
-    """Bereken en sla op in session_state."""
-    cashflow = bereken_huishouden(
-        scenario=actief_scenario,
-        persoon1=persoon1,
-        persoon2=persoon2,
-        records1=records1,
-        records2=records2,
-        jaar_van=jaar_van,
-        jaar_tot=jaar_tot,
-        belasting_configs=configs,
-    )
-    st.session_state["cashflow_hoofd"] = cashflow
 
-    if len(scenario_lijst) > 1:
-        vergelijking = vergelijk_scenarios(
-            scenarios=scenario_lijst,
-            persoon1=persoon1,
-            persoon2=persoon2,
-            records1=records1,
-            records2=records2,
-            jaar_van=jaar_van,
-            jaar_tot=jaar_tot,
-        )
-        st.session_state["vergelijking"] = vergelijking
-    else:
-        st.session_state.pop("vergelijking", None)
-
-    st.success("✅ Berekening klaar")
 
 
 def _toon_tarieven_banner(cashflow: HuishoudCashflow) -> None:

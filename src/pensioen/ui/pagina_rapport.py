@@ -7,6 +7,8 @@ from datetime import date
 import streamlit as st
 
 from pensioen.reports.rapport_engine import genereer_rapport
+from pensioen.ui.flow_context import Stap, set_huidge_stap
+from pensioen.ui.scenario_context import get_actief_scenario_naam
 
 
 def toon_rapport_pagina() -> None:
@@ -15,6 +17,8 @@ def toon_rapport_pagina() -> None:
 
     cashflow = st.session_state.get("cashflow_hoofd")
     vergelijking = st.session_state.get("vergelijking")
+    actief_scenario_naam = get_actief_scenario_naam() or "Default"
+    st.caption(f"Actief scenario: {actief_scenario_naam}")
 
     if not cashflow:
         st.warning(
@@ -22,6 +26,12 @@ def toon_rapport_pagina() -> None:
             "Voer eerst een berekening uit (stap: Resultaten)."
         )
         return
+
+    if cashflow.scenario_naam != actief_scenario_naam:
+        st.warning(
+            "De huidige resultaten zijn berekend voor een ander scenario. "
+            "Voer eerst opnieuw een berekening uit in de resultatenpagina."
+        )
 
     st.write("Download het volledige prognose-rapport als Excel-werkmap.")
     st.write("Het rapport bevat de volgende tabbladen:")
@@ -63,3 +73,11 @@ def toon_rapport_pagina() -> None:
         "Alle berekeningen zijn indicatief. Raadpleeg een financieel adviseur "
         "voor persoonlijk pensioenadvies."
     )
+
+    # ─── Vorige knop ─────────────────────────────────────────────────────────
+    st.divider()
+    col_vorige = st.columns(2)[0]
+    with col_vorige:
+        if st.button("⬅️ Vorige"):
+            set_huidge_stap(Stap.ACCOUNTANT, validatie_ok=False)
+            st.rerun()

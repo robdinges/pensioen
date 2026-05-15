@@ -8,6 +8,7 @@ import streamlit as st
 
 from pensioen.models.persoon import Persoon
 from pensioen.tax.aow_engine import bereken_aow_datum
+from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 
@@ -28,7 +29,7 @@ def toon_persoon_pagina() -> None:
     try:
         aow1 = bereken_aow_datum(geboortedatum1)
         st.info(f"🕐 Geschatte AOW-datum persoon 1: **{aow1.strftime('%d %B %Y')}**")
-    except Exception:
+    except ValueError:
         pass
 
     heeft_partner = st.checkbox("Heeft een partner", value=True, key="heeft_partner")
@@ -49,30 +50,46 @@ def toon_persoon_pagina() -> None:
         try:
             aow2 = bereken_aow_datum(geboortedatum2)
             st.info(f"🕐 Geschatte AOW-datum persoon 2: **{aow2.strftime('%d %B %Y')}**")
-        except Exception:
+        except ValueError:
             pass
 
-    if st.button("Opslaan", key="opslaan_personen"):
-        try:
-            p1 = Persoon(
-                naam=naam1,
-                geboortedatum=geboortedatum1,
-                heeft_partner=heeft_partner,
+    try:
+        p1 = Persoon(
+            naam=naam1,
+            geboortedatum=geboortedatum1,
+            heeft_partner=heeft_partner,
+        )
+        gewijzigd = st.session_state.get("persoon1") != p1
+        st.session_state["persoon1"] = p1
+
+        if heeft_partner and geboortedatum2:
+            p2 = Persoon(
+                naam=naam2,
+                geboortedatum=geboortedatum2,
+                heeft_partner=True,
+                partner_id=naam1,
             )
-            st.session_state["persoon1"] = p1
+            if st.session_state.get("persoon2") != p2:
+                gewijzigd = True
+            st.session_state["persoon2"] = p2
+        else:
+            if "persoon2" in st.session_state:
+                gewijzigd = True
+            st.session_state.pop("persoon2", None)
 
-            if heeft_partner and geboortedatum2:
-                p2 = Persoon(
-                    naam=naam2,
-                    geboortedatum=geboortedatum2,
-                    heeft_partner=True,
-                    partner_id=naam1,
-                )
-                st.session_state["persoon2"] = p2
-            else:
-                st.session_state.pop("persoon2", None)
-
-            st.success("✅ Persoonsgegevens opgeslagen")
+        if gewijzigd:
+            st.session_state.pop("cashflow_hoofd", None)
+            st.session_state.pop("vergelijking", None)
+            st.session_state.pop("rapport_bytes", None)
             sla_sessie_op()
-        except Exception as exc:
-            st.error(f"Fout: {exc}")
+            st.caption("Wijzigingen automatisch opgeslagen.")
+    except (TypeError, ValueError) as exc:
+        st.error(f"Fout: {exc}")
+
+    # ─── Volgende knop ──────────────────────────────────────────────────────
+    st.divider()
+    col_volgende = st.columns(2)[1]
+    with col_volgende:
+        if st.button("Volgende ➡️", use_container_width=True):
+            set_huidge_stap(Stap.PENSIOENGEGEVENS, validatie_ok=True)
+            st.rerun()

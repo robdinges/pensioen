@@ -10,7 +10,8 @@ import streamlit as st
 from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.models.component import BedragType, CategorieComponent
 from pensioen.tax import aow_engine, belasting_engine, heffingskorting
-from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven
+from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
+from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 
 
@@ -57,7 +58,7 @@ def _bereken_jaar_detail(
     config: BelastingConfig,
     aanname: str,
     saldo_begin_jaar: Decimal,
-    startjaar: int,
+    tarief_bronnen: dict[str, str] | None = None,
 ) -> dict:
     """
     Herbereken één jaar volledig met alle tussentotalen.
@@ -274,6 +275,7 @@ def _bereken_jaar_detail(
         "jaar": jaar,
         "config_jaar": config.jaar,
         "aanname": aanname,
+        "tarief_bronnen": tarief_bronnen or {},
         "jaar_arbeid_p1": Decimal(str(jaar_arbeid_p1)),
         "jaar_arbeid_p2": Decimal(str(jaar_arbeid_p2)),
         "jaar_overig_p1": Decimal(str(jaar_overig_p1)),
@@ -329,7 +331,7 @@ def _bereken_jaar_detail(
     }
 
 
-def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None) -> None:
+def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: BelastingConfig) -> None:
     """Toon de bruto → netto berekening als genummerde stappen."""
     heeft_p2 = naam_p2 is not None and d["bruto_p2"] > Decimal("0")
 
@@ -384,10 +386,20 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None) -> None:
          _fmt(d["bel_voor_korting_p1"] + d["bel_voor_korting_p2"])],
     ]
     st.table(_maak_tabel(cols, rijen_b))
+    aow_delen = []
+    for i, schijf in enumerate(config.box1_aow, start=1):
+        grens = f"≤ €{float(schijf.tot):,.0f}" if schijf.tot is not None else "zonder bovengrens"
+        aow_delen.append(f"schijf {i} {grens}: {float(schijf.tarief) * 100:.2f}%")
+
+    niet_aow_delen = []
+    for i, schijf in enumerate(config.box1_niet_aow, start=1):
+        grens = f"≤ €{float(schijf.tot):,.0f}" if schijf.tot is not None else "zonder bovengrens"
+        niet_aow_delen.append(f"schijf {i} {grens}: {float(schijf.tarief) * 100:.2f}%")
+
     st.caption(
-        "\\* Schijven 2026: AOW-tarieven: schijf 1 ≤ €38.883 → **17,85%** | "
-        "schijf 2 ≤ €78.426 → **37,56%** | schijf 3 → **49,50%**. "
-        "Niet-AOW: schijf 1 → **35,75%**."
+        f"\\* Toegepaste tarieven ({config.jaar}) - "
+        f"AOW: {' | '.join(aow_delen)}. "
+        f"Niet-AOW: {' | '.join(niet_aow_delen)}."
     )
 
     st.markdown("#### C. Heffingskortingen")
@@ -412,7 +424,6 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None) -> None:
     st.table(_maak_tabel(cols, rijen_c))
 
     # Toelichting ouderenkorting
-    ouderenkorting_max = d.get("ouderenkorting_max", Decimal("0"))
     ouderenkorting_afbouw_van = d.get("ouderenkorting_afbouw_van", Decimal("0"))
     if not d["is_aow_p1"] and d["ok_p1"] == Decimal("0"):
         st.caption(
@@ -605,26 +616,14 @@ def toon_accountant_pagina() -> None:
     persoon2 = st.session_state.get("persoon2")
     records1 = st.session_state.get("records_p1", [])
     records2 = st.session_state.get("records_p2", [])
-    scenario_namen = [s.naam for s in scenario_lijst]
-
-    # Gebruik het actief scenario als standaard; val terug op eerste
     actief = get_actief_scenario(scenario_lijst)
-    actief_naam = actief.naam if actief else scenario_namen[0]
-    default_index = scenario_namen.index(actief_naam) if actief_naam in scenario_namen else 0
-    huidige_keuze = st.session_state.get("acc_scenario_naam")
-    if huidige_keuze in scenario_namen:
-        default_index = scenario_namen.index(huidige_keuze)
-    gekozen_scenario_naam = st.selectbox(
-        "Scenario",
-        options=scenario_namen,
-        index=default_index,
-        key="acc_scenario_naam",
-    )
-    # Materialiseer inheritance
-    scenario_ruw = next((s for s in scenario_lijst if s.naam == gekozen_scenario_naam), scenario_lijst[0])
-    scenario = scenario_ruw.effectief_scenario(scenario_lijst)
-    if scenario_ruw.parent_naam:
-        st.caption(f"↳ Erft van: {scenario_ruw.parent_naam}")
+    if actief is None:
+        st.warning("⚠️ Geen actief scenario beschikbaar.")
+        return
+
+    scenario_ruw = actief
+    scenario = scenario_ruw
+    st.caption(f"Actief scenario: {scenario_ruw.naam}")
     naam_p2 = persoon2.naam if persoon2 else None
 
     col1, col2 = st.columns(2)
@@ -639,45 +638,71 @@ def toon_accountant_pagina() -> None:
         st.error("'Tot jaar' moet na 'Van jaar' liggen.")
         return
 
-    if st.button("▶ Berekening uitvoeren", type="primary", key="acc_bereken"):
-        startjaar = int(jaar_van)
-        saldo = scenario.spaargeld_start
+    st.caption("Overzicht wordt automatisch herberekend bij wijzigingen in personen of scenario.")
+    saldo = scenario.spaargeld_start
 
-        for jaar in range(int(jaar_van), int(jaar_tot) + 1):
-            config, aanname = laad_tarieven(jaar)
+    for jaar in range(int(jaar_van), int(jaar_tot) + 1):
+        config_basis, aanname = laad_tarieven(jaar)
+        config, tarief_bronnen = resolve_tariefwaarden_voor_jaar(
+            config_basis,
+            jaar,
+            scenario.tarief_periodes,
+        )
 
-            d = _bereken_jaar_detail(
-                jaar=jaar,
-                persoon1=persoon1,
-                persoon2=persoon2,
-                records1=records1,
-                records2=records2,
-                scenario=scenario,
-                config=config,
-                aanname=aanname,
-                saldo_begin_jaar=saldo,
-                startjaar=startjaar,
-            )
+        d = _bereken_jaar_detail(
+            jaar=jaar,
+            persoon1=persoon1,
+            persoon2=persoon2,
+            records1=records1,
+            records2=records2,
+            scenario=scenario,
+            config=config,
+            aanname=aanname,
+            saldo_begin_jaar=saldo,
+            tarief_bronnen=tarief_bronnen,
+        )
 
-            with st.expander(
-                f"**{jaar}**  —  netto inkomen: {_fmt(d['totaal_netto_inkomen'])}  |  "
-                f"vermogen einde jaar: {_fmt(d['saldo_einde_jaar'])}",
-                expanded=(jaar == int(jaar_van)),
-            ):
-                if aanname:
-                    st.warning(aanname)
-                if config.jaar != jaar:
-                    st.caption(f"Gebruikte belastingtarieven: {config.jaar}")
+        with st.expander(
+            f"**{jaar}**  —  netto inkomen: {_fmt(d['totaal_netto_inkomen'])}  |  "
+            f"vermogen einde jaar: {_fmt(d['saldo_einde_jaar'])}",
+            expanded=(jaar == int(jaar_van)),
+        ):
+            if aanname:
+                st.warning(aanname)
+            if config.jaar != jaar:
+                st.caption(f"Gebruikte belastingtarieven: {config.jaar}")
 
-                st.markdown(
-                    f"**Scenario:** {scenario.naam}  |  "
-                    f"**Persoon 1:** {persoon1.naam}  |  "
-                    + (f"**Persoon 2:** {persoon2.naam}  |  " if persoon2 else "")
-                    + f"**Belastingjaar (tarieven):** {config.jaar}"
+            if d.get("tarief_bronnen"):
+                st.caption(
+                    "Tariefbronnen dit jaar: "
+                    f"box1 niet-AOW schijf 1 tarief = {d['tarief_bronnen'].get('box1_niet_aow_s1_tarief', 'basisconfig')}; "
+                    f"box1 AOW schijf 1 tarief = {d['tarief_bronnen'].get('box1_aow_s1_tarief', 'basisconfig')}; "
+                    f"box3 tarief = {d['tarief_bronnen'].get('box3_tarief', 'basisconfig')}."
                 )
 
-                _toon_inkomen_detail(d, persoon1.naam, naam_p2)
-                st.divider()
-                _toon_vermogen_detail(d)
+            st.markdown(
+                f"**Scenario:** {scenario.naam}  |  "
+                f"**Persoon 1:** {persoon1.naam}  |  "
+                + (f"**Persoon 2:** {persoon2.naam}  |  " if persoon2 else "")
+                + f"**Belastingjaar (tarieven):** {config.jaar}"
+            )
 
-            saldo = d["saldo_einde_jaar"]
+            _toon_inkomen_detail(d, persoon1.naam, naam_p2, config)
+            st.divider()
+            _toon_vermogen_detail(d)
+
+        saldo = d["saldo_einde_jaar"]
+
+    # ─── Vorige/Volgende knoppen ────────────────────────────────────────────
+    st.divider()
+    col_vorige, col_volgende = st.columns(2)
+    
+    with col_vorige:
+        if st.button("⬅️ Vorige"):
+            set_huidge_stap(Stap.RESULTATEN, validatie_ok=False)
+            st.rerun()
+    
+    with col_volgende:
+        if st.button("Volgende ➡️", use_container_width=True):
+            set_huidge_stap(Stap.RAPPORT, validatie_ok=True)
+            st.rerun()

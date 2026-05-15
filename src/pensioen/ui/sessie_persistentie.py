@@ -21,12 +21,17 @@ import streamlit as st
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
+from pensioen.ui.scenario_context import (
+    DEFAULT_SCENARIO_NAAM,
+    SCENARIO_ACTIEF_KEY,
+    SCENARIO_DEFAULT_KEY,
+)
 
 # Sla op in de projectroot (twee niveaus boven src/pensioen/ui/)
 SESSIE_PAD = Path(__file__).parents[4] / ".sessie.json"
 
 # Schema-versienummer: verhoog bij incompatibele wijzigingen in de opslagstructuur
-SESSIE_VERSIE = 2
+SESSIE_VERSIE = 3
 
 
 def _serialiseerbaar(obj: Any) -> Any:
@@ -65,6 +70,13 @@ def sla_sessie_op() -> None:
         s.model_dump(mode="json")
         for s in st.session_state.get("scenario_lijst", [])
     ]
+
+    actief_naam = st.session_state.get(SCENARIO_ACTIEF_KEY)
+    if isinstance(actief_naam, str):
+        data[SCENARIO_ACTIEF_KEY] = actief_naam
+    default_naam = st.session_state.get(SCENARIO_DEFAULT_KEY)
+    if isinstance(default_naam, str):
+        data[SCENARIO_DEFAULT_KEY] = default_naam
 
     # Incidentele tabel
     df: pd.DataFrame | None = st.session_state.get("incidenteel_tabel")
@@ -117,7 +129,13 @@ def autosla_sessie_op() -> None:
         for s in st.session_state.get("scenario_lijst", [])
     ]
 
-    import pandas as pd  # lokale import om circulaire afhankelijkheid te vermijden
+    actief_naam = st.session_state.get(SCENARIO_ACTIEF_KEY)
+    if isinstance(actief_naam, str):
+        data[SCENARIO_ACTIEF_KEY] = actief_naam
+    default_naam = st.session_state.get(SCENARIO_DEFAULT_KEY)
+    if isinstance(default_naam, str):
+        data[SCENARIO_DEFAULT_KEY] = default_naam
+
     df: pd.DataFrame | None = st.session_state.get("incidenteel_tabel")
     if df is not None and not df.empty:
         data["incidenteel_tabel"] = json.loads(
@@ -212,6 +230,20 @@ def laad_sessie() -> None:
     if scenarios:
         st.session_state["scenario_lijst"] = scenarios
 
+    # --- Actief/default scenario ---
+    actief_naam = data.get(SCENARIO_ACTIEF_KEY)
+    if not isinstance(actief_naam, str):
+        # Backward compat met legacy widget-key
+        legacy = data.get("scenario_selectie")
+        actief_naam = legacy if isinstance(legacy, str) else None
+    if isinstance(actief_naam, str):
+        st.session_state[SCENARIO_ACTIEF_KEY] = actief_naam
+
+    default_naam = data.get(SCENARIO_DEFAULT_KEY)
+    if not isinstance(default_naam, str):
+        default_naam = actief_naam or DEFAULT_SCENARIO_NAAM
+    st.session_state[SCENARIO_DEFAULT_KEY] = default_naam
+
     # --- Incidentele tabel ---
     if rijen := data.get("incidenteel_tabel"):
         try:
@@ -221,6 +253,8 @@ def laad_sessie() -> None:
             _zet("incidenteel_tabel", df)
         except (TypeError, ValueError):
             pass
+
+
 
     # --- Losstaande widgets (prognosehorizon) ---
     for sleutel in ("jaar_van", "jaar_tot"):

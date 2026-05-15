@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
+
+import pandas as pd
 
 import streamlit as st
 
-from pensioen.tax.belasting_loader import beschikbare_jaren, laad_tarieven
+from pensioen.models.scenario import TariefPeriodeItem
+from pensioen.tax.belasting_loader import (
+    beschikbare_jaren,
+    config_naar_tariefwaarden,
+    laad_tarieven,
+    resolve_tariefwaarden_voor_jaar,
+)
+from pensioen.ui.scenario_context import get_actief_scenario
+from pensioen.ui.sessie_persistentie import sla_sessie_op
 from pensioen.ui.helpers import fmt_eur, fmt_pct, toon_gap_badge
 
 
@@ -55,7 +66,6 @@ def toon_instellingen_pagina() -> None:
         tot_str = fmt_eur(schijf.tot) if schijf.tot else "daarboven"
         schijf_rijen.append({"Schijf": i, "Tarief": fmt_pct(schijf.tarief), "Tot": tot_str})
     if schijf_rijen:
-        import pandas as pd
         st.dataframe(pd.DataFrame(schijf_rijen), hide_index=True, use_container_width=False)
 
     st.markdown("**Box 1 – AOW-gerechtigd (schijf 1)**")
@@ -112,6 +122,105 @@ def toon_instellingen_pagina() -> None:
         "ℹ️ Tarieven worden ingelezen uit `config/belasting_YYYY.json`. "
         "Voor onbekende jaren wordt het meest recente beschikbare jaar gebruikt als aanname."
     )
+
+    # ─── Periodegebaseerde tariefoverrides ──────────────────────────────────
+    st.divider()
+    st.subheader("🧩 Tariefperiodes per scenario")
+    scenario_lijst = st.session_state.get("scenario_lijst", [])
+    actief_scenario = get_actief_scenario(scenario_lijst)
+    if actief_scenario is None:
+        st.warning("Geen actief scenario beschikbaar voor tariefbeheer.")
+    else:
+        st.caption(
+            f"Actief scenario: {actief_scenario.naam}. "
+            "Bij overlap geldt de laatst opgegeven regel; bij hiaat loopt de laatst geldende waarde door."
+        )
+
+        basis_waarden = config_naar_tariefwaarden(config)
+        sleutel_opties = sorted(basis_waarden.keys())
+        gekozen_sleutel = st.selectbox(
+            "Tarief om te beheren",
+            options=sleutel_opties,
+            key="tarief_periode_sleutel",
+        )
+
+        bestaande = [
+            p for p in actief_scenario.tarief_periodes
+            if p.sleutel == gekozen_sleutel
+        ]
+        periode_df = pd.DataFrame([
+            {
+                "startjaar": p.startjaar,
+                "eindjaar": p.eindjaar,
+                "waarde": float(p.waarde),
+                "inflatie_pct": float(p.inflatie_pct),
+            }
+            for p in bestaande
+        ]) if bestaande else pd.DataFrame(
+            columns=["startjaar", "eindjaar", "waarde", "inflatie_pct"]
+        )
+
+        periode_editor = st.data_editor(
+            periode_df,
+            num_rows="dynamic",
+            column_config={
+                "startjaar": st.column_config.NumberColumn("Beginjaar (leeg = vanaf begin)", step=1),
+                "eindjaar": st.column_config.NumberColumn("Eindjaar (leeg = tot einde)", step=1),
+                "waarde": st.column_config.NumberColumn("Waarde", step=0.0001, format="%.6f"),
+                "inflatie_pct": st.column_config.NumberColumn("Inflatie %", step=0.1, format="%.2f"),
+            },
+            key="tarief_periode_editor",
+            use_container_width=True,
+        )
+
+        if st.button("Periode-regels opslaan", key="tarief_periode_opslaan"):
+            nieuw: list[TariefPeriodeItem] = []
+            for _, rij in periode_editor.iterrows():
+                if pd.isna(rij.get("waarde")):
+                    continue
+                start_raw = rij.get("startjaar")
+                eind_raw = rij.get("eindjaar")
+                nieuw.append(
+                    TariefPeriodeItem(
+                        sleutel=gekozen_sleutel,
+                        startjaar=int(start_raw) if pd.notna(start_raw) else None,
+                        eindjaar=int(eind_raw) if pd.notna(eind_raw) else None,
+                        waarde=rij.get("waarde"),
+                        inflatie_pct=rij.get("inflatie_pct") if pd.notna(rij.get("inflatie_pct")) else 0,
+                    )
+                )
+
+            overige = [p for p in actief_scenario.tarief_periodes if p.sleutel != gekozen_sleutel]
+            actief_scenario.tarief_periodes = overige + nieuw
+            actief_scenario.laatst_gewijzigd_op = datetime.now()
+
+            for i, sc in enumerate(scenario_lijst):
+                if sc.naam == actief_scenario.naam:
+                    scenario_lijst[i] = actief_scenario
+                    break
+            st.session_state["scenario_lijst"] = scenario_lijst
+            sla_sessie_op()
+            st.success("Tariefperiode-regels opgeslagen.")
+            st.rerun()
+
+        jaar_van = int(st.session_state.get("jaar_van", jaar))
+        jaar_tot = int(st.session_state.get("jaar_tot", jaar + 20))
+        tijdlijn = []
+        for y in range(jaar_van, jaar_tot + 1):
+            cfg_y, _ = laad_tarieven(y)
+            cfg_resolved, bronnen = resolve_tariefwaarden_voor_jaar(
+                cfg_y,
+                y,
+                actief_scenario.tarief_periodes,
+            )
+            waarde_y = config_naar_tariefwaarden(cfg_resolved).get(gekozen_sleutel, basis_waarden[gekozen_sleutel])
+            tijdlijn.append({
+                "Jaar": y,
+                "Waarde": float(waarde_y),
+                "Bron": bronnen.get(gekozen_sleutel, "basisconfig"),
+            })
+        st.markdown("**Tijdlijn (jaarlijks)**")
+        st.dataframe(pd.DataFrame(tijdlijn), hide_index=True, use_container_width=True)
 
     # ─── Tariefgenerator ─────────────────────────────────────────────────────
     st.divider()

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import io
 from datetime import date
 
 import streamlit as st
 
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.parsers.parser_mpo import MPOParser
+from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.validators.validator import valideer_records
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 
@@ -124,6 +124,20 @@ def toon_import_pagina() -> None:
     st.caption(
         f"Geladen: {totaal_p1} record(s) persoon 1 | {totaal_p2} record(s) persoon 2"
     )
+
+    # ─── Vorige/Volgende knoppen ────────────────────────────────────────────
+    st.divider()
+    col_vorige, col_volgende = st.columns(2)
+
+    with col_vorige:
+        if st.button("⬅️ Vorige"):
+            set_huidge_stap(Stap.PERSONEN, validatie_ok=False)
+            st.rerun()
+
+    with col_volgende:
+        if st.button("Volgende ➡️", use_container_width=True):
+            set_huidge_stap(Stap.SCENARIO, validatie_ok=True)
+            st.rerun()
 
 
 def _parse_upload(
