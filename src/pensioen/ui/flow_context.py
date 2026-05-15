@@ -34,14 +34,14 @@ STAPPEN_VOLGORDE = [
 ]
 
 STAP_LABELS = {
-    Stap.PERSONEN: "👤 Personen",
-    Stap.PENSIOENGEGEVENS: "📂 Pensioengegevens",
-    Stap.SCENARIO: "📋 Scenario",
-    Stap.COMPONENTEN: "💶 Componenten",
-    Stap.BEREKEN: "▶ Bereken",
-    Stap.RESULTATEN: "📊 Resultaten",
-    Stap.ACCOUNTANT: "🔍 Accountant",
-    Stap.RAPPORT: "📥 Rapport",
+    Stap.PERSONEN: "Personen",
+    Stap.PENSIOENGEGEVENS: "Pensioengegevens",
+    Stap.SCENARIO: "Scenario",
+    Stap.COMPONENTEN: "Componenten",
+    Stap.BEREKEN: "Berekenen",
+    Stap.RESULTATEN: "Resultaten",
+    Stap.ACCOUNTANT: "Accountant",
+    Stap.RAPPORT: "Rapport",
 }
 
 # Session state keys

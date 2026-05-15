@@ -41,6 +41,8 @@ class Scenario(BaseModel):
     spaargeld_start: Decimal = Decimal("0")   # beginsaldo in euro's
     jaarlijkse_inleg: Decimal = Decimal("0")  # jaarlijkse toevoeging aan vermogen
     rendement_pct: Decimal = Decimal("3")     # verwacht jaarlijks rendement in %
+    rendement_sparen_pct: Decimal | None = None    # rendement op spaargeld (als None: gebruik rendement_pct)
+    rendement_beleggen_pct: Decimal | None = None  # rendement op beleggingen (als None: gebruik rendement_pct)
 
     # Financiële componenten (inkomsten, uitgaven, inhoudingen)
     componenten: list[FinancieelComponent] = []
@@ -64,6 +66,10 @@ class Scenario(BaseModel):
             raise ValueError("spaargeld_start mag niet negatief zijn.")
         if not (Decimal("0") <= self.rendement_pct <= Decimal("30")):
             raise ValueError("rendement_pct moet tussen 0% en 30% liggen.")
+        if self.rendement_sparen_pct is not None and not (Decimal("0") <= self.rendement_sparen_pct <= Decimal("30")):
+            raise ValueError("rendement_sparen_pct moet tussen 0% en 30% liggen.")
+        if self.rendement_beleggen_pct is not None and not (Decimal("0") <= self.rendement_beleggen_pct <= Decimal("30")):
+            raise ValueError("rendement_beleggen_pct moet tussen 0% en 30% liggen.")
         if not (Decimal("0") <= self.inflatie_pct <= Decimal("20")):
             raise ValueError("inflatie_pct moet tussen 0% en 20% liggen.")
         for p in self.tarief_periodes:
@@ -72,6 +78,14 @@ class Scenario(BaseModel):
             if not (Decimal("0") <= p.inflatie_pct <= Decimal("20")):
                 raise ValueError("inflatie_pct in tarief_periodes moet tussen 0% en 20% liggen.")
         return self
+
+    def get_rendement_sparen(self) -> Decimal:
+        """Geef rendement voor spaargeld; fallback naar rendement_pct als niet expliciet gezet."""
+        return self.rendement_sparen_pct if self.rendement_sparen_pct is not None else self.rendement_pct
+
+    def get_rendement_beleggen(self) -> Decimal:
+        """Geef rendement voor beleggingen; fallback naar rendement_pct als niet expliciet gezet."""
+        return self.rendement_beleggen_pct if self.rendement_beleggen_pct is not None else self.rendement_pct
 
     # --- Hulpeigenschappen voor terugwaartse compatibiliteit in rapportages ---
     def arbeidsinkomen_componenten(self, persoon: str) -> list[FinancieelComponent]:

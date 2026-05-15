@@ -29,11 +29,15 @@ from pensioen.ui.pagina_scenario import toon_scenario_pagina
 from pensioen.ui.pagina_bereken import toon_bereken_pagina
 from pensioen.ui.pagina_accountant import toon_accountant_pagina
 from pensioen.ui.sessie_persistentie import autosla_sessie_op, laad_sessie
+from pensioen.ui.style import injecteer_stijl
 from pensioen.ui.scenario_context import (
     ensure_scenario_context,
     get_actief_scenario_naam,
     set_actief_scenario_naam,
 )
+
+# Injecteer professionele huisstijl
+injecteer_stijl()
 
 # Herstel sessie bij (her)start (eenmalig per serversessie)
 laad_sessie()
@@ -52,31 +56,93 @@ STAP_NAAR_PAGINA = {
 }
 
 # --- Sidebar setup ---
-st.sidebar.title("🏦 Pensioenplanner")
+st.sidebar.markdown(
+    '<p style="color:#D0E3F3;font-size:1rem;font-weight:700;'
+    'padding:0 0.75rem;margin:0 0 1.25rem 0;letter-spacing:-0.01em">'
+    'Pensioenplanner</p>',
+    unsafe_allow_html=True,
+)
 
-# Render steps bar in sidebar (vertical)
-st.sidebar.markdown("**Voortgang**")
+# Voortgangslijst (stappen)
+st.sidebar.markdown(
+    '<p style="color:rgba(141,173,197,0.5);font-size:0.68rem;font-weight:600;'
+    'text-transform:uppercase;letter-spacing:0.08em;padding:0 0.75rem;margin:0 0 0.5rem 0">'
+    'Voortgang</p>',
+    unsafe_allow_html=True,
+)
 huidig_stap = get_huidge_stap()
+
+# Verwerk optionele stapnavigatie via query-parameter (vrije navigatie)
+doel_stap_waarde = st.query_params.get("ga_naar_stap")
+if doel_stap_waarde:
+    doel_stap = next((s for s in STAPPEN_VOLGORDE if s.value == doel_stap_waarde), None)
+    if doel_stap is not None and doel_stap != huidig_stap:
+        st.query_params.clear()
+        set_huidge_stap(doel_stap, validatie_ok=False)
+        st.rerun()
+    st.query_params.clear()
 
 for i, stap in enumerate(STAPPEN_VOLGORDE):
     status = stap_status(stap)
     label = STAP_LABELS[stap]
-    stap_nr = str(i + 1)
+    nr = f"{i + 1:02d}"
 
-    # Maak stappen klikbaar voor teruggaan (maar niet forward)
-    if status == "voltooid" or status == "opnieuw_nodig":
-        # Klikbare knop voor eerdere stappen
-        if st.sidebar.button(
-            f"{stap_nr}. {label}" if status == "voltooid" else f"🔴 {stap_nr}. {label}",
-            key=f"stap_btn_{stap.value}",
-            use_container_width=True,
-        ):
-            set_huidge_stap(stap, validatie_ok=False)
-            st.rerun()
-    elif status == "huidig":
-        st.sidebar.markdown(f"**🟦 {stap_nr}. {label}**")
-    else:  # toekomstig
-        st.sidebar.markdown(f"⚪ {stap_nr}. {label}")
+    if status == "huidig":
+        nummer_kleur = "#88BDF2"
+        label_kleur = "#E8F2FB"
+        achtergrond = "rgba(136,189,242,0.1)"
+        rand_links = "#88BDF2"
+        nummer_gewicht = "700"
+        label_gewicht = "600"
+    elif status == "toekomstig":
+        nummer_kleur = "rgba(136,189,242,0.2)"
+        label_kleur = "rgba(141,173,197,0.28)"
+        achtergrond = "transparent"
+        rand_links = "transparent"
+        nummer_gewicht = "600"
+        label_gewicht = "400"
+    elif status == "opnieuw_nodig":
+        nummer_kleur = "rgba(136,189,242,0.25)"
+        label_kleur = "rgba(141,173,197,0.38)"
+        achtergrond = "transparent"
+        rand_links = "transparent"
+        nummer_gewicht = "600"
+        label_gewicht = "400"
+    else:  # voltooid
+        nummer_kleur = "rgba(136,189,242,0.3)"
+        label_kleur = "rgba(141,173,197,0.55)"
+        achtergrond = "transparent"
+        rand_links = "transparent"
+        nummer_gewicht = "600"
+        label_gewicht = "400"
+
+    if i == 0:
+        stappen_html = []
+
+    stappen_html.append(
+        f'<a href="?ga_naar_stap={stap.value}" target="_self" '
+        f'style="display:block;text-decoration:none;margin:0;padding:0;">'
+        f'<div style="display:flex;align-items:center;justify-content:flex-start;'
+        f'gap:8px;padding:4px 12px;margin:0;line-height:1.2;'
+        f'border-left:2px solid {rand_links};background:{achtergrond};">'
+        f'<span style="display:inline-block;min-width:1.4rem;'
+        f'font-variant-numeric:tabular-nums;font-size:0.67rem;'
+        f'font-weight:{nummer_gewicht};color:{nummer_kleur};">{nr}</span>'
+        f'<span style="display:inline-block;font-size:0.81rem;'
+        f'font-weight:{label_gewicht};letter-spacing:0;'
+        f'color:{label_kleur};">{label}</span>'
+        f'</div>'
+        f'</a>'
+    )
+
+if STAPPEN_VOLGORDE:
+    st.sidebar.markdown(
+        '<div style="display:flex;flex-direction:column;gap:0;margin:0;padding:0">'
+        + ''.join(stappen_html)
+        + '</div>',
+        unsafe_allow_html=True,
+    )
+
 st.sidebar.markdown("---")
 
 # Sidebar scenario selectie
@@ -104,8 +170,7 @@ if pagina_func:
 
 # Instellingen altijd beschikbaar buiten flow
 st.sidebar.markdown("---")
-st.sidebar.markdown("**⚙️ Instellingen**")
-if st.sidebar.button("Open Instellingen", key="goto_instellingen_from_sidebar"):
+if st.sidebar.button("Instellingen", key="goto_instellingen_from_sidebar"):
     set_huidge_stap(Stap.INSTELLINGEN, validatie_ok=False)
     st.rerun()
 

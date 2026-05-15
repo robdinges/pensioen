@@ -14,7 +14,7 @@ from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 def toon_persoon_pagina() -> None:
     """Streamlit-pagina voor het invoeren van persoonsgegevens."""
-    st.header("👤 Persoonsgegevens")
+    st.header("Persoonsgegevens")
 
     st.subheader("Persoon 1")
     naam1 = st.text_input("Naam persoon 1", value="Persoon 1", key="naam_p1")
@@ -90,6 +90,6 @@ def toon_persoon_pagina() -> None:
     st.divider()
     col_volgende = st.columns(2)[1]
     with col_volgende:
-        if st.button("Volgende ➡️", use_container_width=True):
+        if st.button("Volgende →", use_container_width=True):
             set_huidge_stap(Stap.PENSIOENGEGEVENS, validatie_ok=True)
             st.rerun()

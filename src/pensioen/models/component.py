@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import calendar
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from enum import Enum
@@ -50,6 +51,13 @@ class BedragType(str, Enum):
     NETTO = "netto"
 
 
+class BeleggingsType(str, Enum):
+    """Type voor vermogencomponenten: sparen of beleggen (bepaalt rendement en box 3 heffing)."""
+
+    SPAREN = "sparen"
+    BELEGGEN = "beleggen"
+
+
 class BedragPeriode(BaseModel):
     """Een afzonderlijke periode binnen een financieel component."""
 
@@ -74,6 +82,7 @@ class FinancieelComponent(BaseModel):
     bedrag: Decimal              # bedrag per frequentie-periode (positief)
     bedrag_type: BedragType = BedragType.BRUTO
     frequentie: Frequentie = Frequentie.MAANDELIJKS
+    beleggings_type: BeleggingsType = BeleggingsType.SPAREN  # sparen of beleggen (voor vermogen/rendement)
     begindatum: date | None = None   # None = geen beperking aan het begin
     einddatum: date | None = None    # None = oneindig
     groei_pct: Decimal = Decimal("0")  # groei per kalenderjaar (%)
@@ -179,7 +188,8 @@ class FinancieelComponent(BaseModel):
 from dataclasses import dataclass  # noqa: E402
 
 
-@dataclass(frozen=True)
+
+@dataclass
 class ComponentSjabloon:
     """Eén sjabloon — waarden zijn aanpasbaar na toevoegen in de UI."""
 
@@ -191,6 +201,7 @@ class ComponentSjabloon:
     groei_pct: Decimal
     persoon: str
     omschrijving: str
+    beleggings_type: BeleggingsType = BeleggingsType.SPAREN
 
 
 COMPONENT_SJABLONEN: list[ComponentSjabloon] = [

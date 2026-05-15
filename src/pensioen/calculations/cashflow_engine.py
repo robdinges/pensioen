@@ -293,7 +293,13 @@ def _bereken_jaar(
     for mb in maand_bruto:
         maand = mb["maand"]
 
-        rente = vermogen_engine.bereken_rente_maand(saldo, scenario.rendement_pct)
+        rente = vermogen_engine.bereken_rente_maand(
+            saldo,
+            scenario.rendement_pct,
+            scenario.rendement_sparen_pct,
+            scenario.rendement_beleggen_pct,
+            scenario.box3_spaargeld_fractie,
+        )
 
         netto_cashflow = (
             mb["arbeid_p1"] + mb["arbeid_p2"]

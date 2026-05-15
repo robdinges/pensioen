@@ -242,7 +242,13 @@ def _bereken_jaar_detail(
     vermogen_rijen = []
     saldo = saldo_begin_jaar
     for mb in maand_data:
-        rente = vermogen_engine.bereken_rente_maand(saldo, scenario.rendement_pct)
+        rente = vermogen_engine.bereken_rente_maand(
+            saldo,
+            scenario.rendement_pct,
+            scenario.rendement_sparen_pct,
+            scenario.rendement_beleggen_pct,
+            scenario.box3_spaargeld_fractie,
+        )
         netto_cf = (
             mb["arbeid_p1"] + mb["arbeid_p2"]
             + mb["overig_p1"] + mb["overig_p2"]
@@ -597,7 +603,7 @@ def _maak_tabel(cols: list[str], rijen: list[list]) -> "pd.DataFrame":
 
 def toon_accountant_pagina() -> None:
     """Streamlit-pagina: gedetailleerde accountantsberekening per jaar."""
-    st.header("🔍 Accountantsoverzicht")
+    st.header("Accountantsoverzicht")
     st.write(
         "Exacte doorrekening van bruto → netto inkomen en vermogensontwikkeling "
         "per jaar, met alle tussentotalen."
@@ -698,11 +704,11 @@ def toon_accountant_pagina() -> None:
     col_vorige, col_volgende = st.columns(2)
     
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.RESULTATEN, validatie_ok=False)
             st.rerun()
     
     with col_volgende:
-        if st.button("Volgende ➡️", use_container_width=True):
+        if st.button("Volgende →", use_container_width=True):
             set_huidge_stap(Stap.RAPPORT, validatie_ok=True)
             st.rerun()

@@ -23,7 +23,7 @@ from pensioen.ui.helpers import fmt_eur, fmt_pct, toon_gap_badge
 
 def toon_instellingen_pagina() -> None:
     """Streamlit-pagina voor het inzien en overschrijven van belastingtarieven."""
-    st.header("⚙️ Instellingen")
+    st.header("Instellingen")
 
     # ─── Tariefstatus over prognosehorizon ───────────────────────────────────
     st.subheader("Tariefstatus")
@@ -125,7 +125,7 @@ def toon_instellingen_pagina() -> None:
 
     # ─── Periodegebaseerde tariefoverrides ──────────────────────────────────
     st.divider()
-    st.subheader("🧩 Tariefperiodes per scenario")
+    st.subheader("Tariefperiodes per scenario")
     scenario_lijst = st.session_state.get("scenario_lijst", [])
     actief_scenario = get_actief_scenario(scenario_lijst)
     if actief_scenario is None:
@@ -224,7 +224,7 @@ def toon_instellingen_pagina() -> None:
 
     # ─── Tariefgenerator ─────────────────────────────────────────────────────
     st.divider()
-    st.subheader("📥 Nieuw tariefbestand genereren")
+    st.subheader("Nieuw tariefbestand genereren")
     st.caption(
         "Vul hieronder de tarieven in voor een nieuw jaar en download het gegenereerde JSON-bestand. "
         "Sla het op als `config/belasting_YYYY.json` en herstart de applicatie om het te activeren."

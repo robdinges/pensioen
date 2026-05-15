@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 import pandas as pd
 import streamlit as st
 
-from pensioen.models.component import BedragType, CategorieComponent, FinancieelComponent, Frequentie
+from pensioen.models.component import BedragType, BeleggingsType, CategorieComponent, FinancieelComponent, Frequentie
 from pensioen.models.pensioen_record import PensioenRecord
 
 
@@ -37,6 +37,12 @@ BEDRAG_TYPE_LABELS = {
 }
 BEDRAG_TYPE_OPTIES = list(BEDRAG_TYPE_LABELS.values())
 
+BELEGGINGS_TYPE_LABELS = {
+    BeleggingsType.SPAREN: "Sparen",
+    BeleggingsType.BELEGGEN: "Beleggen",
+}
+BELEGGINGS_TYPE_OPTIES = list(BELEGGINGS_TYPE_LABELS.values())
+
 
 def maak_lege_component_df() -> pd.DataFrame:
     """Create an empty component DataFrame."""
@@ -50,6 +56,7 @@ def maak_lege_component_df() -> pd.DataFrame:
         "begindatum": pd.Series(dtype="object"),
         "einddatum": pd.Series(dtype="object"),
         "groei_pct": pd.Series(dtype="float64"),
+        "beleggings_type": pd.Series(dtype="object"),
     })
 
 
@@ -67,6 +74,7 @@ def componenten_naar_df(componenten: list[FinancieelComponent]) -> pd.DataFrame:
             "begindatum": c.begindatum.strftime("%d-%m-%Y") if c.begindatum else "",
             "einddatum": c.einddatum.strftime("%d-%m-%Y") if c.einddatum else "",
             "groei_pct": float(c.groei_pct),
+            "beleggings_type": BELEGGINGS_TYPE_LABELS[c.beleggings_type],
         })
     if not rijen:
         return maak_lege_component_df()
@@ -78,6 +86,7 @@ def df_naar_componenten(df: pd.DataFrame) -> list[FinancieelComponent]:
     cat_inv = {v: k for k, v in CATEGORIE_LABELS.items()}
     freq_inv = {v: k for k, v in FREQUENTIE_LABELS.items()}
     bedrag_type_inv = {v: k for k, v in BEDRAG_TYPE_LABELS.items()}
+    beleggings_type_inv = {v: k for k, v in BELEGGINGS_TYPE_LABELS.items()}
 
     componenten = []
     for _, rij in df.iterrows():
@@ -96,6 +105,9 @@ def df_naar_componenten(df: pd.DataFrame) -> list[FinancieelComponent]:
         frequentie = freq_inv.get(freq_label, Frequentie.MAANDELIJKS)
         bedrag_type_label = str(rij.get("bedrag_type", "Bruto"))
         bedrag_type = bedrag_type_inv.get(bedrag_type_label, BedragType.BRUTO)
+
+        beleggings_type_label = str(rij.get("beleggings_type", "Sparen"))
+        beleggings_type = beleggings_type_inv.get(beleggings_type_label, BeleggingsType.SPAREN)
 
         persoon = str(rij.get("persoon", "P1"))
 
@@ -130,6 +142,7 @@ def df_naar_componenten(df: pd.DataFrame) -> list[FinancieelComponent]:
                 begindatum=begindatum,
                 einddatum=einddatum,
                 groei_pct=groei_pct,
+                beleggings_type=beleggings_type,
             )
             componenten.append(comp)
         except (ValueError, TypeError):

@@ -16,6 +16,8 @@ from pensioen.ui.sessie_persistentie import sla_sessie_op
 from pensioen.ui.component_helpers import (
     BEDRAG_TYPE_LABELS,
     BEDRAG_TYPE_OPTIES,
+    BELEGGINGS_TYPE_LABELS,
+    BELEGGINGS_TYPE_OPTIES,
     CATEGORIE_LABELS,
     CATEGORIE_OPTIES,
     FREQUENTIE_LABELS,
@@ -28,7 +30,7 @@ from pensioen.ui.component_helpers import (
 
 def toon_componenten_pagina() -> None:
     """Bewerk financiële componenten voor het actieve scenario."""
-    st.header("💶 Financiële componenten")
+    st.header("Financiële componenten")
 
     scenario_lijst = st.session_state.get("scenario_lijst", [])
     actief = get_actief_scenario(scenario_lijst)
@@ -68,14 +70,15 @@ def toon_componenten_pagina() -> None:
                 sj = next(s for s in COMPONENT_SJABLONEN if s.label == sj_keuze)
                 nieuwe_rij = pd.DataFrame([{
                     "omschrijving": sj.omschrijving,
-                    "categorie": _CATEGORIE_LABELS[sj.categorie],
+                    "categorie": CATEGORIE_LABELS[sj.categorie],
                     "persoon": sj.persoon,
                     "bedrag_type": BEDRAG_TYPE_LABELS[sj.bedrag_type],
                     "bedrag": float(sj.bedrag),
-                    "frequentie": _FREQUENTIE_LABELS[sj.frequentie],
+                    "frequentie": FREQUENTIE_LABELS[sj.frequentie],
                     "begindatum": "",
                     "einddatum": "",
                     "groei_pct": float(sj.groei_pct),
+                    "beleggings_type": BELEGGINGS_TYPE_LABELS[sj.beleggings_type],
                 }])
                 st.session_state["component_tabel"] = pd.concat(
                     [st.session_state["component_tabel"], nieuwe_rij], ignore_index=True
@@ -92,6 +95,7 @@ def toon_componenten_pagina() -> None:
             "bedrag_type": st.column_config.SelectboxColumn("Type", options=BEDRAG_TYPE_OPTIES, required=True, width="small"),
             "bedrag": st.column_config.NumberColumn("Bedrag (€)", min_value=0.0, format="%.2f", required=True, width="small"),
             "frequentie": st.column_config.SelectboxColumn("Frequentie", options=FREQUENTIE_OPTIES, required=True, width="medium"),
+            "beleggings_type": st.column_config.SelectboxColumn("Soort vermogen", options=BELEGGINGS_TYPE_OPTIES, required=True, width="small"),
             "begindatum": st.column_config.TextColumn("Begindatum (dd-mm-jjjj)", width="medium"),
             "einddatum": st.column_config.TextColumn("Einddatum (dd-mm-jjjj)", width="medium"),
             "groei_pct": st.column_config.NumberColumn("Groei % /jaar", min_value=0.0, max_value=20.0, format="%.1f", width="small"),
@@ -101,7 +105,7 @@ def toon_componenten_pagina() -> None:
     )
 
     st.divider()
-    st.subheader("🏦 Pensioendatums (uit MPO-import)")
+    st.subheader("Pensioendatums (uit MPO-import)")
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         st.markdown("**Persoon 1**")
@@ -114,7 +118,7 @@ def toon_componenten_pagina() -> None:
             records_p2 = []
 
     st.divider()
-    st.subheader("⚡ Eenmalige ontvangsten en uitgaven")
+    st.subheader("Eenmalige ontvangsten en uitgaven")
     standaard_inc = pd.DataFrame(
         [{"datum": i.datum.strftime("%d-%m-%Y"), "bedrag": float(i.bedrag), "omschrijving": i.omschrijving}
          for i in scenario.incidentele_items],
@@ -142,7 +146,7 @@ def toon_componenten_pagina() -> None:
     )
 
     st.divider()
-    st.subheader("💰 Vermogen en rendement")
+    st.subheader("Vermogen en rendement")
     col_v1, col_v2 = st.columns(2)
     with col_v1:
         spaargeld = st.number_input(
@@ -156,10 +160,37 @@ def toon_componenten_pagina() -> None:
             step=500, key="comp_inleg",
         )
     with col_v2:
-        rendement = st.slider(
-            "Verwacht rendement (%)", 0.0, 10.0,
-            float(scenario.rendement_pct), 0.1, key="comp_rendement",
+        # Toggle voor afzonderlijke rendementen
+        gebruik_aparte_rendementen = st.checkbox(
+            "Gebruik afzonderlijke rendementen voor sparen en beleggen",
+            value=scenario.rendement_sparen_pct is not None or scenario.rendement_beleggen_pct is not None,
+            key="comp_aparte_rendementen",
+            help="Schakel in om verschillende rendementen in te stellen voor spaargeld en beleggingen.",
         )
+        
+        if gebruik_aparte_rendementen:
+            rendement_sparen = st.slider(
+                "Rendement op spaargeld (%)", 0.0, 10.0,
+                float(scenario.get_rendement_sparen()), 0.1, key="comp_rendement_sparen",
+                help="Verwacht jaarrendement op spaargeld (bijv. 0,5-2%).",
+            )
+            rendement_beleggen = st.slider(
+                "Rendement op beleggingen (%)", 0.0, 10.0,
+                float(scenario.get_rendement_beleggen()), 0.1, key="comp_rendement_beleggen",
+                help="Verwacht jaarrendement op beleggingen (bijv. 4-7%).",
+            )
+            # Voor backward compat: gemiddelde als fallback
+            rendement_avg = (Decimal(str(rendement_sparen)) + Decimal(str(rendement_beleggen))) / 2
+        else:
+            rendement_avg = st.slider(
+                "Verwacht rendement (%)", 0.0, 10.0,
+                float(scenario.rendement_pct), 0.1, key="comp_rendement",
+                help="Gemiddeld jaarrendement (gebruikt als aparte rendementen niet ingesteld).",
+            )
+            rendement_sparen = rendement_avg
+            rendement_beleggen = rendement_avg
+            rendement_avg = Decimal(str(rendement_avg))
+        
         inflatie = st.slider(
             "Verwachte inflatie (%)", 0.0, 10.0,
             float(scenario.inflatie_pct), 0.1, key="comp_inflatie",
@@ -215,9 +246,18 @@ def toon_componenten_pagina() -> None:
 
         nieuwe_spaargeld = Decimal(str(spaargeld))
         nieuwe_inleg = Decimal(str(jaarlijkse_inleg))
-        nieuwe_rendement = Decimal(str(rendement))
         nieuwe_inflatie = Decimal(str(inflatie))
         nieuwe_box3_fractie = Decimal(str(box3_spaargeld_pct)) / Decimal("100")
+        
+        # Rendement: sla beide opslag sparen en beleggen op als deze ingesteld zijn
+        if gebruik_aparte_rendementen:
+            nieuwe_rendement = rendement_avg  # fallback gemiddelde
+            nieuwe_rendement_sparen = Decimal(str(rendement_sparen))
+            nieuwe_rendement_beleggen = Decimal(str(rendement_beleggen))
+        else:
+            nieuwe_rendement = Decimal(str(rendement_avg))
+            nieuwe_rendement_sparen = None
+            nieuwe_rendement_beleggen = None
 
         gewijzigd = (
             scenario.componenten != componenten
@@ -225,6 +265,8 @@ def toon_componenten_pagina() -> None:
             or scenario.spaargeld_start != nieuwe_spaargeld
             or scenario.jaarlijkse_inleg != nieuwe_inleg
             or scenario.rendement_pct != nieuwe_rendement
+            or scenario.rendement_sparen_pct != nieuwe_rendement_sparen
+            or scenario.rendement_beleggen_pct != nieuwe_rendement_beleggen
             or scenario.inflatie_pct != nieuwe_inflatie
             or scenario.box3_meenemen != box3_meenemen
             or scenario.box3_spaargeld_fractie != nieuwe_box3_fractie
@@ -235,6 +277,8 @@ def toon_componenten_pagina() -> None:
             scenario.spaargeld_start = nieuwe_spaargeld
             scenario.jaarlijkse_inleg = nieuwe_inleg
             scenario.rendement_pct = nieuwe_rendement
+            scenario.rendement_sparen_pct = nieuwe_rendement_sparen
+            scenario.rendement_beleggen_pct = nieuwe_rendement_beleggen
             scenario.inflatie_pct = nieuwe_inflatie
             scenario.box3_meenemen = box3_meenemen
             scenario.box3_spaargeld_fractie = nieuwe_box3_fractie
@@ -262,11 +306,11 @@ def toon_componenten_pagina() -> None:
     col_vorige, col_volgende = st.columns(2)
 
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.SCENARIO, validatie_ok=False)
             st.rerun()
 
     with col_volgende:
-        if st.button("Volgende ➡️", use_container_width=True):
+        if st.button("Volgende →", use_container_width=True):
             set_huidge_stap(Stap.BEREKEN, validatie_ok=True)
             st.rerun()

@@ -16,7 +16,7 @@ from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 def toon_bereken_pagina() -> None:
     """Streamlit-pagina voor het uitvoeren van berekeningen."""
-    st.header("▶ Berekening uitvoeren")
+    st.header("Berekening uitvoeren")
 
     # Valideer vereiste invoer
     persoon1 = st.session_state.get("persoon1")
@@ -86,7 +86,7 @@ def toon_bereken_pagina() -> None:
     col_vorige, col_volgende = st.columns(2)
 
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.COMPONENTEN, validatie_ok=False)
             st.rerun()
 

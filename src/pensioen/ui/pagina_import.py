@@ -46,7 +46,7 @@ def _toon_validatiemeldingen(resultaat) -> None:
 
 def toon_import_pagina() -> None:
     """Streamlit-pagina voor het importeren van pensioengegevens."""
-    st.header("📂 Pensioengegevens importeren")
+    st.header("Pensioengegevens importeren")
     st.write(
         "Upload uw MijnPensioenoverzicht-export (CSV, Excel of JSON). "
         "Indien u een partner heeft, upload ook diens bestand."
@@ -130,12 +130,12 @@ def toon_import_pagina() -> None:
     col_vorige, col_volgende = st.columns(2)
 
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.PERSONEN, validatie_ok=False)
             st.rerun()
 
     with col_volgende:
-        if st.button("Volgende ➡️", use_container_width=True):
+        if st.button("Volgende →", use_container_width=True):
             set_huidge_stap(Stap.SCENARIO, validatie_ok=True)
             st.rerun()
 

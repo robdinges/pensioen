@@ -46,7 +46,8 @@ pensioen/
 │   ├── models/                     # Pydantic inputmodellen + cashflow dataclasses
 │   │   ├── persoon.py              # Persoon
 │   │   ├── pensioen_record.py      # PensioenRecord + TypePensioen
-│   │   ├── scenario.py             # Scenario + IncidenteelItem
+│   │   ├── component.py            # FinancieelComponent + BeleggingsType (sparen/beleggen)
+│   │   ├── scenario.py             # Scenario + IncidenteelItem; rendement_sparen_pct + rendement_beleggen_pct
 │   │   └── cashflow.py             # MaandResultaat, JaarResultaat, HuishoudCashflow
 │   ├── tax/                        # Belastingberekeningen
 │   │   ├── belasting_loader.py     # laad_tarieven(jaar), laad_tarieven_bereik()
@@ -59,8 +60,8 @@ pensioen/
 │   │   └── validator.py            # valideer_records() → ValidationResultaat
 │   ├── calculations/
 │   │   ├── pensioen_engine.py      # Pro-rata maandberekeningen (pensioen/AOW/arbeid)
-│   │   ├── vermogen_engine.py      # Vermogensontwikkeling met maandrendement
-│   │   ├── cashflow_engine.py      # bereken_huishouden() — hoofdengine
+│   │   ├── vermogen_engine.py      # Vermogensontwikkeling met maandrendement; ondersteunt sparen/beleggen split
+│   │   ├── cashflow_engine.py      # bereken_huishouden() — hoofdengine; doet rendement_sparen/beleggen door
 │   │   └── scenario_engine.py      # vergelijk_scenarios() — multi-scenario vergelijking
 │   ├── reports/
 │   │   └── rapport_engine.py       # genereer_rapport() → Excel bytes

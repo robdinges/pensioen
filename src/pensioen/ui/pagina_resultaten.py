@@ -16,7 +16,7 @@ from pensioen.ui.scenario_context import get_actief_scenario
 
 def toon_resultaten_pagina() -> None:
     """Streamlit-pagina voor het berekenen en weergeven van de prognose."""
-    st.header("📊 Resultaten")
+    st.header("Resultaten")
 
     actieve_scenario_raw = get_actief_scenario(st.session_state.get("scenario_lijst", []))
     if actieve_scenario_raw is not None:
@@ -64,12 +64,12 @@ def toon_resultaten_pagina() -> None:
     col_vorige, col_volgende = st.columns(2)
     
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.BEREKEN, validatie_ok=False)
             st.rerun()
     
     with col_volgende:
-        if st.button("Volgende ➡️", use_container_width=True):
+        if st.button("Volgende →", use_container_width=True):
             set_huidge_stap(Stap.ACCOUNTANT, validatie_ok=True)
             st.rerun()
 

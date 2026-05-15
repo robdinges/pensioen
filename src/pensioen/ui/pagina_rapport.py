@@ -13,7 +13,7 @@ from pensioen.ui.scenario_context import get_actief_scenario_naam
 
 def toon_rapport_pagina() -> None:
     """Streamlit-pagina voor het downloaden van het prognose-rapport."""
-    st.header("📥 Rapport downloaden")
+    st.header("Rapport downloaden")
 
     cashflow = st.session_state.get("cashflow_hoofd")
     vergelijking = st.session_state.get("vergelijking")
@@ -48,7 +48,7 @@ def toon_rapport_pagina() -> None:
         f"pensioenprognose_{cashflow.scenario_naam.replace(' ', '_')}_{date.today()}.xlsx"
     )
 
-    if st.button("📊 Rapport genereren", type="primary", key="genereer_rapport"):
+    if st.button("Rapport genereren", type="primary", key="genereer_rapport"):
         with st.spinner("Rapport wordt gegenereerd..."):
             try:
                 rapport_bytes = genereer_rapport(cashflow, vergelijking)
@@ -78,6 +78,6 @@ def toon_rapport_pagina() -> None:
     st.divider()
     col_vorige = st.columns(2)[0]
     with col_vorige:
-        if st.button("⬅️ Vorige"):
+        if st.button("← Vorige"):
             set_huidge_stap(Stap.ACCOUNTANT, validatie_ok=False)
             st.rerun()
