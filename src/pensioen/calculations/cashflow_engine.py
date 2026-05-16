@@ -284,8 +284,9 @@ def _bereken_jaar(
 
     # --- Stap 4: Jaarlijkse inleg ---
     inleg_per_maand = Decimal("0")
-    if scenario.jaarlijkse_inleg > Decimal("0"):
-        inleg_per_maand = _rond_af(scenario.jaarlijkse_inleg / Decimal("12"))
+    totale_inleg = scenario.totaal_jaarlijkse_inleg()
+    if totale_inleg > Decimal("0"):
+        inleg_per_maand = _rond_af(totale_inleg / Decimal("12"))
 
     # --- Stap 5: Maandresultaten samenstellen ---
     aannames: list[str] = []

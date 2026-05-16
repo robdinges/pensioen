@@ -180,3 +180,317 @@ def toon_pensioen_editor(records_key: str, persoon_label: str) -> list[PensioenR
                 "einddatum": einddatum,
             }))
     return gewijzigd
+
+
+# ============================================================================
+# Card en Form Renderers (herbruikbaar voor nieuwe UI)
+# ============================================================================
+
+def render_component_card(
+    comp: FinancieelComponent,
+    idx: int,
+    section_key: str,
+) -> None:
+    """
+    Render één component als compacte card met inline actieknoppen.
+    
+    Args:
+        comp: FinancieelComponent object.
+        idx: Index in de lijst.
+        section_key: Unieke sectie-identifier voor state keys.
+    """
+    from pensioen.ui.style import badge_html, format_bedrag, ICONS
+    
+    # Bepaal type voor badge-kleur
+    if comp.categorie.value in ("arbeidsinkomen", "pensioen_inkomen", "overig_inkomen"):
+        badge_type = "inkomen"
+    elif comp.categorie.value in ("uitgave", "inhouding"):
+        badge_type = "uitgave"
+    else:
+        badge_type = "neutraal"
+    
+    # Bedrag formatteren
+    bedrag_str = format_bedrag(float(comp.bedrag))
+    freq_label = FREQUENTIE_LABELS[comp.frequentie]
+    
+    # Bruto/netto badge
+    type_badge = badge_html(BEDRAG_TYPE_LABELS[comp.bedrag_type], badge_type="neutraal", small=True)
+    cat_badge = badge_html(CATEGORIE_LABELS[comp.categorie], badge_type=badge_type, small=True)
+    
+    # Card container met lichte achtergrond
+    with st.container():
+        col_info, col_act = st.columns([5, 1])
+        
+        with col_info:
+            st.markdown(f"**{comp.omschrijving}**")
+            st.markdown(
+                f"{bedrag_str} / {freq_label} • {comp.persoon} • {type_badge} {cat_badge}",
+                unsafe_allow_html=True,
+            )
+            # Extra details indien aanwezig
+            details = []
+            if comp.begindatum:
+                details.append(f"Vanaf {comp.begindatum.strftime('%d-%m-%Y')}")
+            if comp.einddatum:
+                details.append(f"Tot {comp.einddatum.strftime('%d-%m-%Y')}")
+            if comp.groei_pct and comp.groei_pct > 0:
+                details.append(f"Groei {float(comp.groei_pct):.1f}%/jr")
+            if details:
+                st.caption(" | ".join(details))
+        
+        with col_act:
+            edit_key = f"{section_key}_edit_{idx}"
+            del_key = f"{section_key}_del_{idx}"
+            
+            if st.button(f"{ICONS['bewerken']}", key=edit_key, help="Wijzigen"):
+                st.session_state[f"{section_key}_active_idx"] = idx
+                st.session_state[f"{section_key}_active_mode"] = "edit"
+                st.rerun()
+            
+            if st.button(f"{ICONS['verwijderen']}", key=del_key, help="Verwijderen", type="secondary"):
+                st.session_state[f"{section_key}_delete_idx"] = idx
+                st.rerun()
+        
+        st.markdown("---")
+
+
+def render_component_form(
+    section_key: str,
+    mode: str,
+    initial: FinancieelComponent | None,
+    persoon_opties: list[str],
+) -> FinancieelComponent | None:
+    """
+    Render herbruikbaar formulier voor toevoegen of wijzigen van een component.
+    
+    Args:
+        section_key: Unieke sectie-identifier.
+        mode: "add" of "edit".
+        initial: Initiële data (None bij add).
+        persoon_opties: Lijst van mogelijke personen.
+    
+    Returns:
+        FinancieelComponent indien opgeslagen, anders None.
+    """
+    from datetime import datetime
+    
+    from pensioen.ui.style import ICONS
+    
+    form_key = f"{section_key}_form_{mode}"
+    
+    # Initiële waarden
+    if initial:
+        omschr = initial.omschrijving
+        cat = CATEGORIE_LABELS[initial.categorie]
+        pers = initial.persoon
+        bedrag = float(initial.bedrag)
+        btype = BEDRAG_TYPE_LABELS[initial.bedrag_type]
+        freq = FREQUENTIE_LABELS[initial.frequentie]
+        belegg = BELEGGINGS_TYPE_LABELS[initial.beleggings_type]
+        begindatum_val = initial.begindatum
+        einddatum_val = initial.einddatum
+        groei = float(initial.groei_pct)
+    else:
+        omschr = ""
+        cat = CATEGORIE_OPTIES[0]
+        pers = persoon_opties[0]
+        bedrag = 0.0
+        btype = BEDRAG_TYPE_OPTIES[0]
+        freq = FREQUENTIE_OPTIES[0]
+        belegg = BELEGGINGS_TYPE_OPTIES[0]
+        begindatum_val = None
+        einddatum_val = None
+        groei = 0.0
+    
+    st.markdown(f"### {ICONS['toevoegen'] if mode == 'add' else ICONS['bewerken']} {'Nieuw component' if mode == 'add' else 'Component wijzigen'}")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        omschrijving = st.text_input("Omschrijving", value=omschr, key=f"{form_key}_omschr")
+        categorie_label = st.selectbox("Categorie", options=CATEGORIE_OPTIES, index=CATEGORIE_OPTIES.index(cat), key=f"{form_key}_cat")
+        bedrag_inp = st.number_input("Bedrag (€)", min_value=0, value=int(bedrag), step=100, key=f"{form_key}_bedrag")
+        frequentie_label = st.selectbox("Frequentie", options=FREQUENTIE_OPTIES, index=FREQUENTIE_OPTIES.index(freq), key=f"{form_key}_freq")
+    
+    with col2:
+        persoon = st.selectbox("Persoon", options=persoon_opties, index=persoon_opties.index(pers) if pers in persoon_opties else 0, key=f"{form_key}_pers")
+        bedrag_type_label = st.selectbox("Type bedrag", options=BEDRAG_TYPE_OPTIES, index=BEDRAG_TYPE_OPTIES.index(btype), key=f"{form_key}_btype")
+        groei_inp = st.number_input("Groei % per jaar", min_value=0.0, max_value=20.0, value=groei, step=0.1, key=f"{form_key}_groei")
+    
+    # Geavanceerde opties (ingeklapt)
+    with st.expander("⚙️ Geavanceerde opties", expanded=False):
+        st.caption("Deze opties bepalen naar welk vermogenstype (spaargeld of beleggingen) dit component bijdraagt. Dit beïnvloedt de dynamische split voor Box 3 en rendementsberekeningen.")
+        belegg_type_label = st.selectbox(
+            "Soort vermogen",
+            options=BELEGGINGS_TYPE_OPTIES,
+            index=BELEGGINGS_TYPE_OPTIES.index(belegg),
+            key=f"{form_key}_belegg",
+            help="Bepaalt of dit component naar spaargeld of beleggingen gaat.",
+        )
+    
+    st.markdown("**Optionele datumrange**")
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        begindatum = st.date_input("Vanaf (leeg = altijd)", value=begindatum_val, key=f"{form_key}_start", format="DD-MM-YYYY")
+    with col_d2:
+        einddatum = st.date_input("Tot (leeg = onbepaald)", value=einddatum_val, key=f"{form_key}_eind", format="DD-MM-YYYY")
+    
+    col_save, col_cancel = st.columns(2)
+    with col_save:
+        if st.button("💾 Bewaren", key=f"{form_key}_save", type="primary", use_container_width=True):
+            # Validatie
+            if not omschrijving.strip():
+                st.error("Omschrijving is verplicht.")
+                return None
+            
+            # Mapping terug naar enums
+            cat_inv = {v: k for k, v in CATEGORIE_LABELS.items()}
+            freq_inv = {v: k for k, v in FREQUENTIE_LABELS.items()}
+            btype_inv = {v: k for k, v in BEDRAG_TYPE_LABELS.items()}
+            belegg_inv = {v: k for k, v in BELEGGINGS_TYPE_LABELS.items()}
+            
+            try:
+                return FinancieelComponent(
+                    omschrijving=omschrijving.strip(),
+                    categorie=cat_inv[categorie_label],
+                    persoon=persoon,
+                    bedrag=Decimal(str(bedrag_inp)),
+                    bedrag_type=btype_inv[bedrag_type_label],
+                    frequentie=freq_inv[frequentie_label],
+                    beleggings_type=belegg_inv[belegg_type_label],
+                    begindatum=begindatum if begindatum else None,
+                    einddatum=einddatum if einddatum else None,
+                    groei_pct=Decimal(str(groei_inp)),
+                )
+            except (ValueError, TypeError) as e:
+                st.error(f"Ongeldige invoer: {e}")
+                return None
+    
+    with col_cancel:
+        if st.button("❌ Annuleren", key=f"{form_key}_cancel", use_container_width=True):
+            st.session_state[f"{section_key}_active_mode"] = None
+            st.session_state[f"{section_key}_active_idx"] = None
+            st.rerun()
+    
+    return None
+
+
+def render_incidenteel_card(
+    item: "IncidenteelItem",
+    idx: int,
+    section_key: str,
+) -> None:
+    """
+    Render één eenmalige cashflow als compacte card met inline actieknoppen.
+    
+    Args:
+        item: IncidenteelItem object.
+        idx: Index in de lijst.
+        section_key: Unieke sectie-identifier voor state keys.
+    """
+    from pensioen.ui.style import badge_html, format_bedrag, ICONS
+    
+    is_ontvangst = item.bedrag >= 0
+    badge_type = "ontvangst" if is_ontvangst else "uitgave_eenmalig"
+    bedrag_str = format_bedrag(float(item.bedrag))
+    
+    type_badge = badge_html("Ontvangst" if is_ontvangst else "Uitgave", badge_type=badge_type, small=True)
+    
+    with st.container():
+        col_info, col_act = st.columns([5, 1])
+        
+        with col_info:
+            st.markdown(f"**{item.omschrijving or '(geen omschrijving)'}**")
+            st.markdown(
+                f"{bedrag_str} op {item.datum.strftime('%d-%m-%Y')} • {type_badge}",
+                unsafe_allow_html=True,
+            )
+        
+        with col_act:
+            edit_key = f"{section_key}_edit_{idx}"
+            del_key = f"{section_key}_del_{idx}"
+            
+            if st.button(f"{ICONS['bewerken']}", key=edit_key, help="Wijzigen"):
+                st.session_state[f"{section_key}_active_idx"] = idx
+                st.session_state[f"{section_key}_active_mode"] = "edit"
+                st.rerun()
+            
+            if st.button(f"{ICONS['verwijderen']}", key=del_key, help="Verwijderen", type="secondary"):
+                st.session_state[f"{section_key}_delete_idx"] = idx
+                st.rerun()
+        
+        st.markdown("---")
+
+
+def render_incidenteel_form(
+    section_key: str,
+    mode: str,
+    initial: "IncidenteelItem | None",
+) -> "IncidenteelItem | None":
+    """
+    Render formulier voor toevoegen of wijzigen van eenmalige cashflow.
+    
+    Args:
+        section_key: Unieke sectie-identifier.
+        mode: "add" of "edit".
+        initial: Initiële data (None bij add).
+    
+    Returns:
+        IncidenteelItem indien opgeslagen, anders None.
+    """
+    from datetime import date
+    
+    from pensioen.models.scenario import IncidenteelItem
+    from pensioen.ui.style import ICONS
+    
+    form_key = f"{section_key}_form_{mode}"
+    
+    if initial:
+        omschr = initial.omschrijving or ""
+        bedrag_val = float(initial.bedrag)
+        datum_val = initial.datum
+    else:
+        omschr = ""
+        bedrag_val = 0.0
+        datum_val = date.today()
+    
+    st.markdown(f"### {ICONS['toevoegen'] if mode == 'add' else ICONS['bewerken']} {'Nieuwe eenmalige cashflow' if mode == 'add' else 'Cashflow wijzigen'}")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        omschrijving = st.text_input("Omschrijving", value=omschr, key=f"{form_key}_omschr")
+        datum = st.date_input("Datum", value=datum_val, key=f"{form_key}_datum", format="DD-MM-YYYY")
+    with col2:
+        bedrag_inp = st.number_input(
+            "Bedrag (€, negatief = uitgave)",
+            value=int(bedrag_val),
+            step=100,
+            key=f"{form_key}_bedrag",
+            help="Positief = ontvangst, negatief = uitgave.",
+        )
+    
+    col_save, col_cancel = st.columns(2)
+    with col_save:
+        if st.button("💾 Bewaren", key=f"{form_key}_save", type="primary", use_container_width=True):
+            if not omschrijving.strip():
+                st.error("Omschrijving is verplicht.")
+                return None
+            
+            try:
+                return IncidenteelItem(
+                    datum=datum,
+                    bedrag=Decimal(str(bedrag_inp)),
+                    omschrijving=omschrijving.strip(),
+                )
+            except (ValueError, TypeError) as e:
+                st.error(f"Ongeldige invoer: {e}")
+                return None
+    
+    with col_cancel:
+        if st.button("❌ Annuleren", key=f"{form_key}_cancel", use_container_width=True):
+            st.session_state[f"{section_key}_active_mode"] = None
+            st.session_state[f"{section_key}_active_idx"] = None
+            st.rerun()
+    
+    return None
+
+

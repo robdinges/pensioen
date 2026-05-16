@@ -2,7 +2,163 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal
+
 import streamlit as st
+
+
+# ============================================================================
+# UI Tokens en Helpers voor Componentweergave
+# ============================================================================
+
+@dataclass(frozen=True)
+class ColorToken:
+    """Kleurtoken voor consistent gebruik door de UI."""
+    
+    primary: str
+    light: str
+    dark: str
+    bg: str
+
+
+# Kleurpalette voor component-types
+COLORS = {
+    "inkomen": ColorToken(
+        primary="#10b981",  # emerald-500
+        light="#d1fae5",    # emerald-100
+        dark="#065f46",     # emerald-900
+        bg="#ecfdf5",       # emerald-50
+    ),
+    "uitgave": ColorToken(
+        primary="#f59e0b",  # amber-500
+        light="#fef3c7",    # amber-100
+        dark="#92400e",     # amber-900
+        bg="#fffbeb",       # amber-50
+    ),
+    "ontvangst": ColorToken(
+        primary="#10b981",  # emerald-500
+        light="#d1fae5",    # emerald-100
+        dark="#065f46",     # emerald-900
+        bg="#ecfdf5",       # emerald-50
+    ),
+    "uitgave_eenmalig": ColorToken(
+        primary="#ef4444",  # red-500
+        light="#fee2e2",    # red-100
+        dark="#991b1b",     # red-900
+        bg="#fef2f2",       # red-50
+    ),
+    "vermogen": ColorToken(
+        primary="#0ea5e9",  # sky-500
+        light="#e0f2fe",    # sky-100
+        dark="#0c4a6e",     # sky-900
+        bg="#f0f9ff",       # sky-50
+    ),
+    "pensioen": ColorToken(
+        primary="#8b5cf6",  # violet-500
+        light="#ede9fe",    # violet-100
+        dark="#4c1d95",     # violet-900
+        bg="#f5f3ff",       # violet-50
+    ),
+    "neutraal": ColorToken(
+        primary="#64748b",  # slate-500
+        light="#e2e8f0",    # slate-200
+        dark="#1e293b",     # slate-800
+        bg="#f8fafc",       # slate-50
+    ),
+}
+
+# Iconen per type (emoji fallback voor Streamlit zonder custom icons)
+ICONS = {
+    "inkomen": "💰",
+    "uitgave": "🧾",
+    "ontvangst": "➕",
+    "uitgave_eenmalig": "➖",
+    "vermogen_sparen": "🏦",
+    "vermogen_beleggen": "📈",
+    "pensioen": "🛡️",
+    "bewerken": "✏️",
+    "verwijderen": "🗑️",
+    "toevoegen": "➕",
+    "oog": "👁️",
+}
+
+
+def badge_html(
+    label: str,
+    badge_type: Literal["inkomen", "uitgave", "ontvangst", "uitgave_eenmalig", "vermogen", "pensioen", "neutraal"] = "neutraal",
+    small: bool = False,
+) -> str:
+    """
+    Genereer HTML voor een badge met consistente styling.
+    
+    Args:
+        label: Tekst op de badge.
+        badge_type: Type badge (bepaalt kleur).
+        small: Gebruik kleinere font-size.
+    
+    Returns:
+        HTML string voor st.markdown(unsafe_allow_html=True).
+    """
+    color = COLORS[badge_type]
+    font_size = "0.7rem" if small else "0.8rem"
+    
+    return f"""<span style="
+        background-color: {color.bg};
+        color: {color.dark};
+        border: 1px solid {color.light};
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: {font_size};
+        font-weight: 600;
+        white-space: nowrap;
+        display: inline-block;
+    ">{label}</span>"""
+
+
+def section_header_html(title: str, icon: str, color_token: ColorToken) -> str:
+    """
+    Genereer HTML voor een sectieheader met icoon en kleurbalk.
+    
+    Args:
+        title: Titel van de sectie.
+        icon: Emoji icoon.
+        color_token: Kleurtoken voor de sectie.
+    
+    Returns:
+        HTML string.
+    """
+    return f"""<div style="
+        border-left: 4px solid {color_token.primary};
+        padding-left: 0.75rem;
+        margin-bottom: 0.5rem;
+    ">
+        <h3 style="margin: 0; color: {color_token.dark};">
+            {icon} {title}
+        </h3>
+    </div>"""
+
+
+def format_bedrag(bedrag: float | int, prefix: str = "€") -> str:
+    """
+    Formatteer een bedrag met duizendscheidingstekens en prefix (hele euro's).
+    
+    Args:
+        bedrag: Bedrag in euro's.
+        prefix: Prefix (default: €).
+        
+    Returns:
+        Geformatteerde string, bijv. "€ 1.234".
+    """
+    bedrag_int = int(round(bedrag))
+    formatted = f"{abs(bedrag_int):,}".replace(",", ".")
+    teken = "-" if bedrag_int < 0 else ""
+    return f"{teken}{prefix} {formatted}"
+
+
+# ============================================================================
+# CSS Injection (bestaande styling)
+# ============================================================================
 
 _CSS = """
 <style>

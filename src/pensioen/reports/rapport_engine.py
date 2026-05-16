@@ -20,7 +20,7 @@ KLEUR_SUBHEADER = "BDD7EE"  # lichtblauw
 KLEUR_TEKORT = "FFC7CE"  # lichtroze (tekortjaar)
 KLEUR_POSITIEF = "C6EFCE"  # lichtgroen
 
-_EURO = "€ #,##0.00"
+_EURO = "€ #,##0"
 _PCT = "0.00%"
 
 

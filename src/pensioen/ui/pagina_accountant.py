@@ -385,7 +385,7 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
         ["Belastbaar inkomen",
          _fmt(d["bruto_p1"]),
          *([_fmt(d["bruto_p2"])] if heeft_p2 else []),
-         ""],
+         _fmt(d["bruto_p1"] + d["bruto_p2"])],
         ["Schijventarief (zie noot *)",
          _fmt(d["bel_voor_korting_p1"]),
          *([_fmt(d["bel_voor_korting_p2"])] if heeft_p2 else []),

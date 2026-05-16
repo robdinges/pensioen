@@ -40,7 +40,9 @@ class Scenario(BaseModel):
     # Spaargeld en rendement
     spaargeld_start: Decimal = Decimal("0")   # beginsaldo in euro's
     beleggingen_start: Decimal = Decimal("0")  # beginwaarde beleggingen in euro's
-    jaarlijkse_inleg: Decimal = Decimal("0")  # jaarlijkse toevoeging aan vermogen
+    jaarlijkse_inleg: Decimal = Decimal("0")  # DEPRECATED: gebruik jaarlijkse_inleg_sparen + jaarlijkse_inleg_beleggen
+    jaarlijkse_inleg_sparen: Decimal = Decimal("0")    # jaarlijkse toevoeging aan spaargeld
+    jaarlijkse_inleg_beleggen: Decimal = Decimal("0")  # jaarlijkse toevoeging aan beleggingen
     rendement_pct: Decimal = Decimal("3")     # verwacht jaarlijks rendement in %
     rendement_sparen_pct: Decimal | None = None    # rendement op spaargeld (als None: gebruik rendement_pct)
     rendement_beleggen_pct: Decimal | None = None  # rendement op beleggingen (als None: gebruik rendement_pct)
@@ -93,6 +95,13 @@ class Scenario(BaseModel):
     def totaal_vermogen_start(self) -> Decimal:
         """Totaal startvermogen (spaargeld + beleggingen)."""
         return self.spaargeld_start + self.beleggingen_start
+    
+    def totaal_jaarlijkse_inleg(self) -> Decimal:
+        """Retourneer totale jaarlijkse inleg (sparen + beleggen)."""
+        # Backward compatibility: als oude jaarlijkse_inleg is ingesteld, gebruik die
+        if self.jaarlijkse_inleg > Decimal("0") and self.jaarlijkse_inleg_sparen == Decimal("0") and self.jaarlijkse_inleg_beleggen == Decimal("0"):
+            return self.jaarlijkse_inleg
+        return self.jaarlijkse_inleg_sparen + self.jaarlijkse_inleg_beleggen
 
     # --- Hulpeigenschappen voor terugwaartse compatibiliteit in rapportages ---
     def arbeidsinkomen_componenten(self, persoon: str) -> list[FinancieelComponent]:
@@ -135,6 +144,16 @@ class Scenario(BaseModel):
         # Start vanuit expliciet opgegeven beginverdeling.
         saldo_sparen = self.spaargeld_start
         saldo_beleggen = self.beleggingen_start
+        
+        # Tel cumulatieve inleg op tot peildatum (jaren * maanden)
+        jaren_sinds_start = peildatum.year - date.today().year
+        maanden_sinds_start = max(0, jaren_sinds_start * 12 + (peildatum.month - date.today().month))
+        
+        if maanden_sinds_start > 0:
+            inleg_sparen_totaal = (self.jaarlijkse_inleg_sparen / Decimal("12")) * Decimal(str(maanden_sinds_start))
+            inleg_beleggen_totaal = (self.jaarlijkse_inleg_beleggen / Decimal("12")) * Decimal(str(maanden_sinds_start))
+            saldo_sparen += inleg_sparen_totaal
+            saldo_beleggen += inleg_beleggen_totaal
         
         for comp in self.componenten:
             if not comp.is_actief(jaar, maand):
