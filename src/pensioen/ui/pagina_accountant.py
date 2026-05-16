@@ -645,7 +645,7 @@ def toon_accountant_pagina() -> None:
         return
 
     st.caption("Overzicht wordt automatisch herberekend bij wijzigingen in personen of scenario.")
-    saldo = scenario.spaargeld_start
+    saldo = scenario.totaal_vermogen_start()
 
     for jaar in range(int(jaar_van), int(jaar_tot) + 1):
         config_basis, aanname = laad_tarieven(jaar)

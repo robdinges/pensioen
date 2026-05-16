@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
@@ -69,7 +70,6 @@ def _bereken_jaar(
     belasting_config: BelastingConfig,
     aanname_melding: str,
     saldo_begin_jaar: Decimal,
-    startjaar: int,
 ) -> JaarResultaat:
     """
     Bereken alle cashflows voor één kalenderjaar voor het huishouden.
@@ -272,9 +272,13 @@ def _bereken_jaar(
     box3_maand = Decimal("0")
     box3_disclaimer = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
+        # Bereken dynamische split op basis van actieve componenten aan het begin van het jaar
+        peildatum_box3 = date(jaar, 1, 1)
+        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_op_datum(peildatum_box3)
+        
         box3_jaar, box3_disclaimer = belasting_engine.bereken_box3_heffing(
             saldo_begin_jaar, belasting_config, heeft_partner,
-            spaargeld_fractie=scenario.box3_spaargeld_fractie,
+            spaargeld_fractie=spaargeld_fractie_box3,
         )
         box3_maand = _rond_af(box3_jaar / Decimal("12"))
 
@@ -293,12 +297,16 @@ def _bereken_jaar(
     for mb in maand_bruto:
         maand = mb["maand"]
 
+        # Bereken dynamische split tussen sparen en beleggen op basis van actieve componenten
+        peildatum = date(jaar, maand, 1)
+        spaargeld_fractie_dynamisch = scenario.bereken_spaargeld_fractie_op_datum(peildatum)
+
         rente = vermogen_engine.bereken_rente_maand(
             saldo,
             scenario.rendement_pct,
             scenario.rendement_sparen_pct,
             scenario.rendement_beleggen_pct,
-            scenario.box3_spaargeld_fractie,
+            spaargeld_fractie_dynamisch,
         )
 
         netto_cashflow = (
@@ -387,8 +395,7 @@ def bereken_huishouden(
         HuishoudCashflow met resultaten per jaar en aannames.
     """
     cashflow = HuishoudCashflow(scenario_naam=scenario.naam)
-    saldo = scenario.spaargeld_start
-    startjaar = jaar_van
+    saldo = scenario.totaal_vermogen_start()
 
     for jaar in range(jaar_van, jaar_tot + 1):
         config, aanname_melding = belasting_configs[jaar]
@@ -403,7 +410,6 @@ def bereken_huishouden(
             belasting_config=config,
             aanname_melding=aanname_melding,
             saldo_begin_jaar=saldo,
-            startjaar=startjaar,
         )
         cashflow.jaren.append(jaar_resultaat)
         saldo = jaar_resultaat.vermogen_einde_jaar

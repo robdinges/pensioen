@@ -50,6 +50,7 @@ def toon_componenten_pagina() -> None:
         st.session_state["_comp_geladen"] = scenario.naam
         # Reset vermogenwidgets zodat ze de waarden van het nieuwe scenario tonen
         st.session_state["comp_spaargeld"] = int(scenario.spaargeld_start)
+        st.session_state["comp_beleggingen"] = int(scenario.beleggingen_start)
         st.session_state["comp_inleg"] = int(scenario.jaarlijkse_inleg)
         st.session_state["comp_rendement"] = float(scenario.rendement_pct)
         st.session_state["comp_inflatie"] = float(scenario.inflatie_pct)
@@ -92,17 +93,19 @@ def toon_componenten_pagina() -> None:
             "omschrijving": st.column_config.TextColumn("Omschrijving", required=True, width="medium"),
             "categorie": st.column_config.SelectboxColumn("Categorie", options=CATEGORIE_OPTIES, required=True, width="medium"),
             "persoon": st.column_config.SelectboxColumn("Persoon", options=persoon_opties, required=True, width="small"),
+            "bedrag": st.column_config.NumberColumn("Bedrag (€)", min_value=0.0, format="%.2f", required=True, width="large"),
             "bedrag_type": st.column_config.SelectboxColumn("Type", options=BEDRAG_TYPE_OPTIES, required=True, width="small"),
-            "bedrag": st.column_config.NumberColumn("Bedrag (€)", min_value=0.0, format="%.2f", required=True, width="small"),
             "frequentie": st.column_config.SelectboxColumn("Frequentie", options=FREQUENTIE_OPTIES, required=True, width="medium"),
             "beleggings_type": st.column_config.SelectboxColumn("Soort vermogen", options=BELEGGINGS_TYPE_OPTIES, required=True, width="small"),
-            "begindatum": st.column_config.TextColumn("Begindatum (dd-mm-jjjj)", width="medium"),
-            "einddatum": st.column_config.TextColumn("Einddatum (dd-mm-jjjj)", width="medium"),
+            "begindatum": st.column_config.TextColumn("Begindatum (dd-mm-jjjj)", width="small"),
+            "einddatum": st.column_config.TextColumn("Einddatum (dd-mm-jjjj)", width="small"),
             "groei_pct": st.column_config.NumberColumn("Groei % /jaar", min_value=0.0, max_value=20.0, format="%.1f", width="small"),
         },
+        column_order=["omschrijving", "categorie", "persoon", "bedrag", "bedrag_type", "frequentie", "beleggings_type", "begindatum", "einddatum", "groei_pct"],
         use_container_width=True,
         key="component_editor_v2",
     )
+    st.session_state["component_tabel"] = component_df
 
     st.divider()
     st.subheader("Pensioendatums (uit MPO-import)")
@@ -144,21 +147,49 @@ def toon_componenten_pagina() -> None:
         use_container_width=True,
         key="incidenteel_editor_v2",
     )
+    st.session_state["incidenteel_tabel"] = incidenteel_df
 
     st.divider()
-    st.subheader("Vermogen en rendement")
+    st.subheader("Vermogensopbouw per type")
+    peildatum = date.today().replace(day=1)
+    fractie_sparen = scenario.bereken_spaargeld_fractie_op_datum(peildatum)
+    fractie_beleggen = Decimal("1") - fractie_sparen
+
+    col_split1, col_split2 = st.columns(2)
+    with col_split1:
+        st.metric(
+            "% Sparen (huidige maand)",
+            f"{float(fractie_sparen * 100):.1f}%",
+            help="Gebaseerd op beginsaldo en actieve componenten met type 'Sparen'.",
+        )
+    with col_split2:
+        st.metric(
+            "% Beleggen (huidige maand)",
+            f"{float(fractie_beleggen * 100):.1f}%",
+            help="Gebaseerd op beginsaldo en actieve componenten met type 'Beleggen'.",
+        )
+
+    st.divider()
     col_v1, col_v2 = st.columns(2)
     with col_v1:
         spaargeld = st.number_input(
-            "Spaargeld/beleggingen nu (€)",
+            "Spaargeld nu (€)",
             min_value=0, value=int(scenario.spaargeld_start),
             step=1000, key="comp_spaargeld",
+        )
+        beleggingen = st.number_input(
+            "Beleggingen nu (€)",
+            min_value=0,
+            value=int(scenario.beleggingen_start),
+            step=1000,
+            key="comp_beleggingen",
         )
         jaarlijkse_inleg = st.number_input(
             "Jaarlijkse extra inleg (€)",
             min_value=0, value=int(scenario.jaarlijkse_inleg),
             step=500, key="comp_inleg",
         )
+        st.caption(f"Totaal vermogen nu: EUR {int(spaargeld + beleggingen):,}".replace(",", "."))
     with col_v2:
         # Toggle voor afzonderlijke rendementen
         gebruik_aparte_rendementen = st.checkbox(
@@ -245,6 +276,7 @@ def toon_componenten_pagina() -> None:
                     pass
 
         nieuwe_spaargeld = Decimal(str(spaargeld))
+        nieuwe_beleggingen = Decimal(str(beleggingen))
         nieuwe_inleg = Decimal(str(jaarlijkse_inleg))
         nieuwe_inflatie = Decimal(str(inflatie))
         nieuwe_box3_fractie = Decimal(str(box3_spaargeld_pct)) / Decimal("100")
@@ -263,6 +295,7 @@ def toon_componenten_pagina() -> None:
             scenario.componenten != componenten
             or scenario.incidentele_items != incidentele_items
             or scenario.spaargeld_start != nieuwe_spaargeld
+            or scenario.beleggingen_start != nieuwe_beleggingen
             or scenario.jaarlijkse_inleg != nieuwe_inleg
             or scenario.rendement_pct != nieuwe_rendement
             or scenario.rendement_sparen_pct != nieuwe_rendement_sparen
@@ -275,6 +308,7 @@ def toon_componenten_pagina() -> None:
             scenario.componenten = componenten
             scenario.incidentele_items = incidentele_items
             scenario.spaargeld_start = nieuwe_spaargeld
+            scenario.beleggingen_start = nieuwe_beleggingen
             scenario.jaarlijkse_inleg = nieuwe_inleg
             scenario.rendement_pct = nieuwe_rendement
             scenario.rendement_sparen_pct = nieuwe_rendement_sparen
@@ -296,7 +330,6 @@ def toon_componenten_pagina() -> None:
 
             sla_sessie_op()
             st.caption(f"Automatisch opgeslagen: {scenario.naam}")
-            st.rerun()
 
     except (TypeError, ValueError) as exc:
         st.error(f"❌ Ongeldige componentinvoer: {exc}")

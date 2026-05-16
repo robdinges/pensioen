@@ -12,7 +12,9 @@ cashflowprognose voor een huishouden.
   - belasting over fictief rendement tegen box 3 tarief
 - Afzonderlijke rendementen voor sparen en beleggen:
   - optioneel twee rendementstarieven instellen (spaarrekening vs. beleggingsportefeuille)
-  - vermogenssplitsing gebaseerd op spaargeldfractie voor box 3
+  - vermogenssplitsing gebaseerd op expliciet ingevoerd spaargeld en beleggingen
+  - componenten kunnen per regel als sparen of beleggen worden gemarkeerd
+  - deze componentmix stuurt zowel de maandelijkse rendementsverdeling als de box 3 verdeling
   - fallback naar uniform rendement als aparte tarieven niet ingesteld
 - Scenario-invoer met verstelbare spaargeldfractie voor box 3.
 - Accountantsoverzicht met volledige component-analyse van netto cashflow:
@@ -50,10 +52,15 @@ streamlit run app.py
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
 
-4. Open in de app het tabblad Accountantsoverzicht en klik op
+4. Vul in Financiele componenten onder Vermogen en rendement apart in:
+  - Spaargeld nu (€)
+  - Beleggingen nu (€)
+  - optioneel aparte rendementen voor sparen en beleggen.
+
+5. Open in de app het tabblad Accountantsoverzicht en klik op
   Berekening uitvoeren.
 
-5. Controleer de componenttabel Netto cashflow opgebouwd uit losse
+6. Controleer de componenttabel Netto cashflow opgebouwd uit losse
   componenten in het accountantsoverzicht.
 
 ## Testing

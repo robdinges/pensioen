@@ -39,6 +39,7 @@ class Scenario(BaseModel):
 
     # Spaargeld en rendement
     spaargeld_start: Decimal = Decimal("0")   # beginsaldo in euro's
+    beleggingen_start: Decimal = Decimal("0")  # beginwaarde beleggingen in euro's
     jaarlijkse_inleg: Decimal = Decimal("0")  # jaarlijkse toevoeging aan vermogen
     rendement_pct: Decimal = Decimal("3")     # verwacht jaarlijks rendement in %
     rendement_sparen_pct: Decimal | None = None    # rendement op spaargeld (als None: gebruik rendement_pct)
@@ -64,6 +65,8 @@ class Scenario(BaseModel):
     def valideer_bedragen(self) -> Scenario:
         if self.spaargeld_start < Decimal("0"):
             raise ValueError("spaargeld_start mag niet negatief zijn.")
+        if self.beleggingen_start < Decimal("0"):
+            raise ValueError("beleggingen_start mag niet negatief zijn.")
         if not (Decimal("0") <= self.rendement_pct <= Decimal("30")):
             raise ValueError("rendement_pct moet tussen 0% en 30% liggen.")
         if self.rendement_sparen_pct is not None and not (Decimal("0") <= self.rendement_sparen_pct <= Decimal("30")):
@@ -87,6 +90,10 @@ class Scenario(BaseModel):
         """Geef rendement voor beleggingen; fallback naar rendement_pct als niet expliciet gezet."""
         return self.rendement_beleggen_pct if self.rendement_beleggen_pct is not None else self.rendement_pct
 
+    def totaal_vermogen_start(self) -> Decimal:
+        """Totaal startvermogen (spaargeld + beleggingen)."""
+        return self.spaargeld_start + self.beleggingen_start
+
     # --- Hulpeigenschappen voor terugwaartse compatibiliteit in rapportages ---
     def arbeidsinkomen_componenten(self, persoon: str) -> list[FinancieelComponent]:
         return [c for c in self.componenten
@@ -106,3 +113,56 @@ class Scenario(BaseModel):
 
     def inhouding_componenten(self) -> list[FinancieelComponent]:
         return [c for c in self.componenten if c.categorie == CategorieComponent.INHOUDING]
+
+    def bereken_spaargeld_fractie_op_datum(self, peildatum: date) -> Decimal:
+        """
+        Bereken de fractie van het totale vermogen dat spaargeld is (0-1) op basis van actieve componenten.
+        
+        Kijkt naar alle vermogencomponenten (inkomsten, uitgaven, inhoudingen) die actief zijn
+        op de gegeven peildatum en bepaalt wat % ervan is gemarkeerd als SPAREN vs BELEGGEN.
+        
+        Args:
+            peildatum: De datum waarop de fractie berekend moet worden.
+            
+        Returns:
+            Fractie tussen 0 en 1. 1.0 = 100% spaargeld, 0.0 = 100% beleggingen.
+        """
+        from pensioen.models.component import BeleggingsType
+        
+        jaar = peildatum.year
+        maand = peildatum.month
+        
+        # Start vanuit expliciet opgegeven beginverdeling.
+        saldo_sparen = self.spaargeld_start
+        saldo_beleggen = self.beleggingen_start
+        
+        for comp in self.componenten:
+            if not comp.is_actief(jaar, maand):
+                continue
+                
+            bedrag_maand = comp.bedrag_per_maand_actief(jaar, maand)
+            
+            # Negatieve bedragen (uitgaven/inhoudingen) tellen als aftrekking
+            if comp.categorie in (CategorieComponent.UITGAVE, CategorieComponent.INHOUDING):
+                bedrag_maand = -bedrag_maand
+            
+            if bedrag_maand == Decimal("0"):
+                continue
+            
+            # Verdeel bedrag naar type
+            if comp.beleggings_type == BeleggingsType.SPAREN:
+                saldo_sparen += bedrag_maand
+            else:  # BeleggingsType.BELEGGEN
+                saldo_beleggen += bedrag_maand
+        
+        totaal = saldo_sparen + saldo_beleggen
+        
+        # Als er geen componenten zijn, gebruik de scenario-instelling
+        if totaal == Decimal("0"):
+            return self.box3_spaargeld_fractie
+        
+        # Fractie spaargeld
+        fractie_sparen = saldo_sparen / totaal if totaal > Decimal("0") else Decimal("1")
+        
+        # Zorg dat fractie tussen 0 en 1 ligt
+        return max(Decimal("0"), min(Decimal("1"), fractie_sparen))
