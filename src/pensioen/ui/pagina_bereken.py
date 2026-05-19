@@ -34,8 +34,9 @@ def toon_bereken_pagina() -> None:
         return
 
     persoon2 = st.session_state.get("persoon2")
-    records1 = st.session_state.get("records_p1", [])
-    records2 = st.session_state.get("records_p2", [])
+    # Pensioenen zijn nu componenten, geen records meer
+    records1 = []
+    records2 = []
 
     # Prognosehorizon
     st.subheader("Prognosehorizon")

@@ -58,14 +58,8 @@ def sla_sessie_op() -> None:
     if p2 := st.session_state.get("persoon2"):
         data["persoon2"] = p2.model_dump(mode="json")
 
-    data["records_p1"] = [
-        r.model_dump(mode="json")
-        for r in st.session_state.get("records_p1", [])
-    ]
-    data["records_p2"] = [
-        r.model_dump(mode="json")
-        for r in st.session_state.get("records_p2", [])
-    ]
+    # records_p1 en records_p2 worden niet meer opgeslagen - pensioenen zijn nu componenten
+    
     data["scenario_lijst"] = [
         s.model_dump(mode="json")
         for s in st.session_state.get("scenario_lijst", [])
@@ -116,14 +110,8 @@ def autosla_sessie_op() -> None:
     if p2 := st.session_state.get("persoon2"):
         data["persoon2"] = p2.model_dump(mode="json")
 
-    data["records_p1"] = [
-        r.model_dump(mode="json")
-        for r in st.session_state.get("records_p1", [])
-    ]
-    data["records_p2"] = [
-        r.model_dump(mode="json")
-        for r in st.session_state.get("records_p2", [])
-    ]
+    # records_p1 en records_p2 worden niet meer opgeslagen - pensioenen zijn nu componenten
+    
     data["scenario_lijst"] = [
         s.model_dump(mode="json")
         for s in st.session_state.get("scenario_lijst", [])
@@ -201,24 +189,7 @@ def laad_sessie() -> None:
         except (TypeError, ValueError):
             pass
 
-    # --- Pensioenrecords ---
-    records1 = []
-    for r in data.get("records_p1", []):
-        try:
-            records1.append(PensioenRecord.model_validate(r))
-        except (TypeError, ValueError):
-            pass
-    if records1:
-        st.session_state["records_p1"] = records1
-
-    records2 = []
-    for r in data.get("records_p2", []):
-        try:
-            records2.append(PensioenRecord.model_validate(r))
-        except (TypeError, ValueError):
-            pass
-    if records2:
-        st.session_state["records_p2"] = records2
+    # records_p1 en records_p2 worden niet meer geladen - pensioenen zijn nu componenten
 
     # --- Scenario's ---
     scenarios = []

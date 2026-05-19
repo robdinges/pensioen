@@ -28,6 +28,16 @@ def toon_componenten_pagina() -> None:
         st.warning("⚠️ Kies eerst een actief scenario.")
         return
 
+    def _update_scenario(scenario, scenario_lijst):
+        """Update scenario in lijst en sla op."""
+        scenario.laatst_gewijzigd_op = datetime.now()
+        for i, sc in enumerate(scenario_lijst):
+            if sc.naam == scenario.naam:
+                scenario_lijst[i] = scenario
+                break
+        st.session_state["scenario_lijst"] = scenario_lijst
+        sla_sessie_op()
+
     scenario = actief
     st.caption(f"Actief scenario: {scenario.naam}")
 
@@ -98,6 +108,7 @@ def toon_componenten_pagina() -> None:
             if nieuwe_comp:
                 scenario.componenten.append(nieuwe_comp)
                 st.session_state["ink_active_mode"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         elif active_mode == "edit" and active_idx is not None:
             gewijzigde_comp = render_component_form(
@@ -112,6 +123,7 @@ def toon_componenten_pagina() -> None:
                 scenario.componenten[orig_idx] = gewijzigde_comp
                 st.session_state["ink_active_mode"] = None
                 st.session_state["ink_active_idx"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         
         # Verwijder-logica
@@ -120,6 +132,7 @@ def toon_componenten_pagina() -> None:
             orig_idx = scenario.componenten.index(inkomsten[del_idx])
             scenario.componenten.pop(orig_idx)
             del st.session_state["ink_delete_idx"]
+            _update_scenario(scenario, scenario_lijst)
             st.rerun()
         
         # Toon cards in grid van 3 kolommen
@@ -157,6 +170,7 @@ def toon_componenten_pagina() -> None:
             if nieuwe_comp:
                 scenario.componenten.append(nieuwe_comp)
                 st.session_state["uitg_active_mode"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         elif active_mode_uitg == "edit" and active_idx_uitg is not None:
             gewijzigde_comp = render_component_form(
@@ -171,6 +185,7 @@ def toon_componenten_pagina() -> None:
                 scenario.componenten[orig_idx] = gewijzigde_comp
                 st.session_state["uitg_active_mode"] = None
                 st.session_state["uitg_active_idx"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         
         # Verwijder-logica
@@ -179,6 +194,7 @@ def toon_componenten_pagina() -> None:
             orig_idx = scenario.componenten.index(uitgaven[del_idx])
             scenario.componenten.pop(orig_idx)
             del st.session_state["uitg_delete_idx"]
+            _update_scenario(scenario, scenario_lijst)
             st.rerun()
         
         # Toon cards in grid van 3 kolommen
@@ -216,6 +232,7 @@ def toon_componenten_pagina() -> None:
             if nieuwe_comp:
                 scenario.componenten.append(nieuwe_comp)
                 st.session_state["pens_active_mode"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         elif active_mode_pens == "edit" and active_idx_pens is not None:
             gewijzigde_comp = render_component_form(
@@ -230,6 +247,7 @@ def toon_componenten_pagina() -> None:
                 scenario.componenten[orig_idx] = gewijzigde_comp
                 st.session_state["pens_active_mode"] = None
                 st.session_state["pens_active_idx"] = None
+                _update_scenario(scenario, scenario_lijst)
                 st.rerun()
         
         # Verwijder-logica
@@ -238,6 +256,7 @@ def toon_componenten_pagina() -> None:
             orig_idx = scenario.componenten.index(pensioenen[del_idx])
             scenario.componenten.pop(orig_idx)
             del st.session_state["pens_delete_idx"]
+            _update_scenario(scenario, scenario_lijst)
             st.rerun()
         
         # Toon cards in grid van 3 kolommen
@@ -276,6 +295,7 @@ def toon_componenten_pagina() -> None:
         if nieuw_item:
             scenario.incidentele_items.append(nieuw_item)
             st.session_state["inc_active_mode"] = None
+            _update_scenario(scenario, scenario_lijst)
             st.rerun()
     elif active_mode_inc == "edit" and active_idx_inc is not None:
         gewijzigd_item = render_incidenteel_form(
@@ -287,6 +307,7 @@ def toon_componenten_pagina() -> None:
             scenario.incidentele_items[active_idx_inc] = gewijzigd_item
             st.session_state["inc_active_mode"] = None
             st.session_state["inc_active_idx"] = None
+            _update_scenario(scenario, scenario_lijst)
             st.rerun()
     
     # Verwijder-logica
@@ -294,6 +315,7 @@ def toon_componenten_pagina() -> None:
         del_idx = st.session_state["inc_delete_idx"]
         scenario.incidentele_items.pop(del_idx)
         del st.session_state["inc_delete_idx"]
+        _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
     # Toon cards in grid van 3 kolommen

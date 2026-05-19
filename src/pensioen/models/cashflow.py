@@ -106,6 +106,11 @@ class JaarResultaat:
         return sum(m.pensioen_p1_bruto + m.pensioen_p2_bruto for m in self.maanden)
 
     @property
+    def overig_bruto(self) -> Decimal:
+        """Overig bruto inkomen (PENSIOEN_INKOMEN + OVERIG_INKOMEN componenten)."""
+        return sum(m.overig_bruto for m in self.maanden)
+
+    @property
     def totaal_bruto(self) -> Decimal:
         return sum(m.totaal_bruto for m in self.maanden)
 

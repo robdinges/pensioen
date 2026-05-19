@@ -185,15 +185,10 @@ def _bereken_jaar(
                 persoon2.geboortedatum, aow_datum_p2, aow_maandbedrag_p2, jaar, maand
             )
 
-        # Pensioen uit records (MPO import)
-        pen_p1 = sum(
-            pensioen_engine.bereken_pensioen_maand(r, jaar, maand)
-            for r in records1
-        )
-        pen_p2 = sum(
-            pensioen_engine.bereken_pensioen_maand(r, jaar, maand)
-            for r in records2
-        )
+        # Pensioen uit records (MPO import) - LEGACY: pensioenen zijn nu componenten
+        # pen_p1 en pen_p2 blijven op 0 aangezien PENSIOEN_INKOMEN componenten al meegenomen zijn in overig_bruto
+        pen_p1 = Decimal("0")
+        pen_p2 = Decimal("0")
 
         # Uitgaven en inhoudingen uit componenten
         uitgaven_maand = (

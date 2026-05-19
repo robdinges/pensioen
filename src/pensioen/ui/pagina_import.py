@@ -86,7 +86,7 @@ def toon_import_pagina() -> None:
                         use_container_width=True,
                         hide_index=True,
                     )
-                    st.session_state["records_p1"] = records1
+                    # records_p1 wordt NIET meer opgeslagen - pensioenen zijn nu componenten
                     
                     # Converteer ouderdomspensioenen naar FinancieelComponent en voeg toe aan scenario
                     scenario_lijst = st.session_state.get("scenario_lijst", [])
@@ -136,7 +136,7 @@ def toon_import_pagina() -> None:
                         use_container_width=True,
                         hide_index=True,
                     )
-                    st.session_state["records_p2"] = records2
+                    # records_p2 wordt NIET meer opgeslagen - pensioenen zijn nu componenten
                     
                     # Converteer ouderdomspensioenen naar FinancieelComponent en voeg toe aan scenario
                     scenario_lijst = st.session_state.get("scenario_lijst", [])

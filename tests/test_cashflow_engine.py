@@ -191,38 +191,55 @@ class TestCashflowHuishouden:
         self, persoon1: Persoon
     ) -> None:
         """Twee pensioenen tegelijk worden correct gesommeerd."""
-        pen1 = PensioenRecord(
-            uitvoerder="ABP",
-            regeling="OP1",
-            type_pensioen=TypePensioen.OUDERDOMS,
-            ingangsdatum=date(2030, 1, 1),
-            bruto_per_jaar=Decimal("12000"),
+        # Pensioenen zijn nu componenten (niet meer records)
+        from pensioen.models.component import (
+            FinancieelComponent,
+            CategorieComponent,
+            BedragType,
+            Frequentie,
+            BeleggingsType,
         )
-        pen2 = PensioenRecord(
-            uitvoerder="NN",
-            regeling="OP2",
-            type_pensioen=TypePensioen.OUDERDOMS,
-            ingangsdatum=date(2030, 1, 1),
-            bruto_per_jaar=Decimal("6000"),
+        
+        pen1 = FinancieelComponent(
+            omschrijving="ABP - OP1",
+            categorie=CategorieComponent.PENSIOEN_INKOMEN,
+            persoon="P1",
+            bedrag=Decimal("12000"),
+            bedrag_type=BedragType.BRUTO,
+            frequentie=Frequentie.JAARLIJKS,
+            beleggings_type=BeleggingsType.SPAREN,
+            begindatum=date(2030, 1, 1),
+        )
+        pen2 = FinancieelComponent(
+            omschrijving="NN - OP2",
+            categorie=CategorieComponent.PENSIOEN_INKOMEN,
+            persoon="P1",
+            bedrag=Decimal("6000"),
+            bedrag_type=BedragType.BRUTO,
+            frequentie=Frequentie.JAARLIJKS,
+            beleggings_type=BeleggingsType.SPAREN,
+            begindatum=date(2030, 1, 1),
         )
         scenario = Scenario(
             naam="Twee pensioenen",
             spaargeld_start=Decimal("0"),
+            componenten=[pen1, pen2],
         )
         configs = _maak_configs(2030, 2030)
         cashflow = bereken_huishouden(
             scenario=scenario,
             persoon1=persoon1,
             persoon2=None,
-            records1=[pen1, pen2],
+            records1=[],  # Geen records meer, pensioenen zijn componenten
             records2=[],
             jaar_van=2030,
             jaar_tot=2030,
             belasting_configs=configs,
         )
         # Gecombineerd pensioeninkomen per maand ≈ (12000+6000)/12 = 1500
-        totaal_pensioen = cashflow.jaren[0].pensioen_bruto
-        assert float(totaal_pensioen) == pytest.approx(18000, rel=1e-3)
+        # Pensioen zit nu in overig_bruto (categorie PENSIOEN_INKOMEN)
+        totaal_overig = cashflow.jaren[0].overig_bruto
+        assert float(totaal_overig) == pytest.approx(18000, rel=1e-3)
 
     def test_toekomstig_jaar_tarief_fallback(self, persoon1: Persoon) -> None:
         """Voor een jaar zonder config wordt fallback gebruikt en melding opgeslagen."""
