@@ -12,6 +12,13 @@ from pathlib import Path
 import pandas as pd
 
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
+from pensioen.models.component import (
+    FinancieelComponent,
+    CategorieComponent,
+    BedragType,
+    Frequentie,
+    BeleggingsType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +150,52 @@ def _leeftijd_blok_naar_datum(blok: dict, geboortedatum: date | None) -> date | 
     doelmaand = (doelmaand - 1) % 12 + 1
     # Gebruik de eerste dag van die maand als ingangsdatum
     return date(doeljaar, doelmaand, 1)
+
+
+def pensioenrecord_naar_component(
+    record: PensioenRecord, persoon: str = "P1"
+) -> FinancieelComponent:
+    """
+    Converteer een PensioenRecord naar een FinancieelComponent.
+
+    Args:
+        record: Het PensioenRecord object uit MPO-import.
+        persoon: Persoonsidentificatie ("P1", "P2", of "Huishouden").
+
+    Returns:
+        FinancieelComponent met categorie PENSIOEN_INKOMEN.
+
+    Notes:
+        - Alle pensioenen worden als BRUTO beschouwd (belastbaar inkomen).
+        - Frequentie is altijd JAARLIJKS (MPO bedragen zijn per jaar).
+        - BeleggingsType is SPAREN (default, pensioenen zijn geen vermogen).
+        - Groei wordt afgeleid van indexatie_verwacht_pct uit het record.
+        - Als meerdere tijdvakken bestaan voor 1 pensioen, moet de caller
+          meerdere records aanleveren met aangepaste omschrijving (bijv. suffix).
+    """
+    # Bepaal omschrijving: uitvoerder + regeling
+    omschrijving = f"{record.uitvoerder} - {record.regeling}".strip()
+    if not omschrijving or omschrijving == " - ":
+        omschrijving = record.uitvoerder or record.regeling or "Onbekend pensioen"
+
+    # Partner/nabestaanden pensioen krijgt speciale markering
+    if record.type_pensioen == TypePensioen.PARTNER:
+        omschrijving = f"Partnerpensioen: {omschrijving}"
+    elif record.type_pensioen == TypePensioen.NABESTAANDEN:
+        omschrijving = f"Nabestaandenpensioen: {omschrijving}"
+
+    return FinancieelComponent(
+        omschrijving=omschrijving,
+        categorie=CategorieComponent.PENSIOEN_INKOMEN,
+        persoon=persoon,
+        bedrag=record.bruto_per_jaar,
+        bedrag_type=BedragType.BRUTO,
+        frequentie=Frequentie.JAARLIJKS,
+        beleggings_type=BeleggingsType.SPAREN,
+        begindatum=record.ingangsdatum,
+        einddatum=record.einddatum,
+        groei_pct=record.indexatie_verwacht_pct,
+    )
 
 
 class MPOParser:

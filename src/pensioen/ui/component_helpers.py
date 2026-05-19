@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 import pandas as pd
@@ -118,7 +118,7 @@ def df_naar_componenten(df: pd.DataFrame) -> list[FinancieelComponent]:
             s = str(waarde).strip()
             for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
                 try:
-                    return date.fromisoformat(s) if fmt == "%Y-%m-%d" else __import__("datetime").datetime.strptime(s, fmt).date()
+                    return date.fromisoformat(s) if fmt == "%Y-%m-%d" else datetime.strptime(s, fmt).date()
                 except ValueError:
                     continue
             return None
@@ -150,38 +150,6 @@ def df_naar_componenten(df: pd.DataFrame) -> list[FinancieelComponent]:
     return componenten
 
 
-def toon_pensioen_editor(records_key: str, persoon_label: str) -> list[PensioenRecord]:
-    """Show and allow editing of pension record start/end dates."""
-    records: list[PensioenRecord] = st.session_state.get(records_key, [])
-    if not records:
-        st.caption(f"Geen MPO-records geladen voor {persoon_label}.")
-        return records
-
-    gewijzigd = []
-    for i, r in enumerate(records):
-        with st.expander(f"{r.uitvoerder} — {r.regeling} (€ {float(r.bruto_per_jaar):,.0f}/jr)", expanded=False):
-            col1, col2 = st.columns(2)
-            with col1:
-                ingangsdatum = st.date_input(
-                    "Ingangsdatum pensioen",
-                    value=r.ingangsdatum or date.today(),
-                    key=f"{records_key}_ingangsdatum_{i}",
-                    format="DD-MM-YYYY",
-                )
-            with col2:
-                einddatum = st.date_input(
-                    "Einddatum (leeg = onbepaald)",
-                    value=r.einddatum,
-                    key=f"{records_key}_einddatum_{i}",
-                    format="DD-MM-YYYY",
-                )
-            gewijzigd.append(r.model_copy(update={
-                "ingangsdatum": ingangsdatum,
-                "einddatum": einddatum,
-            }))
-    return gewijzigd
-
-
 # ============================================================================
 # Card en Form Renderers (herbruikbaar voor nieuwe UI)
 # ============================================================================
@@ -193,6 +161,7 @@ def render_component_card(
 ) -> None:
     """
     Render één component als compacte card met inline actieknoppen.
+    Deze functie rendert binnen een bestaande kolom (geen st.container).
     
     Args:
         comp: FinancieelComponent object.
@@ -217,41 +186,41 @@ def render_component_card(
     type_badge = badge_html(BEDRAG_TYPE_LABELS[comp.bedrag_type], badge_type="neutraal", small=True)
     cat_badge = badge_html(CATEGORIE_LABELS[comp.categorie], badge_type=badge_type, small=True)
     
-    # Card container met lichte achtergrond
-    with st.container():
-        col_info, col_act = st.columns([5, 1])
-        
-        with col_info:
-            st.markdown(f"**{comp.omschrijving}**")
-            st.markdown(
-                f"{bedrag_str} / {freq_label} • {comp.persoon} • {type_badge} {cat_badge}",
-                unsafe_allow_html=True,
-            )
-            # Extra details indien aanwezig
-            details = []
-            if comp.begindatum:
-                details.append(f"Vanaf {comp.begindatum.strftime('%d-%m-%Y')}")
-            if comp.einddatum:
-                details.append(f"Tot {comp.einddatum.strftime('%d-%m-%Y')}")
-            if comp.groei_pct and comp.groei_pct > 0:
-                details.append(f"Groei {float(comp.groei_pct):.1f}%/jr")
-            if details:
-                st.caption(" | ".join(details))
-        
-        with col_act:
-            edit_key = f"{section_key}_edit_{idx}"
-            del_key = f"{section_key}_del_{idx}"
-            
-            if st.button(f"{ICONS['bewerken']}", key=edit_key, help="Wijzigen"):
-                st.session_state[f"{section_key}_active_idx"] = idx
-                st.session_state[f"{section_key}_active_mode"] = "edit"
-                st.rerun()
-            
-            if st.button(f"{ICONS['verwijderen']}", key=del_key, help="Verwijderen", type="secondary"):
-                st.session_state[f"{section_key}_delete_idx"] = idx
-                st.rerun()
-        
-        st.markdown("---")
+    # Card inhoud (binnen bestaande kolom)
+    st.markdown(f"**{comp.omschrijving}**")
+    st.markdown(
+        f"{bedrag_str} / {freq_label}",
+        unsafe_allow_html=True,
+    )
+    st.caption(f"{comp.persoon} • {type_badge} {cat_badge}", unsafe_allow_html=True)
+    
+    # Extra details indien aanwezig
+    details = []
+    if comp.begindatum:
+        details.append(f"Vanaf {comp.begindatum.strftime('%d-%m-%Y')}")
+    if comp.einddatum:
+        details.append(f"Tot {comp.einddatum.strftime('%d-%m-%Y')}")
+    if comp.groei_pct and comp.groei_pct > 0:
+        details.append(f"Groei {float(comp.groei_pct):.1f}%/jr")
+    if details:
+        st.caption(" | ".join(details))
+    
+    # Actieknoppen
+    edit_key = f"{section_key}_edit_{idx}"
+    del_key = f"{section_key}_del_{idx}"
+    
+    col_edit, col_del = st.columns(2)
+    with col_edit:
+        if st.button(f"{ICONS['bewerken']} Bewerk", key=edit_key, use_container_width=True):
+            st.session_state[f"{section_key}_active_idx"] = idx
+            st.session_state[f"{section_key}_active_mode"] = "edit"
+            st.rerun()
+    with col_del:
+        if st.button(f"{ICONS['verwijderen']} Verw.", key=del_key, use_container_width=True, type="secondary"):
+            st.session_state[f"{section_key}_delete_idx"] = idx
+            st.rerun()
+    
+    st.markdown("---")
 
 
 def render_component_form(
@@ -272,8 +241,6 @@ def render_component_form(
     Returns:
         FinancieelComponent indien opgeslagen, anders None.
     """
-    from datetime import datetime
-    
     from pensioen.ui.style import ICONS
     
     form_key = f"{section_key}_form_{mode}"
@@ -381,6 +348,7 @@ def render_incidenteel_card(
 ) -> None:
     """
     Render één eenmalige cashflow als compacte card met inline actieknoppen.
+    Deze functie rendert binnen een bestaande kolom (geen st.container).
     
     Args:
         item: IncidenteelItem object.
@@ -395,30 +363,30 @@ def render_incidenteel_card(
     
     type_badge = badge_html("Ontvangst" if is_ontvangst else "Uitgave", badge_type=badge_type, small=True)
     
-    with st.container():
-        col_info, col_act = st.columns([5, 1])
-        
-        with col_info:
-            st.markdown(f"**{item.omschrijving or '(geen omschrijving)'}**")
-            st.markdown(
-                f"{bedrag_str} op {item.datum.strftime('%d-%m-%Y')} • {type_badge}",
-                unsafe_allow_html=True,
-            )
-        
-        with col_act:
-            edit_key = f"{section_key}_edit_{idx}"
-            del_key = f"{section_key}_del_{idx}"
-            
-            if st.button(f"{ICONS['bewerken']}", key=edit_key, help="Wijzigen"):
-                st.session_state[f"{section_key}_active_idx"] = idx
-                st.session_state[f"{section_key}_active_mode"] = "edit"
-                st.rerun()
-            
-            if st.button(f"{ICONS['verwijderen']}", key=del_key, help="Verwijderen", type="secondary"):
-                st.session_state[f"{section_key}_delete_idx"] = idx
-                st.rerun()
-        
-        st.markdown("---")
+    # Card inhoud (binnen bestaande kolom)
+    st.markdown(f"**{item.omschrijving or '(geen omschrijving)'}**")
+    st.markdown(
+        f"{bedrag_str}",
+        unsafe_allow_html=True,
+    )
+    st.caption(f"{item.datum.strftime('%d-%m-%Y')} • {type_badge}", unsafe_allow_html=True)
+    
+    # Actieknoppen
+    edit_key = f"{section_key}_edit_{idx}"
+    del_key = f"{section_key}_del_{idx}"
+    
+    col_edit, col_del = st.columns(2)
+    with col_edit:
+        if st.button(f"{ICONS['bewerken']} Bewerk", key=edit_key, use_container_width=True):
+            st.session_state[f"{section_key}_active_idx"] = idx
+            st.session_state[f"{section_key}_active_mode"] = "edit"
+            st.rerun()
+    with col_del:
+        if st.button(f"{ICONS['verwijderen']} Verw.", key=del_key, use_container_width=True, type="secondary"):
+            st.session_state[f"{section_key}_delete_idx"] = idx
+            st.rerun()
+    
+    st.markdown("---")
 
 
 def render_incidenteel_form(
@@ -437,8 +405,6 @@ def render_incidenteel_form(
     Returns:
         IncidenteelItem indien opgeslagen, anders None.
     """
-    from datetime import date
-    
     from pensioen.models.scenario import IncidenteelItem
     from pensioen.ui.style import ICONS
     

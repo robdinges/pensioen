@@ -6,11 +6,13 @@ from datetime import date
 
 import streamlit as st
 
-from pensioen.models.pensioen_record import PensioenRecord
-from pensioen.parsers.parser_mpo import MPOParser
+from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
+from pensioen.parsers.parser_mpo import MPOParser, pensioenrecord_naar_component
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.validators.validator import valideer_records
 from pensioen.ui.sessie_persistentie import sla_sessie_op
+from pensioen.ui.scenario_context import get_actief_scenario
+from pensioen.models.component import CategorieComponent
 
 
 def _toon_validatiemeldingen(resultaat) -> None:
@@ -85,6 +87,27 @@ def toon_import_pagina() -> None:
                         hide_index=True,
                     )
                     st.session_state["records_p1"] = records1
+                    
+                    # Converteer ouderdomspensioenen naar FinancieelComponent en voeg toe aan scenario
+                    scenario_lijst = st.session_state.get("scenario_lijst", [])
+                    actief = get_actief_scenario(scenario_lijst)
+                    if actief:
+                        # Filter alleen ouderdomspensioen (volgens keuze 3A)
+                        ouderdoms_records = [r for r in records1 if r.type_pensioen == TypePensioen.OUDERDOMS]
+                        
+                        # Verwijder bestaande pensioenen van P1 uit scenario
+                        actief.componenten = [
+                            c for c in actief.componenten
+                            if not (c.categorie == CategorieComponent.PENSIOEN_INKOMEN and c.persoon == "P1")
+                        ]
+                        
+                        # Converteer en voeg toe
+                        for record in ouderdoms_records:
+                            comp = pensioenrecord_naar_component(record, persoon="P1")
+                            actief.componenten.append(comp)
+                        
+                        st.info(f"ℹ️ {len(ouderdoms_records)} ouderdomspensioen(en) toegevoegd als componenten voor P1")
+                    
                     sla_sessie_op()
             except Exception as exc:
                 st.error(f"Fout bij inlezen: {exc}")
@@ -114,6 +137,27 @@ def toon_import_pagina() -> None:
                         hide_index=True,
                     )
                     st.session_state["records_p2"] = records2
+                    
+                    # Converteer ouderdomspensioenen naar FinancieelComponent en voeg toe aan scenario
+                    scenario_lijst = st.session_state.get("scenario_lijst", [])
+                    actief = get_actief_scenario(scenario_lijst)
+                    if actief:
+                        # Filter alleen ouderdomspensioen (volgens keuze 3A)
+                        ouderdoms_records = [r for r in records2 if r.type_pensioen == TypePensioen.OUDERDOMS]
+                        
+                        # Verwijder bestaande pensioenen van P2 uit scenario
+                        actief.componenten = [
+                            c for c in actief.componenten
+                            if not (c.categorie == CategorieComponent.PENSIOEN_INKOMEN and c.persoon == "P2")
+                        ]
+                        
+                        # Converteer en voeg toe
+                        for record in ouderdoms_records:
+                            comp = pensioenrecord_naar_component(record, persoon="P2")
+                            actief.componenten.append(comp)
+                        
+                        st.info(f"ℹ️ {len(ouderdoms_records)} ouderdomspensioen(en) toegevoegd als componenten voor P2")
+                    
                     sla_sessie_op()
             except Exception as exc:
                 st.error(f"Fout bij inlezen: {exc}")

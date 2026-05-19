@@ -3,28 +3,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
-import pandas as pd
 import streamlit as st
 
-from pensioen.models.component import COMPONENT_SJABLONEN
-from pensioen.models.scenario import IncidenteelItem
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 from pensioen.ui.component_helpers import (
-    BEDRAG_TYPE_LABELS,
-    BEDRAG_TYPE_OPTIES,
-    BELEGGINGS_TYPE_LABELS,
-    BELEGGINGS_TYPE_OPTIES,
-    CATEGORIE_LABELS,
-    CATEGORIE_OPTIES,
-    FREQUENTIE_LABELS,
-    FREQUENTIE_OPTIES,
-    componenten_naar_df,
-    df_naar_componenten,
-    toon_pensioen_editor,
     render_component_card,
     render_component_form,
     render_incidenteel_card,
@@ -48,11 +34,9 @@ def toon_componenten_pagina() -> None:
     heeft_partner = "persoon2" in st.session_state
     persoon_opties = ["P1", "P2", "Huishouden"] if heeft_partner else ["P1", "Huishouden"]
 
-    standaard_comp_df = componenten_naar_df(scenario.componenten)
-    if "component_tabel" not in st.session_state or st.session_state.get("_comp_geladen") != scenario.naam:
-        st.session_state["component_tabel"] = standaard_comp_df
+    # Reset vermogenwidgets zodat ze de waarden van het nieuwe scenario tonen
+    if st.session_state.get("_comp_geladen") != scenario.naam:
         st.session_state["_comp_geladen"] = scenario.naam
-        # Reset vermogenwidgets zodat ze de waarden van het nieuwe scenario tonen
         st.session_state["comp_spaargeld"] = int(scenario.spaargeld_start)
         st.session_state["comp_beleggingen"] = int(scenario.beleggingen_start)
         # Backward compatibility: gebruik oude jaarlijkse_inleg als nieuwe velden leeg zijn
@@ -66,72 +50,10 @@ def toon_componenten_pagina() -> None:
         st.session_state["comp_inflatie"] = float(scenario.inflatie_pct)
         st.session_state["comp_box3"] = scenario.box3_meenemen
         st.session_state["comp_box3_spaargeld"] = int(scenario.box3_spaargeld_fractie * 100)
-
-    with st.expander("➕ Voeg sjabloon toe", expanded=False):
-        sj_col, sj_btn_col = st.columns([4, 1])
-        with sj_col:
-            sj_keuze = st.selectbox(
-                "Kies een sjabloon",
-                options=[s.label for s in COMPONENT_SJABLONEN],
-                key="comp_sj_selectie",
-                label_visibility="collapsed",
-            )
-        with sj_btn_col:
-            if st.button("Voeg toe", key="comp_sj_toevoegen"):
-                sj = next(s for s in COMPONENT_SJABLONEN if s.label == sj_keuze)
-                nieuwe_rij = pd.DataFrame([{
-                    "omschrijving": sj.omschrijving,
-                    "categorie": CATEGORIE_LABELS[sj.categorie],
-                    "persoon": sj.persoon,
-                    "bedrag_type": BEDRAG_TYPE_LABELS[sj.bedrag_type],
-                    "bedrag": float(sj.bedrag),
-                    "frequentie": FREQUENTIE_LABELS[sj.frequentie],
-                    "begindatum": "",
-                    "einddatum": "",
-                    "groei_pct": float(sj.groei_pct),
-                    "beleggings_type": BELEGGINGS_TYPE_LABELS[sj.beleggings_type],
-                }])
-                st.session_state["component_tabel"] = pd.concat(
-                    [st.session_state["component_tabel"], nieuwe_rij], ignore_index=True
-                )
-                st.rerun()
     
-    # OUDE TABELEDITOR: instelbaar als "legacy mode"
-    toon_legacy = st.checkbox(
-        "Toon legacy tabel-editor (data_editor)",
-        value=False,
-        key="comp_legacy_mode",
-        help="Schakel in om de oude spreadsheet-achtige editor te tonen. Nieuwe moderne UI staat hieronder.",
-    )
-    
-    if toon_legacy:
-        component_df = st.data_editor(
-            st.session_state["component_tabel"],
-            num_rows="dynamic",
-            column_config={
-                "omschrijving": st.column_config.TextColumn("Omschrijving", required=True, width="medium"),
-                "categorie": st.column_config.SelectboxColumn("Categorie", options=CATEGORIE_OPTIES, required=True, width="medium"),
-                "persoon": st.column_config.SelectboxColumn("Persoon", options=persoon_opties, required=True, width="small"),
-                "bedrag": st.column_config.NumberColumn("Bedrag (€)", min_value=0, format="%.0f", required=True, width="large"),
-                "bedrag_type": st.column_config.SelectboxColumn("Type", options=BEDRAG_TYPE_OPTIES, required=True, width="small"),
-                "frequentie": st.column_config.SelectboxColumn("Frequentie", options=FREQUENTIE_OPTIES, required=True, width="medium"),
-                "beleggings_type": st.column_config.SelectboxColumn("Soort vermogen", options=BELEGGINGS_TYPE_OPTIES, required=True, width="small"),
-                "begindatum": st.column_config.TextColumn("Begindatum (dd-mm-jjjj)", width="small"),
-                "einddatum": st.column_config.TextColumn("Einddatum (dd-mm-jjjj)", width="small"),
-                "groei_pct": st.column_config.NumberColumn("Groei % /jaar", min_value=0.0, max_value=20.0, format="%.1f", width="small"),
-            },
-            column_order=["omschrijving", "categorie", "persoon", "bedrag", "bedrag_type", "frequentie", "begindatum", "einddatum", "groei_pct", "beleggings_type"],
-            use_container_width=True,
-            key="component_editor_v2",
-        )
-        st.session_state["component_tabel"] = component_df
-    else:
-        # Gebruik scenario.componenten als bron (niet de tabel)
-        component_df = componenten_naar_df(scenario.componenten)
-    
-    # ========== NIEUWE MODERNE WEERGAVE (CARD-BASED) ==========
+    # ========== PERIODIEKE INKOMSTEN EN UITGAVEN ==========
     st.divider()
-    st.markdown("### 📊 Periodieke inkomsten en uitgaven (moderne weergave)")
+    st.markdown("### 📊 Periodieke inkomsten en uitgaven")
     
     # Zoekbalk
     zoek_query = st.text_input("🔍 Zoek component", key="comp_zoek", placeholder="Typ om te filteren op omschrijving...")
@@ -139,18 +61,21 @@ def toon_componenten_pagina() -> None:
     # Filter componenten op categorie
     from pensioen.models.component import CategorieComponent
     
-    categorie_inkomen = [CategorieComponent.ARBEIDSINKOMEN, CategorieComponent.PENSIOEN_INKOMEN, CategorieComponent.OVERIG_INKOMEN]
+    categorie_inkomen = [CategorieComponent.ARBEIDSINKOMEN, CategorieComponent.OVERIG_INKOMEN]
     categorie_uitgave = [CategorieComponent.UITGAVE, CategorieComponent.INHOUDING]
+    categorie_pensioen = [CategorieComponent.PENSIOEN_INKOMEN]
     
     inkomsten = [c for c in scenario.componenten if c.categorie in categorie_inkomen]
     uitgaven = [c for c in scenario.componenten if c.categorie in categorie_uitgave]
+    pensioenen = [c for c in scenario.componenten if c.categorie in categorie_pensioen]
     
     # Toepassen zoekfilter
     if zoek_query:
         inkomsten = [c for c in inkomsten if zoek_query.lower() in c.omschrijving.lower()]
         uitgaven = [c for c in uitgaven if zoek_query.lower() in c.omschrijving.lower()]
+        pensioenen = [c for c in pensioenen if zoek_query.lower() in c.omschrijving.lower()]
     
-    tab_ink, tab_uitg = st.tabs([f"💰 Inkomsten ({len(inkomsten)})", f"🧾 Uitgaven ({len(uitgaven)})"])
+    tab_ink, tab_uitg, tab_pens = st.tabs([f"💰 Inkomsten ({len(inkomsten)})", f"🧾 Uitgaven ({len(uitgaven)})", f"🏦 Pensioenen ({len(pensioenen)})"])
     
     with tab_ink:
         # Toevoeg-knop
@@ -197,13 +122,19 @@ def toon_componenten_pagina() -> None:
             del st.session_state["ink_delete_idx"]
             st.rerun()
         
-        # Toon cards
+        # Toon cards in grid van 3 kolommen
         st.markdown("---")
         if not inkomsten:
             st.info("Geen periodieke inkomsten ingesteld. Klik 'Nieuwe inkomst' om er een toe te voegen.")
         else:
-            for i, comp in enumerate(inkomsten):
-                render_component_card(comp, i, "ink")
+            # Render in groepen van 3
+            for row_start in range(0, len(inkomsten), 3):
+                cols = st.columns(3)
+                for col_idx in range(3):
+                    i = row_start + col_idx
+                    if i < len(inkomsten):
+                        with cols[col_idx]:
+                            render_component_card(inkomsten[i], i, "ink")
     
     with tab_uitg:
         # Toevoeg-knop
@@ -250,59 +181,81 @@ def toon_componenten_pagina() -> None:
             del st.session_state["uitg_delete_idx"]
             st.rerun()
         
-        # Toon cards
+        # Toon cards in grid van 3 kolommen
         st.markdown("---")
         if not uitgaven:
             st.info("Geen periodieke uitgaven ingesteld. Klik 'Nieuwe uitgave' om er een toe te voegen.")
         else:
-            for i, comp in enumerate(uitgaven):
-                render_component_card(comp, i, "uitg")
-
-    st.divider()
-    st.subheader("Pensioendatums (uit MPO-import)")
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        st.markdown("**Persoon 1**")
-        records_p1 = toon_pensioen_editor("records_p1", "Persoon 1")
-    with col_p2:
-        if heeft_partner:
-            st.markdown("**Persoon 2**")
-            records_p2 = toon_pensioen_editor("records_p2", "Persoon 2")
-        else:
-            records_p2 = []
-
-    st.divider()
-    st.subheader("Eenmalige ontvangsten en uitgaven")
-    standaard_inc = pd.DataFrame(
-        [{"datum": i.datum.strftime("%d-%m-%Y"), "bedrag": float(i.bedrag), "omschrijving": i.omschrijving}
-         for i in scenario.incidentele_items],
-        columns=["datum", "bedrag", "omschrijving"],
-    ) if scenario.incidentele_items else pd.DataFrame({
-        "datum": pd.Series(dtype="object"),
-        "bedrag": pd.Series(dtype="float64"),
-        "omschrijving": pd.Series(dtype="object"),
-    })
-
-    if "incidenteel_tabel" not in st.session_state or st.session_state.get("_inc_geladen") != scenario.naam:
-        st.session_state["incidenteel_tabel"] = standaard_inc
-        st.session_state["_inc_geladen"] = scenario.naam
-
-    incidenteel_df = st.data_editor(
-        st.session_state["incidenteel_tabel"],
-        num_rows="dynamic",
-        column_config={
-            "datum": st.column_config.TextColumn("Datum (dd-mm-jjjj)", required=True),
-            "bedrag": st.column_config.NumberColumn("Bedrag (€, negatief = uitgave)", format="%.0f", required=True),
-            "omschrijving": st.column_config.TextColumn("Omschrijving"),
-        },
-        use_container_width=True,
-        key="incidenteel_editor_v2",
-    )
-    st.session_state["incidenteel_tabel"] = incidenteel_df
+            # Render in groepen van 3
+            for row_start in range(0, len(uitgaven), 3):
+                cols = st.columns(3)
+                for col_idx in range(3):
+                    i = row_start + col_idx
+                    if i < len(uitgaven):
+                        with cols[col_idx]:
+                            render_component_card(uitgaven[i], i, "uitg")
     
-    # ========== NIEUWE MODERNE WEERGAVE (EENMALIGE CASHFLOWS) ==========
+    with tab_pens:
+        # Toevoeg-knop
+        if st.button("➕ Nieuw pensioen", key="pens_nieuwe"):
+            st.session_state["pens_active_mode"] = "add"
+            st.session_state["pens_active_idx"] = None
+            st.rerun()
+        
+        # Formulier indien actief
+        active_mode_pens = st.session_state.get("pens_active_mode")
+        active_idx_pens = st.session_state.get("pens_active_idx")
+        
+        if active_mode_pens == "add":
+            nieuwe_comp = render_component_form(
+                section_key="pens",
+                mode="add",
+                initial=None,
+                persoon_opties=persoon_opties,
+            )
+            if nieuwe_comp:
+                scenario.componenten.append(nieuwe_comp)
+                st.session_state["pens_active_mode"] = None
+                st.rerun()
+        elif active_mode_pens == "edit" and active_idx_pens is not None:
+            gewijzigde_comp = render_component_form(
+                section_key="pens",
+                mode="edit",
+                initial=pensioenen[active_idx_pens],
+                persoon_opties=persoon_opties,
+            )
+            if gewijzigde_comp:
+                # Vervang in scenario.componenten
+                orig_idx = scenario.componenten.index(pensioenen[active_idx_pens])
+                scenario.componenten[orig_idx] = gewijzigde_comp
+                st.session_state["pens_active_mode"] = None
+                st.session_state["pens_active_idx"] = None
+                st.rerun()
+        
+        # Verwijder-logica
+        if "pens_delete_idx" in st.session_state:
+            del_idx = st.session_state["pens_delete_idx"]
+            orig_idx = scenario.componenten.index(pensioenen[del_idx])
+            scenario.componenten.pop(orig_idx)
+            del st.session_state["pens_delete_idx"]
+            st.rerun()
+        
+        # Toon cards in grid van 3 kolommen
+        st.markdown("---")
+        if not pensioenen:
+            st.info("Geen pensioenen ingesteld. Klik 'Nieuw pensioen' om er een toe te voegen, of importeer vanaf Mijn Pensioen Overzicht.")
+        else:
+            # Render in groepen van 3
+            for row_start in range(0, len(pensioenen), 3):
+                cols = st.columns(3)
+                for col_idx in range(3):
+                    i = row_start + col_idx
+                    if i < len(pensioenen):
+                        with cols[col_idx]:
+                            render_component_card(pensioenen[i], i, "pens")
+
     st.divider()
-    st.markdown("### 💸 Eenmalige ontvangsten en uitgaven (moderne weergave)")
+    st.subheader("💸 Eenmalige ontvangsten en uitgaven")
     
     # Toevoeg-knop
     if st.button("➕ Nieuwe eenmalige cashflow", key="inc_nieuwe"):
@@ -343,18 +296,24 @@ def toon_componenten_pagina() -> None:
         del st.session_state["inc_delete_idx"]
         st.rerun()
     
-    # Toon cards
+    # Toon cards in grid van 3 kolommen
     st.markdown("---")
     if not scenario.incidentele_items:
         st.info("Geen eenmalige cashflows ingesteld. Klik 'Nieuwe eenmalige cashflow' om er een toe te voegen.")
     else:
         # Sorteer op datum
         sorted_items = sorted(scenario.incidentele_items, key=lambda x: x.datum)
-        for i, item in enumerate(sorted_items):
-            render_incidenteel_card(item, i, "inc")
+        # Render in groepen van 3
+        for row_start in range(0, len(sorted_items), 3):
+            cols = st.columns(3)
+            for col_idx in range(3):
+                i = row_start + col_idx
+                if i < len(sorted_items):
+                    with cols[col_idx]:
+                        render_incidenteel_card(sorted_items[i], i, "inc")
 
     st.divider()
-    st.markdown("### 💼 Vermogen & rendement (moderne weergave)")
+    st.markdown("### 💼 Vermogen & rendement")
     
     from pensioen.ui.style import section_header_html, COLORS, format_bedrag
     
@@ -523,96 +482,59 @@ def toon_componenten_pagina() -> None:
     st.divider()
     st.caption("Wijzigingen in componenten worden automatisch opgeslagen.")
 
-    try:
-        componenten = df_naar_componenten(component_df)
+    # Sla vermogen en rendementsparameters op
+    nieuwe_spaargeld = Decimal(str(spaargeld))
+    nieuwe_beleggingen = Decimal(str(beleggingen))
+    nieuwe_inleg_sparen = Decimal(str(jaarlijkse_inleg_sparen))
+    nieuwe_inleg_beleggen = Decimal(str(jaarlijkse_inleg_beleggen))
+    nieuwe_inflatie = Decimal(str(inflatie))
+    nieuwe_box3_fractie = Decimal(str(box3_spaargeld_pct)) / Decimal("100")
+    
+    # Rendement: sla beide op als deze ingesteld zijn
+    if gebruik_aparte_rendementen:
+        nieuwe_rendement = rendement_avg  # fallback gemiddelde
+        nieuwe_rendement_sparen = Decimal(str(rendement_sparen))
+        nieuwe_rendement_beleggen = Decimal(str(rendement_beleggen))
+    else:
+        nieuwe_rendement = Decimal(str(rendement_avg))
+        nieuwe_rendement_sparen = None
+        nieuwe_rendement_beleggen = None
 
-        def _datum_uit_tekst(s: str | None) -> date | None:
-            if not s or str(s).strip() == "":
-                return None
-            for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
-                try:
-                    return datetime.strptime(str(s).strip(), fmt).date()
-                except ValueError:
-                    continue
-            return None
+    gewijzigd = (
+        scenario.spaargeld_start != nieuwe_spaargeld
+        or scenario.beleggingen_start != nieuwe_beleggingen
+        or scenario.jaarlijkse_inleg_sparen != nieuwe_inleg_sparen
+        or scenario.jaarlijkse_inleg_beleggen != nieuwe_inleg_beleggen
+        or scenario.rendement_pct != nieuwe_rendement
+        or scenario.rendement_sparen_pct != nieuwe_rendement_sparen
+        or scenario.rendement_beleggen_pct != nieuwe_rendement_beleggen
+        or scenario.inflatie_pct != nieuwe_inflatie
+        or scenario.box3_meenemen != box3_meenemen
+        or scenario.box3_spaargeld_fractie != nieuwe_box3_fractie
+    )
+    
+    if gewijzigd:
+        scenario.spaargeld_start = nieuwe_spaargeld
+        scenario.beleggingen_start = nieuwe_beleggingen
+        scenario.jaarlijkse_inleg_sparen = nieuwe_inleg_sparen
+        scenario.jaarlijkse_inleg_beleggen = nieuwe_inleg_beleggen
+        scenario.rendement_pct = nieuwe_rendement
+        scenario.rendement_sparen_pct = nieuwe_rendement_sparen
+        scenario.rendement_beleggen_pct = nieuwe_rendement_beleggen
+        scenario.inflatie_pct = nieuwe_inflatie
+        scenario.box3_meenemen = box3_meenemen
+        scenario.box3_spaargeld_fractie = nieuwe_box3_fractie
+        scenario.laatst_gewijzigd_op = datetime.now()
 
-        incidentele_items: list[IncidenteelItem] = []
-        for _, rij in incidenteel_df.iterrows():
-            d = _datum_uit_tekst(rij.get("datum"))
-            b = rij.get("bedrag")
-            if d is not None and b is not None:
-                try:
-                    incidentele_items.append(
-                        IncidenteelItem(
-                            datum=d,
-                            bedrag=Decimal(str(b)),
-                            omschrijving=str(rij.get("omschrijving", "")),
-                        )
-                    )
-                except (ValueError, InvalidOperation):
-                    pass
+        for i, sc in enumerate(scenario_lijst):
+            if sc.naam == scenario.naam:
+                scenario_lijst[i] = scenario
+                break
 
-        nieuwe_spaargeld = Decimal(str(spaargeld))
-        nieuwe_beleggingen = Decimal(str(beleggingen))
-        nieuwe_inleg_sparen = Decimal(str(jaarlijkse_inleg_sparen))
-        nieuwe_inleg_beleggen = Decimal(str(jaarlijkse_inleg_beleggen))
-        nieuwe_inflatie = Decimal(str(inflatie))
-        nieuwe_box3_fractie = Decimal(str(box3_spaargeld_pct)) / Decimal("100")
-        
-        # Rendement: sla beide opslag sparen en beleggen op als deze ingesteld zijn
-        if gebruik_aparte_rendementen:
-            nieuwe_rendement = rendement_avg  # fallback gemiddelde
-            nieuwe_rendement_sparen = Decimal(str(rendement_sparen))
-            nieuwe_rendement_beleggen = Decimal(str(rendement_beleggen))
-        else:
-            nieuwe_rendement = Decimal(str(rendement_avg))
-            nieuwe_rendement_sparen = None
-            nieuwe_rendement_beleggen = None
+        st.session_state["scenario_lijst"] = scenario_lijst
 
-        gewijzigd = (
-            scenario.componenten != componenten
-            or scenario.incidentele_items != incidentele_items
-            or scenario.spaargeld_start != nieuwe_spaargeld
-            or scenario.beleggingen_start != nieuwe_beleggingen
-            or scenario.jaarlijkse_inleg_sparen != nieuwe_inleg_sparen
-            or scenario.jaarlijkse_inleg_beleggen != nieuwe_inleg_beleggen
-            or scenario.rendement_pct != nieuwe_rendement
-            or scenario.rendement_sparen_pct != nieuwe_rendement_sparen
-            or scenario.rendement_beleggen_pct != nieuwe_rendement_beleggen
-            or scenario.inflatie_pct != nieuwe_inflatie
-            or scenario.box3_meenemen != box3_meenemen
-            or scenario.box3_spaargeld_fractie != nieuwe_box3_fractie
-        )
-        if gewijzigd:
-            scenario.componenten = componenten
-            scenario.incidentele_items = incidentele_items
-            scenario.spaargeld_start = nieuwe_spaargeld
-            scenario.beleggingen_start = nieuwe_beleggingen
-            scenario.jaarlijkse_inleg_sparen = nieuwe_inleg_sparen
-            scenario.jaarlijkse_inleg_beleggen = nieuwe_inleg_beleggen
-            scenario.rendement_pct = nieuwe_rendement
-            scenario.rendement_sparen_pct = nieuwe_rendement_sparen
-            scenario.rendement_beleggen_pct = nieuwe_rendement_beleggen
-            scenario.inflatie_pct = nieuwe_inflatie
-            scenario.box3_meenemen = box3_meenemen
-            scenario.box3_spaargeld_fractie = nieuwe_box3_fractie
-            scenario.laatst_gewijzigd_op = datetime.now()
-
-            for i, sc in enumerate(scenario_lijst):
-                if sc.naam == scenario.naam:
-                    scenario_lijst[i] = scenario
-                    break
-
-            st.session_state["scenario_lijst"] = scenario_lijst
-            st.session_state["records_p1"] = records_p1
-            if heeft_partner:
-                st.session_state["records_p2"] = records_p2
-
-            sla_sessie_op()
-            st.caption(f"Automatisch opgeslagen: {scenario.naam}")
-
-    except (TypeError, ValueError) as exc:
-        st.error(f"❌ Ongeldige componentinvoer: {exc}")
+        sla_sessie_op()
+        st.caption(f"Automatisch opgeslagen: {scenario.naam}")
 
     # ─── Vorige/Volgende knoppen ────────────────────────────────────────────
     st.divider()
