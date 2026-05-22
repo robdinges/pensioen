@@ -63,7 +63,7 @@
 
 **Impact**: Box 3 berekening, netto inkomen door hypotheekrenteaftrek
 
-**Afhankelijkheden**: Nieuwe VermogensType enum, box 3 vrijstellingen
+**Afhankelijkheden**: ✅ #114 voltooid - VermogensType enum en VermogensItem model beschikbaar
 
 **Status**: 📝 PLANNED
 
@@ -84,7 +84,17 @@
 - Kunst: €50.000, +3% waardestijging, niet verkopen
 - Boot: €80.000, -10% afschrijving, box 3 vrijgesteld (recreatie)
 
-**Status**: 📝 PLANNED
+**Status**: ✅ DONE (22 mei 2026)
+
+**Implementatie**:
+- VermogensItem model met VermogensType enum (SPAARGELD, BELEGGINGEN, EIGEN_WONING, AUTO, KUNST, BOOT, OVERIG)
+- 18 tests voor VermogensItem model
+- vermogen_engine uitgebreid met functies voor VermogensItems
+- 9 tests voor vermogen_engine VermogensItems functionaliteit
+- UI pagina voor vermogensitems beheer (pagina_vermogen.py)
+- Geïntegreerd in app.py flow als stap 5 "Vermogen"
+- Backwards compatible via migreer_legacy_vermogen()
+
 
 ---
 
@@ -478,7 +488,17 @@
 
 **Blokkerende voor**: #001, #002
 
-**Status**: 📝 PLANNED
+**Status**: ✅ DONE (22 mei 2026)
+
+**Implementatie**:
+- VermogensItem Pydantic model met volledige validatie
+- VermogensType enum: SPAARGELD, BELEGGINGEN, EIGEN_WONING, AUTO, KUNST, BOOT, OVERIG
+- scenario.py uitgebreid met vermogensitems lijst
+- vermogen_engine nieuwe functies: bereken_vermogen_totaal(), bereken_vermogen_box3_belast(), bereken_vermogen_per_type(), update_vermogensitems_waarde()
+- Oude functies behouden voor backwards compatibility
+- 27 tests (18 voor VermogensItem, 9 voor vermogen_engine)
+- Alle 142 bestaande tests blijven slagen
+
 
 ---
 
@@ -646,4 +666,4 @@ Voor het oppakken van items uit deze backlog:
 ---
 
 *Laatste update: 22 mei 2026*
-*Versie: 1.0*
+*Versie: 1.1 - Vermogensitems geïmplementeerd (#114, #002)*

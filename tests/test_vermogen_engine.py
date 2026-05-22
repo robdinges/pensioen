@@ -9,9 +9,14 @@ import pytest
 
 from pensioen.calculations.vermogen_engine import (
     bereken_rente_maand,
+    bereken_vermogen_box3_belast,
+    bereken_vermogen_per_type,
+    bereken_vermogen_totaal,
     bereken_vermogensontwikkeling,
     maandrendement,
+    update_vermogensitems_waarde,
 )
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 
 
 class TestMaandrendement:
@@ -136,3 +141,208 @@ class TestBerekenVermogensontwikkeling:
         )
         
         assert rente_sparen < rente_mix < rente_beleggen
+
+
+class TestVermogensItems:
+    """Tests voor VermogensItems functionaliteit in vermogen_engine."""
+    
+    def test_bereken_vermogen_totaal_enkelvoudig(self) -> None:
+        """Bereken totaal vermogen met één item."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("50000"),
+            )
+        ]
+        
+        totaal = bereken_vermogen_totaal(items, date(2026, 1, 1))
+        assert totaal == Decimal("50000")
+    
+    def test_bereken_vermogen_totaal_meerdere_items(self) -> None:
+        """Bereken totaal vermogen met meerdere items."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("30000"),
+            ),
+            VermogensItem(
+                omschrijving="Beleggingen",
+                type=VermogensType.BELEGGINGEN,
+                aanschafwaarde=Decimal("70000"),
+            ),
+            VermogensItem(
+                omschrijving="Auto",
+                type=VermogensType.AUTO,
+                aanschafwaarde=Decimal("25000"),
+            ),
+        ]
+        
+        totaal = bereken_vermogen_totaal(items, date(2026, 1, 1))
+        assert totaal == Decimal("125000")
+    
+    def test_bereken_vermogen_box3_belast(self) -> None:
+        """Bereken alleen box 3 belast vermogen."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("50000"),
+                box3_belast=True,
+            ),
+            VermogensItem(
+                omschrijving="Eigen woning",
+                type=VermogensType.EIGEN_WONING,
+                aanschafwaarde=Decimal("400000"),
+                box3_belast=False,  # Auto-gezet door validatie
+            ),
+            VermogensItem(
+                omschrijving="Boot",
+                type=VermogensType.BOOT,
+                aanschafwaarde=Decimal("80000"),
+                box3_belast=False,  # Recreatie vrijgesteld
+            ),
+        ]
+        
+        box3_vermogen = bereken_vermogen_box3_belast(items, date(2026, 1, 1))
+        # Alleen spaargeld telt mee
+        assert box3_vermogen == Decimal("50000")
+    
+    def test_bereken_vermogen_per_type(self) -> None:
+        """Bereken vermogen opgesplitst per VermogensType."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaarrekening 1",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("30000"),
+            ),
+            VermogensItem(
+                omschrijving="Spaarrekening 2",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("20000"),
+            ),
+            VermogensItem(
+                omschrijving="Aandelen",
+                type=VermogensType.BELEGGINGEN,
+                aanschafwaarde=Decimal("100000"),
+            ),
+            VermogensItem(
+                omschrijving="Tesla",
+                type=VermogensType.AUTO,
+                aanschafwaarde=Decimal("45000"),
+            ),
+        ]
+        
+        per_type = bereken_vermogen_per_type(items, date(2026, 1, 1))
+        
+        assert per_type[VermogensType.SPAARGELD] == Decimal("50000")
+        assert per_type[VermogensType.BELEGGINGEN] == Decimal("100000")
+        assert per_type[VermogensType.AUTO] == Decimal("45000")
+    
+    def test_update_vermogensitems_waarde_overschot(self) -> None:
+        """Update vermogensitems met positieve cashflow (overschot)."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("10000"),
+            ),
+        ]
+        
+        nieuwe_items = update_vermogensitems_waarde(
+            items,
+            date(2026, 1, 1),
+            Decimal("5000"),  # €5000 overschot
+        )
+        
+        # Spaargeld moet verhoogd zijn
+        assert nieuwe_items[0].aanschafwaarde == Decimal("15000")
+    
+    def test_update_vermogensitems_waarde_tekort(self) -> None:
+        """Update vermogensitems met negatieve cashflow (tekort)."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("10000"),
+            ),
+        ]
+        
+        nieuwe_items = update_vermogensitems_waarde(
+            items,
+            date(2026, 1, 1),
+            Decimal("-3000"),  # €3000 tekort
+        )
+        
+        # Spaargeld moet verlaagd zijn
+        assert nieuwe_items[0].aanschafwaarde == Decimal("7000")
+    
+    def test_update_vermogensitems_geen_liquide_items(self) -> None:
+        """Update zonder liquide items: maak nieuw spaargeld item."""
+        items = [
+            VermogensItem(
+                omschrijving="Auto",
+                type=VermogensType.AUTO,
+                aanschafwaarde=Decimal("30000"),
+            ),
+        ]
+        
+        nieuwe_items = update_vermogensitems_waarde(
+            items,
+            date(2026, 1, 1),
+            Decimal("2000"),  # €2000 overschot
+        )
+        
+        # Moet nu 2 items hebben: auto + nieuw spaargeld
+        assert len(nieuwe_items) == 2
+        assert nieuwe_items[1].type == VermogensType.SPAARGELD
+        assert nieuwe_items[1].aanschafwaarde == Decimal("2000")
+    
+    def test_update_vermogensitems_pro_rata_verdeling(self) -> None:
+        """Update met meerdere liquide items: pro-rata verdeling."""
+        items = [
+            VermogensItem(
+                omschrijving="Spaarrekening",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("30000"),  # 30% van totaal (30k / 100k)
+            ),
+            VermogensItem(
+                omschrijving="Beleggingen",
+                type=VermogensType.BELEGGINGEN,
+                aanschafwaarde=Decimal("70000"),  # 70% van totaal (70k / 100k)
+            ),
+        ]
+        
+        nieuwe_items = update_vermogensitems_waarde(
+            items,
+            date(2026, 1, 1),
+            Decimal("10000"),  # €10000 overschot
+        )
+        
+        # 30% naar spaargeld: 30000 + 3000 = 33000
+        # 70% naar beleggingen: 70000 + 7000 = 77000
+        assert nieuwe_items[0].aanschafwaarde == Decimal("33000")
+        assert nieuwe_items[1].aanschafwaarde == Decimal("77000")
+    
+    def test_vermogen_met_inactieve_items(self) -> None:
+        """Items die niet actief zijn tellen niet mee."""
+        items = [
+            VermogensItem(
+                omschrijving="Auto (verkocht)",
+                type=VermogensType.AUTO,
+                aanschafwaarde=Decimal("30000"),
+                aanschafdatum=date(2020, 1, 1),
+                verkoopdatum=date(2025, 12, 31),  # Al verkocht
+            ),
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                aanschafwaarde=Decimal("50000"),
+            ),
+        ]
+        
+        totaal = bereken_vermogen_totaal(items, date(2026, 1, 1))
+        # Alleen spaargeld telt mee
+        assert totaal == Decimal("50000")
+

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
+
 CENT = Decimal("0.01")
 
 
@@ -145,3 +147,139 @@ def bereken_vermogensontwikkeling(
             resultaten.append((date(jaar, maand, dag), saldo))
 
     return resultaten
+
+
+# ===== Nieuwe functionaliteit voor VermogensItems =====
+
+
+def bereken_vermogen_totaal(vermogensitems: list[VermogensItem], peildatum: date) -> Decimal:
+    """
+    Bereken totaal vermogen op een specifieke datum uit lijst van VermogensItems.
+    
+    Args:
+        vermogensitems: Lijst van VermogensItems (spaargeld, beleggingen, bezittingen).
+        peildatum: Datum waarop vermogen wordt berekend.
+    
+    Returns:
+        Totaal vermogen in euro's.
+    """
+    totaal = Decimal("0")
+    for item in vermogensitems:
+        totaal += item.waarde_op_datum(peildatum)
+    
+    return totaal
+
+
+def bereken_vermogen_box3_belast(vermogensitems: list[VermogensItem], peildatum: date) -> Decimal:
+    """
+    Bereken box 3 belast vermogen op een specifieke datum.
+    
+    Alleen items waarbij box3_belast=True worden meegeteld.
+    
+    Args:
+        vermogensitems: Lijst van VermogensItems.
+        peildatum: Datum waarop vermogen wordt berekend.
+    
+    Returns:
+        Box 3 belast vermogen in euro's.
+    """
+    totaal = Decimal("0")
+    for item in vermogensitems:
+        if item.box3_belast and item.is_actief_op(peildatum):
+            totaal += item.waarde_op_datum(peildatum)
+    
+    return totaal
+
+
+def bereken_vermogen_per_type(
+    vermogensitems: list[VermogensItem], 
+    peildatum: date
+) -> dict[VermogensType, Decimal]:
+    """
+    Bereken vermogen per VermogensType op een specifieke datum.
+    
+    Args:
+        vermogensitems: Lijst van VermogensItems.
+        peildatum: Datum waarop vermogen wordt berekend.
+    
+    Returns:
+        Dictionary met per VermogensType het totale vermogen.
+    """
+    per_type: dict[VermogensType, Decimal] = {}
+    
+    for item in vermogensitems:
+        if item.is_actief_op(peildatum):
+            waarde = item.waarde_op_datum(peildatum)
+            if item.type in per_type:
+                per_type[item.type] += waarde
+            else:
+                per_type[item.type] = waarde
+    
+    return per_type
+
+
+def update_vermogensitems_waarde(
+    vermogensitems: list[VermogensItem],
+    peildatum: date,
+    cashflow_netto: Decimal,
+) -> list[VermogensItem]:
+    """
+    Update de waarde van vermogensitems met netto cashflow.
+    
+    Voor SPAARGELD en BELEGGINGEN items wordt de aanschafwaarde verhoogd met het
+    overschot (positief) of verlaagd met het tekort (negatief).
+    
+    Voor fysieke bezittingen (AUTO, KUNST, etc.) blijft de aanschafwaarde ongewijzigd;
+    deze worden gewaardeerd via groei_pct.
+    
+    Args:
+        vermogensitems: Lijst van VermogensItems (wordt gekopieerd).
+        peildatum: Datum waarop cashflow wordt toegevoegd.
+        cashflow_netto: Netto cashflow (positief=overschot, negatief=tekort).
+    
+    Returns:
+        Nieuwe lijst VermogensItems met bijgewerkte waarden.
+    """
+    # Maak kopie van lijst
+    nieuwe_items = [item.model_copy(deep=True) for item in vermogensitems]
+    
+    if cashflow_netto == Decimal("0"):
+        return nieuwe_items
+    
+    # Zoek spaargeld en beleggingen items
+    liquide_items = [
+        item for item in nieuwe_items 
+        if item.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN) 
+        and item.is_actief_op(peildatum)
+    ]
+    
+    if not liquide_items:
+        # Geen liquide items: maak nieuw spaargeld item
+        nieuw_item = VermogensItem(
+            omschrijving="Spaargeld (automatisch aangemaakt)",
+            type=VermogensType.SPAARGELD,
+            persoon="Huishouden",
+            aanschafwaarde=cashflow_netto,
+            aanschafdatum=peildatum,
+            groei_pct=Decimal("0"),  # Groei wordt via rente berekend in cashflow_engine
+            box3_belast=True,
+        )
+        nieuwe_items.append(nieuw_item)
+        return nieuwe_items
+    
+    # Verdeel cashflow over liquide items naar rato huidige waarde
+    totaal_liquide = sum(item.waarde_op_datum(peildatum) for item in liquide_items)
+    
+    for item in liquide_items:
+        if totaal_liquide > Decimal("0"):
+            # Pro-rata verdeling
+            fractie = item.waarde_op_datum(peildatum) / totaal_liquide
+            item.aanschafwaarde += cashflow_netto * fractie
+        else:
+            # Gelijk verdelen over liquide items
+            item.aanschafwaarde += cashflow_netto / Decimal(str(len(liquide_items)))
+        
+        # Aanschafwaarde kan niet negatief
+        item.aanschafwaarde = max(Decimal("0"), item.aanschafwaarde)
+    
+    return nieuwe_items

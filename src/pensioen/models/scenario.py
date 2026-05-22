@@ -8,6 +8,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, model_validator
 
 from pensioen.models.component import CategorieComponent, FinancieelComponent
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 
 
 class IncidenteelItem(BaseModel):
@@ -37,7 +38,7 @@ class Scenario(BaseModel):
     laatst_gewijzigd_op: datetime = Field(default_factory=datetime.now)
     is_default: bool = False
 
-    # Spaargeld en rendement
+    # Spaargeld en rendement (LEGACY: zie vermogensitems voor nieuwe structuur)
     spaargeld_start: Decimal = Decimal("0")   # beginsaldo in euro's
     beleggingen_start: Decimal = Decimal("0")  # beginwaarde beleggingen in euro's
     jaarlijkse_inleg: Decimal = Decimal("0")  # DEPRECATED: gebruik jaarlijkse_inleg_sparen + jaarlijkse_inleg_beleggen
@@ -46,6 +47,9 @@ class Scenario(BaseModel):
     rendement_pct: Decimal = Decimal("3")     # verwacht jaarlijks rendement in %
     rendement_sparen_pct: Decimal | None = None    # rendement op spaargeld (als None: gebruik rendement_pct)
     rendement_beleggen_pct: Decimal | None = None  # rendement op beleggingen (als None: gebruik rendement_pct)
+
+    # Vermogensitems (nieuwe structuur voor spaargeld, beleggingen en overige bezittingen)
+    vermogensitems: list[VermogensItem] = Field(default_factory=list)
 
     # Financiële componenten (inkomsten, uitgaven, inhoudingen)
     componenten: list[FinancieelComponent] = []
@@ -185,3 +189,92 @@ class Scenario(BaseModel):
         
         # Zorg dat fractie tussen 0 en 1 ligt
         return max(Decimal("0"), min(Decimal("1"), fractie_sparen))
+    
+    def migreer_legacy_vermogen(self) -> None:
+        """
+        Migreer oude spaargeld_start en beleggingen_start naar vermogensitems.
+        
+        Maakt VermogensItem entries aan voor spaargeld en beleggingen indien deze
+        nog niet bestaan in vermogensitems lijst.
+        
+        Deze method wordt aangeroepen bij het laden van oude sessies om backward
+        compatibility te waarborgen.
+        """
+        # Check of er al spaargeld/beleggingen items zijn
+        heeft_spaargeld = any(v.type == VermogensType.SPAARGELD for v in self.vermogensitems)
+        heeft_beleggingen = any(v.type == VermogensType.BELEGGINGEN for v in self.vermogensitems)
+        
+        # Migreer spaargeld als dit nog niet bestaat
+        if not heeft_spaargeld and self.spaargeld_start > Decimal("0"):
+            spaargeld_item = VermogensItem(
+                omschrijving="Spaargeld (gemigreerd)",
+                type=VermogensType.SPAARGELD,
+                persoon="Huishouden",
+                aanschafwaarde=self.spaargeld_start,
+                groei_pct=self.get_rendement_sparen(),
+                box3_belast=True,
+            )
+            self.vermogensitems.append(spaargeld_item)
+        
+        # Migreer beleggingen als dit nog niet bestaat
+        if not heeft_beleggingen and self.beleggingen_start > Decimal("0"):
+            beleggingen_item = VermogensItem(
+                omschrijving="Beleggingen (gemigreerd)",
+                type=VermogensType.BELEGGINGEN,
+                persoon="Huishouden",
+                aanschafwaarde=self.beleggingen_start,
+                groei_pct=self.get_rendement_beleggen(),
+                box3_belast=True,
+            )
+            self.vermogensitems.append(beleggingen_item)
+    
+    def totaal_vermogen_op_datum(self, peildatum: date) -> Decimal:
+        """
+        Bereken totaal vermogen op een specifieke datum.
+        
+        Som van alle actieve vermogensitems (inclusief gemigreerde legacy spaargeld/beleggingen).
+        
+        Args:
+            peildatum: Datum waarop vermogen wordt berekend.
+        
+        Returns:
+            Totaal vermogen in euro's.
+        """
+        # Zorg dat legacy vermogen gemigreerd is
+        if not self.vermogensitems and (self.spaargeld_start > Decimal("0") or self.beleggingen_start > Decimal("0")):
+            self.migreer_legacy_vermogen()
+        
+        totaal = Decimal("0")
+        for item in self.vermogensitems:
+            totaal += item.waarde_op_datum(peildatum)
+        
+        return totaal
+    
+    def get_vermogensitems_actief(self, peildatum: date) -> list[VermogensItem]:
+        """
+        Geef lijst van actieve vermogensitems op een specifieke datum.
+        
+        Args:
+            peildatum: Datum waarop items actief moeten zijn.
+        
+        Returns:
+            Lijst van actieve VermogensItems.
+        """
+        # Zorg dat legacy vermogen gemigreerd is
+        if not self.vermogensitems and (self.spaargeld_start > Decimal("0") or self.beleggingen_start > Decimal("0")):
+            self.migreer_legacy_vermogen()
+        
+        return [item for item in self.vermogensitems if item.is_actief_op(peildatum)]
+    
+    def get_vermogensitems_box3_belast(self, peildatum: date) -> list[VermogensItem]:
+        """
+        Geef lijst van box 3 belaste vermogensitems op een specifieke datum.
+        
+        Args:
+            peildatum: Datum waarop items actief moeten zijn.
+        
+        Returns:
+            Lijst van actieve, box 3 belaste VermogensItems.
+        """
+        actieve_items = self.get_vermogensitems_actief(peildatum)
+        return [item for item in actieve_items if item.box3_belast]
