@@ -185,10 +185,16 @@ def _bereken_jaar(
                 persoon2.geboortedatum, aow_datum_p2, aow_maandbedrag_p2, jaar, maand
             )
 
-        # Pensioen uit records (MPO import) - LEGACY: pensioenen zijn nu componenten
-        # pen_p1 en pen_p2 blijven op 0 aangezien PENSIOEN_INKOMEN componenten al meegenomen zijn in overig_bruto
-        pen_p1 = Decimal("0")
+        # Pensioen uit componenten (PENSIOEN_INKOMEN)
+        # Deze worden gebruikt voor de grafiekweergave (pensioen_p1_bruto, pensioen_p2_bruto)
+        pen_p1 = _component_som_maand(
+            scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
+        )
         pen_p2 = Decimal("0")
+        if persoon2:
+            pen_p2 = _component_som_maand(
+                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
+            )
 
         # Uitgaven en inhoudingen uit componenten
         uitgaven_maand = (
