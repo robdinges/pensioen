@@ -212,6 +212,67 @@ def toon_componenten_pagina() -> None:
                             render_component_card(uitgaven[i], i, "uitg")
     
     with tab_pens:
+        # AOW automatische berekening info
+        st.markdown("#### 🏛️ AOW (automatisch berekend)")
+        
+        from pensioen.tax.aow_engine import bereken_aow_datum
+        from pensioen.tax.belasting_loader import laad_tarieven
+        from datetime import date
+        
+        persoon1 = st.session_state.get("persoon1")
+        persoon2 = st.session_state.get("persoon2")
+        
+        # Laad AOW bedragen uit huidige belastingconfig
+        huidig_jaar = date.today().year
+        try:
+            config = laad_tarieven(huidig_jaar)
+            aow_gehuwd = config.aow_bedrag.gehuwd_of_samenwonend_per_maand
+            aow_alleenstaand = config.aow_bedrag.alleenstaande_per_maand
+        except Exception:
+            # Fallback als config niet beschikbaar
+            aow_gehuwd = None
+            aow_alleenstaand = None
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if persoon1:
+                aow_datum_p1 = bereken_aow_datum(persoon1.geboortedatum)
+                aow_leeftijd_p1 = (aow_datum_p1.year - persoon1.geboortedatum.year)
+                
+                # Gebruik gehuwd bedrag als er een partner is
+                aow_bedrag = aow_gehuwd if persoon2 else aow_alleenstaand
+                bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
+                
+                st.info(
+                    f"**{persoon1.naam}**\n\n"
+                    f"📅 AOW vanaf: {aow_datum_p1.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p1})\n\n"
+                    f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
+                )
+            else:
+                st.caption("Persoon 1 niet ingevuld")
+        
+        with col2:
+            if persoon2:
+                aow_datum_p2 = bereken_aow_datum(persoon2.geboortedatum)
+                aow_leeftijd_p2 = (aow_datum_p2.year - persoon2.geboortedatum.year)
+                
+                aow_bedrag = aow_gehuwd
+                bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
+                
+                st.info(
+                    f"**{persoon2.naam}**\n\n"
+                    f"📅 AOW vanaf: {aow_datum_p2.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p2})\n\n"
+                    f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
+                )
+            else:
+                st.caption("Partner niet ingevuld")
+        
+        st.caption("ℹ️ AOW wordt automatisch berekend op basis van geboortedatum. Het bedrag is een indicatie en kan jaarlijks wijzigen.")
+        
+        st.markdown("---")
+        st.markdown("#### 🏦 Werkgevers- en lijfrentepensioenen")
+        
         # Toevoeg-knop
         if st.button("➕ Nieuw pensioen", key="pens_nieuwe"):
             st.session_state["pens_active_mode"] = "add"
