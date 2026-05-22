@@ -101,3 +101,38 @@ class TestBerekenVermogensontwikkeling:
         )
         for _, saldo in resultaten:
             assert float(saldo) == pytest.approx(50000, rel=1e-4)
+
+    def test_aparte_rendementen_sparen_beleggen(self) -> None:
+        """Sparen 2%, Beleggen 6%, 50/50 split → gewogen rendement 4%."""
+        saldo = Decimal("10000")
+        rente = bereken_rente_maand(
+            saldo=saldo,
+            jaarrendement_pct=Decimal("4"),  # fallback (niet gebruikt)
+            jaarrendement_sparen_pct=Decimal("2"),
+            jaarrendement_beleggen_pct=Decimal("6"),
+            spaargeld_fractie=Decimal("0.5"),
+        )
+        # Verwacht: 5000 × 2% + 5000 × 6% = 100 + 300 = 400 per jaar
+        # Per maand: ≈ 32.74
+        assert float(rente) == pytest.approx(32.74, abs=1.0)
+
+    def test_spaargeld_fractie_scenarios(self) -> None:
+        """Verschillende fracties geven verschillende rendementen."""
+        saldo = Decimal("10000")
+        
+        # 100% sparen (1% rendement)
+        rente_sparen = bereken_rente_maand(
+            saldo, Decimal("0"), Decimal("1"), Decimal("7"), Decimal("1.0")
+        )
+        
+        # 100% beleggen (7% rendement)
+        rente_beleggen = bereken_rente_maand(
+            saldo, Decimal("0"), Decimal("1"), Decimal("7"), Decimal("0.0")
+        )
+        
+        # 50/50
+        rente_mix = bereken_rente_maand(
+            saldo, Decimal("0"), Decimal("1"), Decimal("7"), Decimal("0.5")
+        )
+        
+        assert rente_sparen < rente_mix < rente_beleggen

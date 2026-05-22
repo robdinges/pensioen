@@ -356,3 +356,110 @@ class TestCashflowHuishouden:
         assert resultaat_bruto.totaal_belasting > Decimal("0")
         assert resultaat_netto.totaal_belasting == Decimal("0")
         assert resultaat_bruto.netto < resultaat_netto.netto
+
+    def test_overschot_naar_spaarrekening(self) -> None:
+        """Netto overschot gaat naar saldo en is volgende jaar rentegevend."""
+        persoon = Persoon(naam="Spaarder", geboortedatum=date(1965, 1, 1))
+        
+        # Pensioen 30.000/jaar, geen uitgaven, rendement 3%
+        scenario = Scenario(
+            naam="Overschot test",
+            spaargeld_start=Decimal("0"),
+            rendement_pct=Decimal("3"),
+            box3_meenemen=False,  # Vereenvoudig: geen box3
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Pensioen",
+                    categorie=CategorieComponent.PENSIOEN_INKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("30000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                    begindatum=date(2030, 1, 1),
+                )
+            ],
+        )
+        
+        configs = _maak_configs(2030, 2031)
+        cashflow = bereken_huishouden(
+            scenario, persoon, None, [], [], 2030, 2031, configs
+        )
+        
+        # Jaar 1: netto pensioen gaat naar saldo
+        vermogen_jaar1 = cashflow.jaren[0].vermogen_einde_jaar
+        assert vermogen_jaar1 > Decimal("20000")  # na belasting
+        
+        # Jaar 2: vermogen groeit met rendement + nieuw netto pensioen
+        vermogen_jaar2 = cashflow.jaren[1].vermogen_einde_jaar
+        assert vermogen_jaar2 > vermogen_jaar1 * Decimal("1.03")
+
+    def test_tekort_van_spaarrekening(self) -> None:
+        """Netto tekort wordt van saldo afgetrokken."""
+        persoon = Persoon(naam="Uitgever", geboortedatum=date(1965, 1, 1))
+        
+        scenario = Scenario(
+            naam="Tekort test",
+            spaargeld_start=Decimal("100000"),
+            rendement_pct=Decimal("0"),
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Uitgaven",
+                    categorie=CategorieComponent.UITGAVE,
+                    persoon="Huishouden",
+                    bedrag=Decimal("5000"),  # 5000/maand = 60000/jaar
+                    frequentie=Frequentie.MAANDELIJKS,
+                )
+            ],
+        )
+        
+        configs = _maak_configs(2027, 2027)
+        cashflow = bereken_huishouden(
+            scenario, persoon, None, [], [], 2027, 2027, configs
+        )
+        
+        # Vermogen daalt met ≈60.000
+        vermogen_einde = cashflow.jaren[0].vermogen_einde_jaar
+        assert vermogen_einde < Decimal("50000")
+        assert vermogen_einde > Decimal("30000")
+
+    def test_eenmalige_uitgave_impact(self) -> None:
+        """Eenmalige uitgave wordt direct van saldo afgetrokken."""
+        persoon = Persoon(naam="Test", geboortedatum=date(1965, 1, 1))
+        
+        # Vergelijk twee scenarios: met en zonder eenmalige uitgave
+        scenario_zonder = Scenario(
+            naam="Zonder uitgave",
+            spaargeld_start=Decimal("100000"),
+            rendement_pct=Decimal("0"),
+            box3_meenemen=False,
+        )
+        
+        scenario_met = Scenario(
+            naam="Met eenmalige uitgave",
+            spaargeld_start=Decimal("100000"),
+            rendement_pct=Decimal("0"),
+            box3_meenemen=False,
+            incidentele_items=[
+                IncidenteelItem(
+                    datum=date(2027, 6, 1),
+                    bedrag=Decimal("-30000"),  # negatief = uitgave
+                    omschrijving="Auto kopen",
+                )
+            ],
+        )
+        
+        configs = _maak_configs(2027, 2027)
+        cashflow_zonder = bereken_huishouden(
+            scenario_zonder, persoon, None, [], [], 2027, 2027, configs
+        )
+        cashflow_met = bereken_huishouden(
+            scenario_met, persoon, None, [], [], 2027, 2027, configs
+        )
+        
+        # Vermogen daalt met precies 30.000 door de uitgave
+        vermogen_zonder = cashflow_zonder.jaren[0].vermogen_einde_jaar
+        vermogen_met = cashflow_met.jaren[0].vermogen_einde_jaar
+        verschil = vermogen_zonder - vermogen_met
+        
+        assert float(verschil) == pytest.approx(30000, abs=10)

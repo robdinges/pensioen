@@ -1,0 +1,649 @@
+# BACKLOG - Pensioenplanner Feature & Improvement Backlog
+
+## 📋 HUIDIGE ONDERSTEUNING (v1.0)
+
+### ✅ Werkende Use Cases
+
+#### Inkomsten & Uitgaven
+
+1. **Loon met bruto/netto keuze** - Vast maandloon, bruto of netto, met belastingberekening per persoon
+2. **Variabel loon** - Meerdere periodes met verschillende bedragen (bonus, loonsverhoging)
+3. **Pensioenuitkering** - Ouderdomspensioen vanaf pensioenleeftijd, bruto, met belasting
+4. **AOW-uitkering** - Automatische berekening vanaf AOW-leeftijd, gekoppeld aan geboortedatum
+5. **Overige inkomsten** - Uitkeringen, lijfrente, huurinkomsten (bruto of netto)
+6. **Huishoudelijke uitgaven** - Vaste lasten per maand/jaar (huur, verzekeringen, boodschappen)
+7. **Inhoudingen** - Pensioenpremie, vakbondsbijdrage (netto, na belasting)
+8. **Eenmalige cashflows** - Erfenis, auto kopen, verbouwing (exacte datum)
+
+#### Vermogen & Rendement
+
+9. **Spaarrekening** - Spaargeld met rendement, compound interest, maandelijks berekend
+10. **Beleggingsportefeuille** - Beleggingen met hoger rendement dan sparen
+11. **Overschot/tekort verwerking** - Netto overschot → spaarrekening (+), tekort → spaarrekening (-)
+12. **Box 3 heffing** - Fictief rendement op vermogen per 1 januari, gewogen naar sparen/beleggen
+13. **Dynamische vermogensverdeling** - Automatische berekening spaargeld vs beleggingen fractie
+
+#### Belasting & Heffingen
+
+14. **Box 1 progressief** - Schijvenstelsel met AOW-korting
+15. **Algemene heffingskorting** - Automatisch berekend op basis van inkomen
+16. **Arbeidskorting** - Bij arbeidsinkomen, afbouwend bij hoge inkomens
+17. **Ouderenkorting** - Voor 65+ met laag inkomen
+18. **Partner belasting** - Aparte berekening per persoon, dubbele box 3 vrijstelling
+
+#### Planning & Scenario's
+
+19. **Multi-scenario vergelijking** - Meerdere toekomstscenario's naast elkaar
+20. **Tijdshorizon flexibel** - Prognose van jaar X tot jaar Y
+21. **Groeipercentages** - Inflatie, indexatie pensioen, loonstijging per component
+22. **Sessie persistentie** - Opslaan en laden van complete sessies
+
+#### Import & Export
+
+23. **MPO CSV import** - MijnPensioenoverzicht.nl ouderdomspensioenen
+24. **MPO JSON import** - Stichting Pensioenregister format (auto-detect)
+25. **Excel rapport** - Uitgebreide cashflowprognose met grafieken
+26. **Accountantsoverzicht** - Gedetailleerde maand-voor-maand uitsplitsing
+
+---
+
+## 🔮 TOEKOMSTIGE FEATURES
+
+### High Priority - Vermogenstypen & Box 3
+
+#### #001: Eigen woning 🔴 HIGH
+**Beschrijving**: Toevoegen van eigen woning als vermogenstype
+
+**Details**:
+- WOZ-waarde met jaarlijkse groei
+- Vrijstelling voor box 3 (eigen woning eigenwoningforfait sinds 2026)
+- Hypotheekschuld als negatief vermogen
+- Aflossingsvorm (lineair, annuïteit, aflossingsvrij)
+- Renteaftrek box 1
+
+**Impact**: Box 3 berekening, netto inkomen door hypotheekrenteaftrek
+
+**Afhankelijkheden**: Nieuwe VermogensType enum, box 3 vrijstellingen
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #002: Overige bezittingen (auto, kunst, boot) 🔴 HIGH
+**Beschrijving**: Generieke vermogenstypen met waardering
+
+**Details**:
+- Type: AUTO, KUNST, BOOT, OVERIG
+- Aanschafwaarde en aanschafdatum
+- Afschrijving (negatieve groei) of waardestijging
+- Wel/niet box 3 belast
+- Optioneel verkoopdatum met opbrengst
+
+**Scenario's**:
+- Auto: €30.000, -15% afschrijving per jaar, verkoop na 5 jaar voor restwaarde
+- Kunst: €50.000, +3% waardestijging, niet verkopen
+- Boot: €80.000, -10% afschrijving, box 3 vrijgesteld (recreatie)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #003: Box 3 herzien (2026+ stelsel) 🟡 MEDIUM
+**Beschrijving**: Implementeer nieuwe box 3 wetgeving
+
+**Details**:
+- Werkelijk rendement i.p.v. forfaitair (indien van kracht)
+- Verschillende box 3 vrijstellingen per vermogenstype
+- Vermogensrendementsheffing met daadwerkelijke opbrengsten
+
+**Status**: ⏳ WAITING (Afwachten definitieve wetgeving)
+
+---
+
+### High Priority - Inkomsten & Uitgaven
+
+#### #004: Hypotheeklasten 🔴 HIGH
+**Beschrijving**: Gedetailleerde hypotheekberekening
+
+**Details**:
+- Hypotheekbedrag, rentepercentage, looptijd
+- Berekening maandlast (rente + aflossing)
+- Renteaftrek in box 1
+- Verschillende aflossingsvarianten
+- Oversluitscenario's (vervroegd aflossen, oversluiten)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #005: Alimentatie (betalen/ontvangen) 🟡 MEDIUM
+**Beschrijving**: Alimentatieverplichtingen
+
+**Details**:
+- Partner- en kinderalimentatie
+- Aftrekbaar voor betaler, belast voor ontvanger
+- Indexatie conform CBS of afspraak
+- Einddatum (bijv. kind 18 jaar)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #006: Studiefinanciering 🟡 MEDIUM
+**Beschrijving**: Studiekosten en -financiering
+
+**Details**:
+- Studietoeslag (belast inkomen)
+- Collegegeld als uitgave
+- Studieschuld met rente en aflossing
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #007: Kinderopvang & toeslagen 🟢 LOW
+**Beschrijving**: Kinderopvangtoeslag en kinderkorting
+
+**Details**:
+- Kinderopvangtoeslag op basis van inkomen
+- Kindgebonden budget
+- Kinderkorting in belasting
+
+**Status**: 📝 PLANNED
+
+---
+
+### Medium Priority - Belasting & Heffingen
+
+#### #008: Zorgtoeslag 🟡 MEDIUM
+**Beschrijving**: Automatische berekening zorgtoeslag
+
+**Details**:
+- Op basis van toetsingsinkomen en vermogen
+- Jaarlijkse indexatie
+- Partnertoeslag
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #009: Huurtoeslag 🟡 MEDIUM
+**Beschrijving**: Huurtoeslag voor huurders
+
+**Details**:
+- Maximale huurprijs voor toeslag
+- Inkomensgrenzen
+- Vermogenstoets
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #010: IB-ondernemers 🟢 LOW
+**Beschrijving**: Ondersteuning zelfstandigen
+
+**Details**:
+- Winst uit onderneming
+- Zelfstandigenaftrek, startersaftrek
+- MKB-winstvrijstelling
+- Ondernemersaftrek (indien voortzetting)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #011: DGA/directeur-grootaandeelhouder 🟢 LOW
+**Beschrijving**: DGA-specifieke regelingen
+
+**Details**:
+- Gebruikelijk loon
+- Stamrechtvrijstelling
+- Lijfrentepremieaftrek
+
+**Status**: 📝 PLANNED
+
+---
+
+### Medium Priority - Pensioen
+
+#### #012: Partner- en nabestaandenpensioen 🟡 MEDIUM
+**Beschrijving**: Alle pensioentypes uit MPO
+
+**Details**:
+- Partnerpensioen bij overlijden
+- Wezenpensioen
+- ANW-hiaatverzekering
+- Voorwaardelijke indexatie
+
+**Opmerking**: ⚠️ Parser ondersteunt dit al, maar UI en berekening niet
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #013: Lijfrente & annuïteit 🟡 MEDIUM
+**Beschrijving**: Lijfrentepolissen en annuïteiten
+
+**Details**:
+- Inleg tijdens werkzame jaren (aftrekbaar)
+- Uitkering vanaf pensioendatum (belast)
+- Verschillende uitkeringsvormen
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #014: AOW franchise/toeslag 🟢 LOW
+**Beschrijving**: AOW-varianten
+
+**Details**:
+- AOW-toeslag voor partner zonder AOW
+- Vakantietoeslag
+- AOW-franchise bij arbeid
+
+**Status**: 📝 PLANNED
+
+---
+
+### Low Priority - Geavanceerde Features
+
+#### #015: Inflatie per categorie 🟢 LOW
+**Beschrijving**: Verschillende inflatiepercentages
+
+**Details**:
+- Energie-inflatie hoger dan voedsel
+- Loon-indexatie anders dan prijsindex
+- Zorg-inflatie afwijkend
+
+**Status**: 💡 IDEA
+
+---
+
+#### #016: Monte Carlo simulatie 🟢 LOW
+**Beschrijving**: Onzekerheidsbanden rond prognose
+
+**Details**:
+- Variabele rendementen (normaalverdeling)
+- Levensverwachting onzeker
+- Percentiel-banden (P10, P50, P90)
+
+**Status**: 💡 IDEA
+
+---
+
+#### #017: Multi-valuta ondersteuning 🟢 LOW
+**Beschrijving**: Pensioenen uit buitenland
+
+**Details**:
+- Wisselkoersen
+- Belastingverdragen
+- Buitenlandse box 3 vrijstellingen
+
+**Status**: 💡 IDEA
+
+---
+
+#### #018: Successieplanning 🟢 LOW
+**Beschrijving**: Erfenis en schenking
+
+**Details**:
+- Erfbelasting
+- Schenkingsvrijstelling
+- Tijdelijke verhogingen
+
+**Status**: 💡 IDEA
+
+---
+
+## 🔧 VERBETERINGEN & TECHNISCHE SCHULD
+
+### UI/UX Verbeteringen
+
+#### #101: Component bulk acties 🟡 MEDIUM
+**Beschrijving**: Meerdere componenten tegelijk bewerken/verwijderen
+
+**Details**:
+- Checkboxes voor selectie
+- Bulk delete knop
+- Bulk edit (bijv. alle bedragen +3% inflatie)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #102: Component templates 🟡 MEDIUM
+**Beschrijving**: Herbruikbare sjablonen
+
+**Details**:
+- "Standaard huishouden" template
+- "Minimale basisuitgaven" template
+- "Luxe pensioen" template
+- Eigen templates opslaan
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #103: Drag & drop componenten 🟢 LOW
+**Beschrijving**: Componenten slepen om volgorde te wijzigen
+
+**Details**:
+- Visuele ordening
+- Categorieën groeperen
+- Automatisch sorteren op datum/bedrag
+
+**Status**: 💡 IDEA
+
+---
+
+#### #104: Grafiek interacties 🟢 LOW
+**Beschrijving**: Klikbare grafieken
+
+**Details**:
+- Klik op jaar → detail tabel
+- Klik op lijn → component details
+- Zoom in/out op tijdslijn
+
+**Status**: 💡 IDEA
+
+---
+
+#### #105: Dark mode 🟢 LOW
+**Beschrijving**: Donkere UI optie
+
+**Status**: 💡 IDEA
+
+---
+
+### Data & Validatie
+
+#### #106: Geavanceerde validatie 🟡 MEDIUM
+**Beschrijving**: Uitgebreidere controles
+
+**Details**:
+- Waarschuwing bij tekortjaren
+- Waarschuwing bij extreem hoge box 3 heffing
+- Suggesties voor optimalisatie
+- Sanity checks (bijv. AOW > €40.000 = fout)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #107: Import uitbreiden 🟡 MEDIUM
+**Beschrijving**: Meer importformaten
+
+**Details**:
+- MPO PDF (nu alleen CSV/JSON/Excel)
+- ING/Rabobank bankafschriften
+- Belastingaangifte XML
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #108: Export uitbreiden 🟡 MEDIUM
+**Beschrijving**: Meer exportformaten
+
+**Details**:
+- PDF rapport met grafieken
+- CSV voor verdere analyse
+- JSON voor API-integratie
+
+**Status**: 📝 PLANNED
+
+---
+
+### Performance & Schaalbaarheid
+
+#### #109: Caching berekeningen 🟡 MEDIUM
+**Beschrijving**: Cache tussenresultaten
+
+**Details**:
+- Belastingtarieven cachen
+- AOW-datums cachen
+- Scenario-berekeningen cachen (invalideren bij wijziging)
+
+**Impact**: 50-70% sneller bij herhaalde berekeningen
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #110: Async berekeningen 🟢 LOW
+**Beschrijving**: Lange berekeningen in background
+
+**Details**:
+- Progress bar
+- Annuleren mogelijk
+- Multi-threading voor scenario-vergelijkingen
+
+**Status**: 💡 IDEA
+
+---
+
+#### #111: Database backend 🟢 LOW
+**Beschrijving**: Vervang JSON-files door database
+
+**Details**:
+- SQLite voor lokale installatie
+- PostgreSQL voor server-deployment
+- Versiebeheer van scenario's
+- Audit trail (wie, wanneer, wat gewijzigd)
+
+**Impact**: 🔴 BREAKING CHANGE
+
+**Status**: 💡 IDEA (tenzij multi-user vereist)
+
+---
+
+### Code Kwaliteit
+
+#### #112: Type coverage verhogen 🟡 MEDIUM
+**Beschrijving**: Volledige type hints overal
+
+**Huidige status**: ~90% coverage
+
+**Doel**: 100% met mypy strict mode
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #113: Test coverage verhogen 🟡 MEDIUM
+**Beschrijving**: Meer unit tests
+
+**Huidige status**: 37% line coverage, 115 tests
+
+**Doel**: 80%+ line coverage, 200+ tests
+
+**Focus**:
+- UI code (nu 0% coverage)
+- Edge cases (negatief vermogen, extreem hoge inkomens)
+- Integratietests (end-to-end scenarios)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #114: Refactor vermogen_engine 🔴 HIGH
+**Beschrijving**: Scheiden van sparen/beleggen/overige bezittingen
+
+**Details**:
+- VermogensType enum (SPAARGELD, BELEGGINGEN, EIGEN_WONING, ...)
+- Per type aparte berekening
+- Generieke interface voor alle types
+
+**Impact**: 🔴 BREAKING CHANGE (interne API)
+
+**Blokkerende voor**: #001, #002
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #115: Logging & monitoring 🟡 MEDIUM
+**Beschrijving**: Gestructureerde logs
+
+**Details**:
+- Berekeningen loggen voor debugging
+- Performance metrics
+- Error tracking (Sentry-integratie)
+
+**Status**: 📝 PLANNED
+
+---
+
+## 🐛 BEKENDE ISSUES
+
+#### #201: Box 3 disclaimer altijd tonen 🟢 LOW
+**Beschrijving**: Disclaimer is te algemeen, niet specifiek per situatie
+
+**Fix**: Conditionele disclaimers op basis van vermogensniveau
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #202: MPO parser ondersteunt geen PDF 🟡 MEDIUM
+**Beschrijving**: PDF-parsing is stubbed maar niet geïmplementeerd
+
+**Workaround**: Gebruik CSV of JSON export
+
+**Fix**: pdfplumber integreren voor tabelextractie
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #203: Geen validatie op overlappende componenten 🟡 MEDIUM
+**Beschrijving**: Twee identieke pensioenen kunnen worden toegevoegd
+
+**Impact**: Dubbeltelling in berekening
+
+**Fix**: Deduplicatie check bij import en toevoegen
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #204: AOW-breuk bij deel-jaar niet getest 🟢 LOW
+**Beschrijving**: Edge case: AOW start 17 september, geen test
+
+**Status**: Code aanwezig, test ontbreekt
+
+**Fix**: Toevoegen test voor AOW mid-year start
+
+**Status**: 📝 PLANNED
+
+---
+
+## 📚 DOCUMENTATIE
+
+#### #301: API documentatie 🟡 MEDIUM
+**Beschrijving**: Volledige API docs voor developers
+
+**Details**:
+- Sphinx of MkDocs
+- Alle functies gedocumenteerd
+- Voorbeelden per module
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #302: Gebruikershandleiding 🟡 MEDIUM
+**Beschrijving**: End-user documentatie
+
+**Details**:
+- Stapsgewijze tutorials
+- Screenshots
+- FAQ sectie
+- Video's (optioneel)
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #303: Architectuur documentatie 🟢 LOW
+**Beschrijving**: Technische architectuur
+
+**Details**:
+- C4 diagrammen (Context, Containers, Components)
+- Data flow diagrammen
+- Decision records (ADRs)
+
+**Status**: 💡 IDEA
+
+---
+
+## 🎯 ROADMAP
+
+### Q2 2026 (nu - juni 2026)
+- ✅ Sparen & beleggen split implementatie (DONE)
+- ✅ Tests voor sparen/beleggen functionaliteit (DONE)
+- #114: Refactor vermogen_engine voor meerdere types
+- #001: Eigen woning implementatie
+- #002: Overige bezittingen (auto, kunst)
+
+### Q3 2026 (juli - september 2026)
+- #004: Hypotheeklasten
+- #106: Geavanceerde validatie
+- #107: Import uitbreiden (PDF)
+- #113: Test coverage naar 60%+
+
+### Q4 2026 (oktober - december 2026)
+- #012: Partner- en nabestaandenpensioen
+- #101: Component bulk acties
+- #102: Component templates
+- #109: Caching berekeningen
+
+### 2027
+- #003: Box 3 herzien (afhankelijk van wetgeving)
+- #005-#011: Overige inkomsten/uitgaven types
+- #111: Database backend (bij multi-user behoefte)
+- #302: Gebruikershandleiding
+
+---
+
+## 💡 IDEEËN VOOR LATER
+
+- **Mobiele app**: React Native wrapper voor on-the-go planning
+- **API voor adviseurs**: REST API voor financieel adviseurs
+- **AI assistent**: ChatGPT-achtige interface "Wat als ik met 62 stop?"
+- **Collaborative planning**: Meerdere gebruikers aan één scenario
+- **Benchmark rapporten**: Vergelijk met gemiddelden in leeftijdscategorie
+- **Notificaties**: "Je vermogen is onder €50.000 gedaald in scenario X"
+
+---
+
+## 📝 BIJDRAGEN
+
+Voor het oppakken van items uit deze backlog:
+1. Claim een issue door een comment te plaatsen
+2. Maak een feature branch: `feature/#XXX-korte-beschrijving`
+3. Implementeer met tests (vereist voor #001-#018)
+4. Update BACKLOG.md met status
+5. Pull request met referentie naar #XXX
+
+---
+
+## 🏷️ LEGENDA
+
+**Prioriteiten:**
+- 🔴 HIGH: Binnen 3 maanden
+- 🟡 MEDIUM: Binnen 6 maanden
+- 🟢 LOW: Nice to have
+
+**Status indicatoren:**
+- ✅ DONE: Geïmplementeerd en getest
+- 🚧 IN PROGRESS: Wordt momenteel aan gewerkt
+- 📝 PLANNED: Gepland voor implementatie
+- ⏳ WAITING: Wacht op externe afhankelijkheid
+- ⚠️ BLOCKED: Geblokkeerd door andere issue
+- 💡 IDEA: Nog niet gepland, alleen concept
+
+---
+
+*Laatste update: 22 mei 2026*
+*Versie: 1.0*

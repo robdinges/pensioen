@@ -189,3 +189,26 @@ class TestBox3:
         # Met partner: vrijstelling = 2 × €59.357 = €118.714 → belastbaar €1.286
         # Zonder: vrijstelling = €59.357 → belastbaar €60.643
         assert heffing_partner < heffing_enkel
+
+    def test_box3_verschillende_spaargeld_fracties(self) -> None:
+        """Box3 heffing verschilt op basis van spaargeld_fractie."""
+        vermogen = Decimal("200000")
+        config, _ = laad_tarieven(2026)
+        
+        # 100% spaargeld (laagste forfaitair rendement)
+        heffing_sparen, _ = bereken_box3_heffing(
+            vermogen, config, heeft_partner=False, spaargeld_fractie=Decimal("1.0")
+        )
+        
+        # 100% beleggingen (hoogste forfaitair rendement)
+        heffing_beleggen, _ = bereken_box3_heffing(
+            vermogen, config, heeft_partner=False, spaargeld_fractie=Decimal("0.0")
+        )
+        
+        # 50/50
+        heffing_mix, _ = bereken_box3_heffing(
+            vermogen, config, heeft_partner=False, spaargeld_fractie=Decimal("0.5")
+        )
+        
+        # Beleggen heeft hoger fictief rendement → hogere heffing
+        assert heffing_sparen < heffing_mix < heffing_beleggen
