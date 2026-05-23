@@ -1,4 +1,4 @@
-"""Streamlit-pagina: financiële componenten per actief scenario."""
+"""Streamlit-pagina: financiële componenten, vermogen en eenmalige posten (unified view)."""
 
 from __future__ import annotations
 
@@ -7,347 +7,499 @@ from decimal import Decimal
 
 import streamlit as st
 
-from pensioen.ui.flow_context import Stap, set_huidge_stap
+from pensioen.models.component import CategorieComponent, FinancieelComponent, BeleggingsType
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
+from pensioen.models.scenario import IncidenteelItem
+from pensioen.ui.flow_context import set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 from pensioen.ui.component_helpers import (
-    render_component_card,
     render_component_form,
-    render_incidenteel_card,
     render_incidenteel_form,
+    CATEGORIE_LABELS,
 )
+from pensioen.ui.tile_renderers import (
+    render_component_tile,
+    render_vermogensitem_tile,
+    render_incidenteel_tile,
+    render_type_filters,
+)
+from pensioen.ui.style import COLORS, ICONS, section_header_html, format_bedrag
+
+
+def _update_scenario(scenario, scenario_lijst):
+    """Update scenario in lijst en sla op."""
+    scenario.laatst_gewijzigd_op = datetime.now()
+    for i, sc in enumerate(scenario_lijst):
+        if sc.naam == scenario.naam:
+            scenario_lijst[i] = scenario
+            break
+    st.session_state["scenario_lijst"] = scenario_lijst
+    sla_sessie_op()
 
 
 def toon_componenten_pagina() -> None:
-    """Bewerk financiële componenten voor het actieve scenario."""
-    st.header("Financiële componenten")
-
+    """Financiële componenten, vermogen en eenmalige posten in één overzichtelijke pagina."""
+    st.header("💼 Financiële Planning")
+    
     scenario_lijst = st.session_state.get("scenario_lijst", [])
     actief = get_actief_scenario(scenario_lijst)
     if actief is None:
         st.warning("⚠️ Kies eerst een actief scenario.")
         return
-
-    def _update_scenario(scenario, scenario_lijst):
-        """Update scenario in lijst en sla op."""
-        scenario.laatst_gewijzigd_op = datetime.now()
-        for i, sc in enumerate(scenario_lijst):
-            if sc.naam == scenario.naam:
-                scenario_lijst[i] = scenario
-                break
-        st.session_state["scenario_lijst"] = scenario_lijst
-        sla_sessie_op()
-
+    
     scenario = actief
-    st.caption(f"Actief scenario: {scenario.naam}")
-
+    st.caption(f"Actief scenario: **{scenario.naam}**")
+    
     heeft_partner = "persoon2" in st.session_state
     persoon_opties = ["P1", "P2", "Huishouden"] if heeft_partner else ["P1", "Huishouden"]
-
-    # Reset vermogenwidgets zodat ze de waarden van het nieuwe scenario tonen
-    if st.session_state.get("_comp_geladen") != scenario.naam:
-        st.session_state["_comp_geladen"] = scenario.naam
-        st.session_state["comp_spaargeld"] = int(scenario.spaargeld_start)
-        st.session_state["comp_beleggingen"] = int(scenario.beleggingen_start)
-        # Backward compatibility: gebruik oude jaarlijkse_inleg als nieuwe velden leeg zijn
-        if scenario.jaarlijkse_inleg > 0 and scenario.jaarlijkse_inleg_sparen == 0 and scenario.jaarlijkse_inleg_beleggen == 0:
-            st.session_state["comp_inleg_sparen"] = int(scenario.jaarlijkse_inleg)
-            st.session_state["comp_inleg_beleggen"] = 0
-        else:
-            st.session_state["comp_inleg_sparen"] = int(scenario.jaarlijkse_inleg_sparen)
-            st.session_state["comp_inleg_beleggen"] = int(scenario.jaarlijkse_inleg_beleggen)
-        st.session_state["comp_rendement"] = float(scenario.rendement_pct)
-        st.session_state["comp_inflatie"] = float(scenario.inflatie_pct)
-        st.session_state["comp_box3"] = scenario.box3_meenemen
-        st.session_state["comp_box3_spaargeld"] = int(scenario.box3_spaargeld_fractie * 100)
     
-    # ========== PERIODIEKE INKOMSTEN EN UITGAVEN ==========
+    # Migreer legacy vermogen indien nodig
+    if not scenario.vermogensitems and (scenario.spaargeld_start > Decimal("0") or scenario.beleggingen_start > Decimal("0")):
+        scenario.migreer_legacy_vermogen()
+        _update_scenario(scenario, scenario_lijst)
+        st.rerun()
+    
+    # ========== SECTIE 1: INKOMSTEN & UITGAVEN ==========
     st.divider()
-    st.markdown("### 📊 Periodieke inkomsten en uitgaven")
+    st.markdown(section_header_html("Inkomsten & Uitgaven", "📊", COLORS["inkomen"]), unsafe_allow_html=True)
     
-    # Zoekbalk
-    zoek_query = st.text_input("🔍 Zoek component", key="comp_zoek", placeholder="Typ om te filteren op omschrijving...")
+    _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties)
     
-    # Filter componenten op categorie
-    from pensioen.models.component import CategorieComponent
-    
-    categorie_inkomen = [CategorieComponent.ARBEIDSINKOMEN, CategorieComponent.OVERIG_INKOMEN]
-    categorie_uitgave = [CategorieComponent.UITGAVE, CategorieComponent.INHOUDING]
-    categorie_pensioen = [CategorieComponent.PENSIOEN_INKOMEN]
-    
-    inkomsten = [c for c in scenario.componenten if c.categorie in categorie_inkomen]
-    uitgaven = [c for c in scenario.componenten if c.categorie in categorie_uitgave]
-    pensioenen = [c for c in scenario.componenten if c.categorie in categorie_pensioen]
-    
-    # Toepassen zoekfilter
-    if zoek_query:
-        inkomsten = [c for c in inkomsten if zoek_query.lower() in c.omschrijving.lower()]
-        uitgaven = [c for c in uitgaven if zoek_query.lower() in c.omschrijving.lower()]
-        pensioenen = [c for c in pensioenen if zoek_query.lower() in c.omschrijving.lower()]
-    
-    tab_ink, tab_uitg, tab_pens = st.tabs([f"💰 Inkomsten ({len(inkomsten)})", f"🧾 Uitgaven ({len(uitgaven)})", f"🏦 Pensioenen ({len(pensioenen)})"])
-    
-    with tab_ink:
-        # Toevoeg-knop
-        if st.button("➕ Nieuwe inkomst", key="ink_nieuwe"):
-            st.session_state["ink_active_mode"] = "add"
-            st.session_state["ink_active_idx"] = None
-            st.rerun()
-        
-        # Formulier indien actief
-        active_mode = st.session_state.get("ink_active_mode")
-        active_idx = st.session_state.get("ink_active_idx")
-        
-        if active_mode == "add":
-            nieuwe_comp = render_component_form(
-                section_key="ink",
-                mode="add",
-                initial=None,
-                persoon_opties=persoon_opties,
-            )
-            if nieuwe_comp:
-                scenario.componenten.append(nieuwe_comp)
-                st.session_state["ink_active_mode"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        elif active_mode == "edit" and active_idx is not None:
-            gewijzigde_comp = render_component_form(
-                section_key="ink",
-                mode="edit",
-                initial=inkomsten[active_idx],
-                persoon_opties=persoon_opties,
-            )
-            if gewijzigde_comp:
-                # Vervang in scenario.componenten
-                orig_idx = scenario.componenten.index(inkomsten[active_idx])
-                scenario.componenten[orig_idx] = gewijzigde_comp
-                st.session_state["ink_active_mode"] = None
-                st.session_state["ink_active_idx"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        
-        # Verwijder-logica
-        if "ink_delete_idx" in st.session_state:
-            del_idx = st.session_state["ink_delete_idx"]
-            orig_idx = scenario.componenten.index(inkomsten[del_idx])
-            scenario.componenten.pop(orig_idx)
-            del st.session_state["ink_delete_idx"]
-            _update_scenario(scenario, scenario_lijst)
-            st.rerun()
-        
-        # Toon cards in grid van 3 kolommen
-        st.markdown("---")
-        if not inkomsten:
-            st.info("Geen periodieke inkomsten ingesteld. Klik 'Nieuwe inkomst' om er een toe te voegen.")
-        else:
-            # Render in groepen van 3
-            for row_start in range(0, len(inkomsten), 3):
-                cols = st.columns(3)
-                for col_idx in range(3):
-                    i = row_start + col_idx
-                    if i < len(inkomsten):
-                        with cols[col_idx]:
-                            render_component_card(inkomsten[i], i, "ink")
-    
-    with tab_uitg:
-        # Toevoeg-knop
-        if st.button("➕ Nieuwe uitgave", key="uitg_nieuwe"):
-            st.session_state["uitg_active_mode"] = "add"
-            st.session_state["uitg_active_idx"] = None
-            st.rerun()
-        
-        # Formulier indien actief
-        active_mode_uitg = st.session_state.get("uitg_active_mode")
-        active_idx_uitg = st.session_state.get("uitg_active_idx")
-        
-        if active_mode_uitg == "add":
-            nieuwe_comp = render_component_form(
-                section_key="uitg",
-                mode="add",
-                initial=None,
-                persoon_opties=persoon_opties,
-            )
-            if nieuwe_comp:
-                scenario.componenten.append(nieuwe_comp)
-                st.session_state["uitg_active_mode"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        elif active_mode_uitg == "edit" and active_idx_uitg is not None:
-            gewijzigde_comp = render_component_form(
-                section_key="uitg",
-                mode="edit",
-                initial=uitgaven[active_idx_uitg],
-                persoon_opties=persoon_opties,
-            )
-            if gewijzigde_comp:
-                # Vervang in scenario.componenten
-                orig_idx = scenario.componenten.index(uitgaven[active_idx_uitg])
-                scenario.componenten[orig_idx] = gewijzigde_comp
-                st.session_state["uitg_active_mode"] = None
-                st.session_state["uitg_active_idx"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        
-        # Verwijder-logica
-        if "uitg_delete_idx" in st.session_state:
-            del_idx = st.session_state["uitg_delete_idx"]
-            orig_idx = scenario.componenten.index(uitgaven[del_idx])
-            scenario.componenten.pop(orig_idx)
-            del st.session_state["uitg_delete_idx"]
-            _update_scenario(scenario, scenario_lijst)
-            st.rerun()
-        
-        # Toon cards in grid van 3 kolommen
-        st.markdown("---")
-        if not uitgaven:
-            st.info("Geen periodieke uitgaven ingesteld. Klik 'Nieuwe uitgave' om er een toe te voegen.")
-        else:
-            # Render in groepen van 3
-            for row_start in range(0, len(uitgaven), 3):
-                cols = st.columns(3)
-                for col_idx in range(3):
-                    i = row_start + col_idx
-                    if i < len(uitgaven):
-                        with cols[col_idx]:
-                            render_component_card(uitgaven[i], i, "uitg")
-    
-    with tab_pens:
-        # AOW automatische berekening info
-        st.markdown("#### 🏛️ AOW (automatisch berekend)")
-        
-        from pensioen.tax.aow_engine import bereken_aow_datum
-        from pensioen.tax.belasting_loader import laad_tarieven
-        from datetime import date
-        
-        persoon1 = st.session_state.get("persoon1")
-        persoon2 = st.session_state.get("persoon2")
-        
-        # Laad AOW bedragen uit huidige belastingconfig
-        huidig_jaar = date.today().year
-        try:
-            config = laad_tarieven(huidig_jaar)
-            aow_gehuwd = config.aow_bedrag.gehuwd_of_samenwonend_per_maand
-            aow_alleenstaand = config.aow_bedrag.alleenstaande_per_maand
-        except Exception:
-            # Fallback als config niet beschikbaar
-            aow_gehuwd = None
-            aow_alleenstaand = None
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if persoon1:
-                aow_datum_p1 = bereken_aow_datum(persoon1.geboortedatum)
-                aow_leeftijd_p1 = (aow_datum_p1.year - persoon1.geboortedatum.year)
-                
-                # Gebruik gehuwd bedrag als er een partner is
-                aow_bedrag = aow_gehuwd if persoon2 else aow_alleenstaand
-                bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
-                
-                st.info(
-                    f"**{persoon1.naam}**\n\n"
-                    f"📅 AOW vanaf: {aow_datum_p1.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p1})\n\n"
-                    f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
-                )
-            else:
-                st.caption("Persoon 1 niet ingevuld")
-        
-        with col2:
-            if persoon2:
-                aow_datum_p2 = bereken_aow_datum(persoon2.geboortedatum)
-                aow_leeftijd_p2 = (aow_datum_p2.year - persoon2.geboortedatum.year)
-                
-                aow_bedrag = aow_gehuwd
-                bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
-                
-                st.info(
-                    f"**{persoon2.naam}**\n\n"
-                    f"📅 AOW vanaf: {aow_datum_p2.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p2})\n\n"
-                    f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
-                )
-            else:
-                st.caption("Partner niet ingevuld")
-        
-        st.caption("ℹ️ AOW wordt automatisch berekend op basis van geboortedatum. Het bedrag is een indicatie en kan jaarlijks wijzigen.")
-        
-        st.markdown("---")
-        st.markdown("#### 🏦 Werkgevers- en lijfrentepensioenen")
-        
-        # Toevoeg-knop
-        if st.button("➕ Nieuw pensioen", key="pens_nieuwe"):
-            st.session_state["pens_active_mode"] = "add"
-            st.session_state["pens_active_idx"] = None
-            st.rerun()
-        
-        # Formulier indien actief
-        active_mode_pens = st.session_state.get("pens_active_mode")
-        active_idx_pens = st.session_state.get("pens_active_idx")
-        
-        if active_mode_pens == "add":
-            nieuwe_comp = render_component_form(
-                section_key="pens",
-                mode="add",
-                initial=None,
-                persoon_opties=persoon_opties,
-            )
-            if nieuwe_comp:
-                scenario.componenten.append(nieuwe_comp)
-                st.session_state["pens_active_mode"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        elif active_mode_pens == "edit" and active_idx_pens is not None:
-            gewijzigde_comp = render_component_form(
-                section_key="pens",
-                mode="edit",
-                initial=pensioenen[active_idx_pens],
-                persoon_opties=persoon_opties,
-            )
-            if gewijzigde_comp:
-                # Vervang in scenario.componenten
-                orig_idx = scenario.componenten.index(pensioenen[active_idx_pens])
-                scenario.componenten[orig_idx] = gewijzigde_comp
-                st.session_state["pens_active_mode"] = None
-                st.session_state["pens_active_idx"] = None
-                _update_scenario(scenario, scenario_lijst)
-                st.rerun()
-        
-        # Verwijder-logica
-        if "pens_delete_idx" in st.session_state:
-            del_idx = st.session_state["pens_delete_idx"]
-            orig_idx = scenario.componenten.index(pensioenen[del_idx])
-            scenario.componenten.pop(orig_idx)
-            del st.session_state["pens_delete_idx"]
-            _update_scenario(scenario, scenario_lijst)
-            st.rerun()
-        
-        # Toon cards in grid van 3 kolommen
-        st.markdown("---")
-        if not pensioenen:
-            st.info("Geen pensioenen ingesteld. Klik 'Nieuw pensioen' om er een toe te voegen, of importeer vanaf Mijn Pensioen Overzicht.")
-        else:
-            # Render in groepen van 3
-            for row_start in range(0, len(pensioenen), 3):
-                cols = st.columns(3)
-                for col_idx in range(3):
-                    i = row_start + col_idx
-                    if i < len(pensioenen):
-                        with cols[col_idx]:
-                            render_component_card(pensioenen[i], i, "pens")
-
+    # ========== SECTIE 2: VERMOGEN & BEZITTINGEN ==========
     st.divider()
-    st.subheader("💸 Eenmalige ontvangsten en uitgaven")
+    st.markdown(section_header_html("Vermogen & Bezittingen", "💰", COLORS["vermogen"]), unsafe_allow_html=True)
+    
+    _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties)
+    
+    # ========== SECTIE 3: EENMALIGE POSTEN ==========
+    st.divider()
+    st.markdown(section_header_html("Eenmalige Ontvangsten & Uitgaven", "💸", COLORS["ontvangst"]), unsafe_allow_html=True)
+    
+    _render_eenmalige_posten_sectie(scenario, scenario_lijst)
+
+
+# ==============================================================================
+# SECTIE 1: INKOMSTEN & UITGAVEN
+# ==============================================================================
+
+def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties):
+    """Render inkomsten & uitgaven sectie met AOW info en filters."""
+    
+    # AOW automatische berekening info
+    st.markdown("### 🏛️ AOW (automatisch berekend)")
+    _render_aow_info()
+    
+    st.markdown("---")
+    st.markdown("### 💼 Periodieke inkomsten en uitgaven")
+    
+    # Filter componenten
+    categorie_filter = [
+        ("arbeidsinkomen", "Arbeidsinkomen"),
+        ("pensioen", "Pensioen"),
+        ("overig_inkomen", "Overig inkomen"),
+        ("uitgave", "Uitgaven"),
+        ("inhouding", "Inhoudingen"),
+    ]
+    
+    active_filters = render_type_filters(categorie_filter, "comp_inkuit")
+    
+    # Maak gefilterde lijsten
+    componenten_gefilterd = []
+    for comp in scenario.componenten:
+        if comp.categorie == CategorieComponent.ARBEIDSINKOMEN and "arbeidsinkomen" in active_filters:
+            componenten_gefilterd.append(("arbeidsinkomen", comp))
+        elif comp.categorie == CategorieComponent.PENSIOEN_INKOMEN and "pensioen" in active_filters:
+            componenten_gefilterd.append(("pensioen", comp))
+        elif comp.categorie == CategorieComponent.OVERIG_INKOMEN and "overig_inkomen" in active_filters:
+            componenten_gefilterd.append(("overig_inkomen", comp))
+        elif comp.categorie == CategorieComponent.UITGAVE and "uitgave" in active_filters:
+            componenten_gefilterd.append(("uitgave", comp))
+        elif comp.categorie == CategorieComponent.INHOUDING and "inhouding" in active_filters:
+            componenten_gefilterd.append(("inhouding", comp))
     
     # Toevoeg-knop
-    if st.button("➕ Nieuwe eenmalige cashflow", key="inc_nieuwe"):
+    if st.button("➕ Nieuwe component", key="comp_nieuwe"):
+        st.session_state["comp_active_mode"] = "add"
+        st.session_state["comp_active_idx"] = None
+        st.rerun()
+    
+    # Formulier indien actief
+    active_mode = st.session_state.get("comp_active_mode")
+    active_idx = st.session_state.get("comp_active_idx")
+    
+    if active_mode == "add":
+        nieuwe_comp = render_component_form(
+            section_key="comp",
+            mode="add",
+            initial=None,
+            persoon_opties=persoon_opties,
+        )
+        if nieuwe_comp:
+            scenario.componenten.append(nieuwe_comp)
+            st.session_state["comp_active_mode"] = None
+            _update_scenario(scenario, scenario_lijst)
+            st.rerun()
+    elif active_mode == "edit" and active_idx is not None:
+        gewijzigde_comp = render_component_form(
+            section_key="comp",
+            mode="edit",
+            initial=scenario.componenten[active_idx],
+            persoon_opties=persoon_opties,
+        )
+        if gewijzigde_comp:
+            scenario.componenten[active_idx] = gewijzigde_comp
+            st.session_state["comp_active_mode"] = None
+            st.session_state["comp_active_idx"] = None
+            _update_scenario(scenario, scenario_lijst)
+            st.rerun()
+    
+    # Verwijder-logica
+    if "comp_delete_idx" in st.session_state:
+        del_idx = st.session_state["comp_delete_idx"]
+        scenario.componenten.pop(del_idx)
+        del st.session_state["comp_delete_idx"]
+        _update_scenario(scenario, scenario_lijst)
+        st.rerun()
+    
+    # Toon tegels in grid van 4 kolommen
+    st.markdown("---")
+    if not componenten_gefilterd:
+        st.info("Geen componenten gevonden. Klik 'Nieuwe component' om er een toe te voegen.")
+    else:
+        for row_start in range(0, len(componenten_gefilterd), 4):
+            cols = st.columns(4)
+            for col_idx in range(4):
+                i = row_start + col_idx
+                if i < len(componenten_gefilterd):
+                    cat_key, comp = componenten_gefilterd[i]
+                    # Find original index in scenario.componenten
+                    orig_idx = scenario.componenten.index(comp)
+                    with cols[col_idx]:
+                        with st.container(border=True):
+                            render_component_tile(comp, orig_idx, "comp")
+
+
+def _render_aow_info():
+    """Render AOW info sectie."""
+    from pensioen.tax.aow_engine import bereken_aow_datum
+    from pensioen.tax.belasting_loader import laad_tarieven
+    
+    persoon1 = st.session_state.get("persoon1")
+    persoon2 = st.session_state.get("persoon2")
+    
+    # Laad AOW bedragen uit huidige belastingconfig
+    huidig_jaar = date.today().year
+    try:
+        config = laad_tarieven(huidig_jaar)
+        aow_gehuwd = config.aow_bedrag.gehuwd_of_samenwonend_per_maand
+        aow_alleenstaand = config.aow_bedrag.alleenstaande_per_maand
+    except Exception:
+        aow_gehuwd = None
+        aow_alleenstaand = None
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if persoon1:
+            aow_datum_p1 = bereken_aow_datum(persoon1.geboortedatum)
+            aow_leeftijd_p1 = (aow_datum_p1.year - persoon1.geboortedatum.year)
+            
+            aow_bedrag = aow_gehuwd if persoon2 else aow_alleenstaand
+            bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
+            
+            st.info(
+                f"**{persoon1.naam}**\n\n"
+                f"📅 AOW vanaf: {aow_datum_p1.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p1})\n\n"
+                f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
+            )
+        else:
+            st.caption("Persoon 1 niet ingevuld")
+    
+    with col2:
+        if persoon2:
+            aow_datum_p2 = bereken_aow_datum(persoon2.geboortedatum)
+            aow_leeftijd_p2 = (aow_datum_p2.year - persoon2.geboortedatum.year)
+            
+            aow_bedrag = aow_gehuwd
+            bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
+            
+            st.info(
+                f"**{persoon2.naam}**\n\n"
+                f"📅 AOW vanaf: {aow_datum_p2.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p2})\n\n"
+                f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
+            )
+        else:
+            st.caption("Partner niet ingevuld")
+    
+    st.caption("ℹ️ AOW wordt automatisch berekend op basis van geboortedatum. Het bedrag is een indicatie en kan jaarlijks wijzigen.")
+
+
+# ==============================================================================
+# SECTIE 2: VERMOGEN & BEZITTINGEN
+# ==============================================================================
+
+def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties):
+    """Render vermogen & bezittingen sectie met filters."""
+    
+    # Filter vermogensitems
+    vermogen_filter = [
+        ("spaargeld", "Spaargeld"),
+        ("beleggingen", "Beleggingen"),
+        ("eigen_woning", "Eigen woning"),
+        ("auto", "Auto"),
+        ("kunst", "Kunst & Antiek"),
+        ("boot", "Boot"),
+        ("overig", "Overig"),
+    ]
+    
+    active_filters = render_type_filters(vermogen_filter, "vermogen")
+    
+    # Filter items
+    items_gefilterd = []
+    type_mapping = {
+        "spaargeld": VermogensType.SPAARGELD,
+        "beleggingen": VermogensType.BELEGGINGEN,
+        "eigen_woning": VermogensType.EIGEN_WONING,
+        "auto": VermogensType.AUTO,
+        "kunst": VermogensType.KUNST,
+        "boot": VermogensType.BOOT,
+        "overig": VermogensType.OVERIG,
+    }
+    
+    for item in scenario.vermogensitems:
+        for filter_key, vtype in type_mapping.items():
+            if filter_key in active_filters and item.type == vtype:
+                items_gefilterd.append((filter_key, item))
+                break
+    
+    # Toevoeg-knop
+    if st.button("➕ Nieuw vermogensitem", key="verm_nieuwe"):
+        st.session_state["verm_active_mode"] = "add"
+        st.session_state["verm_active_idx"] = None
+        st.rerun()
+    
+    # Formulier indien actief
+    active_mode = st.session_state.get("verm_active_mode")
+    active_idx = st.session_state.get("verm_active_idx")
+    
+    if active_mode == "add":
+        _render_vermogensitem_form("add", None, scenario, scenario_lijst)
+    elif active_mode == "edit" and active_idx is not None:
+        _render_vermogensitem_form("edit", active_idx, scenario, scenario_lijst)
+    
+    # Verwijder-logica
+    if "verm_delete_idx" in st.session_state:
+        del_idx = st.session_state["verm_delete_idx"]
+        scenario.vermogensitems.pop(del_idx)
+        del st.session_state["verm_delete_idx"]
+        _update_scenario(scenario, scenario_lijst)
+        st.rerun()
+    
+    # Toon tegels in grid van 4 kolommen
+    st.markdown("---")
+    if not items_gefilterd:
+        st.info("Geen vermogensitems gevonden. Klik 'Nieuw vermogensitem' om er een toe te voegen.")
+    else:
+        for row_start in range(0, len(items_gefilterd), 4):
+            cols = st.columns(4)
+            for col_idx in range(4):
+                i = row_start + col_idx
+                if i < len(items_gefilterd):
+                    filter_key, item = items_gefilterd[i]
+                    # Find original index
+                    orig_idx = scenario.vermogensitems.index(item)
+                    with cols[col_idx]:
+                        with st.container(border=True):
+                            render_vermogensitem_tile(item, orig_idx, "verm")
+
+
+def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenario_lijst):
+    """Render formulier voor vermogensitem toevoegen/bewerken."""
+    is_edit = edit_idx is not None
+    title = "Bewerk vermogensitem" if is_edit else "Nieuw vermogensitem"
+    
+    if is_edit and edit_idx < len(scenario.vermogensitems):
+        item = scenario.vermogensitems[edit_idx]
+    else:
+        item = None
+    
+    with st.form(f"verm_form_{mode}"):
+        st.markdown(f"### {title}")
+        
+        # Type selectie
+        type_opties = list(VermogensType)
+        default_type_idx = 0
+        if item and item.type in type_opties:
+            default_type_idx = type_opties.index(item.type)
+        
+        vermogenstype = st.selectbox(
+            "Type",
+            type_opties,
+            format_func=lambda x: x.value.replace("_", " ").title(),
+            index=default_type_idx,
+        )
+        
+        omschrijving = st.text_input(
+            "Omschrijving",
+            value=item.omschrijving if item else "",
+            placeholder="bijv. 'Spaarrekening ING' of 'Tesla Model 3'"
+        )
+        
+        persoon = st.selectbox(
+            "Eigenaar",
+            ["Huishouden", "P1", "P2"],
+            index=["Huishouden", "P1", "P2"].index(item.persoon) if item else 0,
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            aanschafwaarde = st.number_input(
+                "Aanschafwaarde / Huidige waarde (€)",
+                min_value=0,
+                value=int(item.aanschafwaarde) if item else 0,
+                step=1000,
+            )
+        
+        with col2:
+            # Label aanpassen voor liquide middelen
+            if vermogenstype in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
+                groei_label = "Rendement (%/jaar)"
+                groei_help = "Verwacht jaarlijks rendement op dit vermogen"
+            else:
+                groei_label = "Groei/afschrijving (%/jaar)"
+                groei_help = "Positief = waardestijging, negatief = afschrijving"
+            
+            groei_pct = st.number_input(
+                groei_label,
+                min_value=-100.0,
+                max_value=100.0,
+                value=float(item.groei_pct) if item else 0.0,
+                step=0.5,
+                help=groei_help
+            )
+        
+        # Datums
+        col1, col2 = st.columns(2)
+        with col1:
+            aanschafdatum = st.date_input(
+                "Aanschafdatum (optioneel)",
+                value=item.aanschafdatum if item and item.aanschafdatum else None,
+                help="Laat leeg als item al in bezit is bij start planning"
+            )
+        
+        with col2:
+            verkoopdatum = st.date_input(
+                "Verkoopdatum (optioneel)",
+                value=item.verkoopdatum if item and item.verkoopdatum else None,
+                help="Laat leeg als item niet verkocht wordt"
+            )
+        
+        # Verkoopprijs (alleen als verkoopdatum is ingevuld)
+        verkoopprijs = None
+        if verkoopdatum:
+            verkoopprijs = st.number_input(
+                "Verkoopprijs (€)",
+                min_value=0,
+                value=int(item.verkoopprijs) if item and item.verkoopprijs else 0,
+                step=1000,
+                help="Laat op 0 voor automatische berekening op basis van waardering"
+            )
+            if verkoopprijs == 0:
+                verkoopprijs = None
+        
+        # Box 3
+        if vermogenstype != VermogensType.EIGEN_WONING:
+            box3_belast = st.checkbox(
+                "Box 3 belast",
+                value=item.box3_belast if item else True,
+                help="Vink uit voor vrijgestelde items (bijv. recreatievaartuig)"
+            )
+        else:
+            box3_belast = False
+            st.info("ℹ️ Eigen woning is vrijgesteld van box 3 (eigenwoningforfait box 1)")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            submit = st.form_submit_button("💾 Opslaan", type="primary", use_container_width=True)
+        with col2:
+            cancel = st.form_submit_button("❌ Annuleren", use_container_width=True)
+        
+        if submit:
+            if not omschrijving:
+                st.error("Omschrijving is verplicht")
+                return
+            
+            try:
+                nieuw_item = VermogensItem(
+                    omschrijving=omschrijving,
+                    type=vermogenstype,
+                    persoon=persoon,
+                    aanschafwaarde=Decimal(str(aanschafwaarde)),
+                    aanschafdatum=aanschafdatum if aanschafdatum else None,
+                    groei_pct=Decimal(str(groei_pct)),
+                    verkoopdatum=verkoopdatum if verkoopdatum else None,
+                    verkoopprijs=Decimal(str(verkoopprijs)) if verkoopprijs else None,
+                    box3_belast=box3_belast,
+                )
+                
+                if is_edit:
+                    scenario.vermogensitems[edit_idx] = nieuw_item
+                else:
+                    scenario.vermogensitems.append(nieuw_item)
+                
+                _update_scenario(scenario, scenario_lijst)
+                st.session_state["verm_active_mode"] = None
+                st.session_state["verm_active_idx"] = None
+                st.success("✅ Vermogensitem opgeslagen")
+                st.rerun()
+                
+            except ValueError as e:
+                st.error(f"❌ Validatiefout: {e}")
+        
+        if cancel:
+            st.session_state["verm_active_mode"] = None
+            st.session_state["verm_active_idx"] = None
+            st.rerun()
+
+
+# ==============================================================================
+# SECTIE 3: EENMALIGE POSTEN
+# ==============================================================================
+
+def _render_eenmalige_posten_sectie(scenario, scenario_lijst):
+    """Render eenmalige ontvangsten & uitgaven sectie."""
+    
+    # Filter
+    eenmalig_filter = [
+        ("ontvangst", "Ontvangsten"),
+        ("uitgave", "Uitgaven"),
+    ]
+    
+    active_filters = render_type_filters(eenmalig_filter, "eenmalig")
+    
+    # Filter items
+    items_gefilterd = []
+    for item in scenario.incidentele_items:
+        if item.bedrag >= 0 and "ontvangst" in active_filters:
+            items_gefilterd.append(("ontvangst", item))
+        elif item.bedrag < 0 and "uitgave" in active_filters:
+            items_gefilterd.append(("uitgave", item))
+    
+    # Sorteer op datum
+    items_gefilterd.sort(key=lambda x: x[1].datum)
+    
+    # Toevoeg-knop
+    if st.button("➕ Nieuwe eenmalige post", key="inc_nieuwe"):
         st.session_state["inc_active_mode"] = "add"
         st.session_state["inc_active_idx"] = None
         st.rerun()
     
     # Formulier indien actief
-    active_mode_inc = st.session_state.get("inc_active_mode")
-    active_idx_inc = st.session_state.get("inc_active_idx")
+    active_mode = st.session_state.get("inc_active_mode")
+    active_idx = st.session_state.get("inc_active_idx")
     
-    if active_mode_inc == "add":
+    if active_mode == "add":
         nieuw_item = render_incidenteel_form(
             section_key="inc",
             mode="add",
@@ -358,14 +510,14 @@ def toon_componenten_pagina() -> None:
             st.session_state["inc_active_mode"] = None
             _update_scenario(scenario, scenario_lijst)
             st.rerun()
-    elif active_mode_inc == "edit" and active_idx_inc is not None:
+    elif active_mode == "edit" and active_idx is not None:
         gewijzigd_item = render_incidenteel_form(
             section_key="inc",
             mode="edit",
-            initial=scenario.incidentele_items[active_idx_inc],
+            initial=scenario.incidentele_items[active_idx],
         )
         if gewijzigd_item:
-            scenario.incidentele_items[active_idx_inc] = gewijzigd_item
+            scenario.incidentele_items[active_idx] = gewijzigd_item
             st.session_state["inc_active_mode"] = None
             st.session_state["inc_active_idx"] = None
             _update_scenario(scenario, scenario_lijst)
@@ -379,256 +531,19 @@ def toon_componenten_pagina() -> None:
         _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
-    # Toon cards in grid van 3 kolommen
+    # Toon tegels in grid van 4 kolommen
     st.markdown("---")
-    if not scenario.incidentele_items:
-        st.info("Geen eenmalige cashflows ingesteld. Klik 'Nieuwe eenmalige cashflow' om er een toe te voegen.")
+    if not items_gefilterd:
+        st.info("Geen eenmalige posten gevonden. Klik 'Nieuwe eenmalige post' om er een toe te voegen.")
     else:
-        # Sorteer op datum
-        sorted_items = sorted(scenario.incidentele_items, key=lambda x: x.datum)
-        # Render in groepen van 3
-        for row_start in range(0, len(sorted_items), 3):
-            cols = st.columns(3)
-            for col_idx in range(3):
+        for row_start in range(0, len(items_gefilterd), 4):
+            cols = st.columns(4)
+            for col_idx in range(4):
                 i = row_start + col_idx
-                if i < len(sorted_items):
+                if i < len(items_gefilterd):
+                    filter_key, item = items_gefilterd[i]
+                    # Find original index
+                    orig_idx = scenario.incidentele_items.index(item)
                     with cols[col_idx]:
-                        render_incidenteel_card(sorted_items[i], i, "inc")
-
-    st.divider()
-    st.markdown("### 💼 Vermogen & rendement")
-    
-    from pensioen.ui.style import section_header_html, COLORS, format_bedrag
-    
-    # Header met icoon
-    st.markdown(section_header_html("Startpositie vermogen", "💰", COLORS["vermogen"]), unsafe_allow_html=True)
-    
-    peildatum = date.today().replace(day=1)
-    fractie_sparen = scenario.bereken_spaargeld_fractie_op_datum(peildatum)
-    fractie_beleggen = Decimal("1") - fractie_sparen
-    
-    col_v1, col_v2, col_v3 = st.columns(3)
-    with col_v1:
-        spaargeld = st.number_input(
-            "🏦 Spaargeld nu (€)",
-            min_value=0,
-            value=int(scenario.spaargeld_start),
-            step=1000,
-            key="comp_spaargeld",
-            help="Bedrag op spaarrekeningen per vandaag.",
-        )
-    with col_v2:
-        beleggingen = st.number_input(
-            "📈 Beleggingen nu (€)",
-            min_value=0,
-            value=int(scenario.beleggingen_start),
-            step=1000,
-            key="comp_beleggingen",
-            help="Waarde van beleggingsportefeuille per vandaag.",
-        )
-    with col_v3:
-        totaal = spaargeld + beleggingen
-        st.metric(
-            "Totaal vermogen",
-            format_bedrag(totaal),
-            help="Som van spaargeld en beleggingen.",
-        )
-        # Toon split alleen als beide types aanwezig zijn
-        if fractie_sparen > 0 and fractie_beleggen > 0:
-            st.metric(
-                "Huidige split",
-                f"{float(fractie_sparen * 100):.0f}% / {float(fractie_beleggen * 100):.0f}%",
-                help="Sparen / Beleggen (incl. actieve componenten deze maand).",
-            )
-    
-    st.markdown(section_header_html("Rendement & inflatie", "📊", COLORS["vermogen"]), unsafe_allow_html=True)
-    
-    # Toggle voor afzonderlijke rendementen
-    gebruik_aparte_rendementen = st.checkbox(
-        "Gebruik afzonderlijke rendementen voor sparen en beleggen",
-        value=scenario.rendement_sparen_pct is not None or scenario.rendement_beleggen_pct is not None,
-        key="comp_aparte_rendementen",
-        help="Schakel in om verschillende rendementen in te stellen voor spaargeld en beleggingen.",
-    )
-    
-    col_r1, col_r2, col_r3 = st.columns(3)
-    
-    if gebruik_aparte_rendementen:
-        with col_r1:
-            rendement_sparen = st.slider(
-                "Rendement sparen (%)",
-                0.0, 10.0,
-                float(scenario.get_rendement_sparen()),
-                0.1,
-                key="comp_rendement_sparen",
-                help="Verwacht jaarrendement op spaargeld (bijv. 0,5-2%).",
-            )
-        with col_r2:
-            rendement_beleggen = st.slider(
-                "Rendement beleggen (%)",
-                0.0, 10.0,
-                float(scenario.get_rendement_beleggen()),
-                0.1,
-                key="comp_rendement_beleggen",
-                help="Verwacht jaarrendement op beleggingen (bijv. 4-7%).",
-            )
-        with col_r3:
-            inflatie = st.slider(
-                "Inflatie (%)",
-                0.0, 10.0,
-                float(scenario.inflatie_pct),
-                0.1,
-                key="comp_inflatie",
-                help="Gebruikt voor koopkrachtberekening.",
-            )
-        # Gemiddelde voor backward compat
-        rendement_avg = (Decimal(str(rendement_sparen)) + Decimal(str(rendement_beleggen))) / 2
-    else:
-        with col_r1:
-            rendement_avg = st.slider(
-                "Rendement (gem.) (%)",
-                0.0, 10.0,
-                float(scenario.rendement_pct),
-                0.1,
-                key="comp_rendement",
-                help="Gemiddeld jaarrendement (gebruikt als aparte rendementen niet ingesteld).",
-            )
-        with col_r2:
-            inflatie = st.slider(
-                "Inflatie (%)",
-                0.0, 10.0,
-                float(scenario.inflatie_pct),
-                0.1,
-                key="comp_inflatie",
-                help="Gebruikt voor koopkrachtberekening.",
-            )
-        rendement_sparen = rendement_avg
-        rendement_beleggen = rendement_avg
-        rendement_avg = Decimal(str(rendement_avg))
-    
-    # Aparte inleg velden voor sparen en beleggen
-    st.markdown(section_header_html("Jaarlijkse inleg", "💶", COLORS["vermogen"]), unsafe_allow_html=True)
-    col_i1, col_i2, col_i3 = st.columns(3)
-    with col_i1:
-        jaarlijkse_inleg_sparen = st.number_input(
-            "Inleg sparen per jaar (€)",
-            min_value=0,
-            value=int(scenario.jaarlijkse_inleg_sparen) if scenario.jaarlijkse_inleg_sparen > 0 else int(scenario.jaarlijkse_inleg),
-            step=500,
-            key="comp_inleg_sparen",
-            help="Jaarlijkse storting op spaargeld (naast componenten).",
-        )
-    with col_i2:
-        jaarlijkse_inleg_beleggen = st.number_input(
-            "Inleg beleggen per jaar (€)",
-            min_value=0,
-            value=int(scenario.jaarlijkse_inleg_beleggen),
-            step=500,
-            key="comp_inleg_beleggen",
-            help="Jaarlijkse storting op beleggingen (naast componenten).",
-        )
-    with col_i3:
-        totaal_inleg = jaarlijkse_inleg_sparen + jaarlijkse_inleg_beleggen
-        st.metric(
-            "Totale inleg",
-            format_bedrag(totaal_inleg),
-            help="Som van inleg sparen en beleggen.",
-        )
-    
-    # Box 3 opties
-    st.markdown(section_header_html("Box 3 vermogensrendementsheffing", "🏛️", COLORS["vermogen"]), unsafe_allow_html=True)
-    
-    col_b1, col_b2 = st.columns(2)
-    with col_b1:
-        box3_meenemen = st.checkbox(
-            "Box 3 heffing meenemen (indicatief)",
-            value=scenario.box3_meenemen,
-            key="comp_box3",
-            help="Indicatieve berekening o.b.v. forfaitaire rendementen.",
-        )
-    with col_b2:
-        if box3_meenemen:
-            box3_spaargeld_pct = st.slider(
-                "% vermogen op spaarrekening (Box 3)",
-                min_value=0,
-                max_value=100,
-                value=int(scenario.box3_spaargeld_fractie * 100),
-                step=5,
-                key="comp_box3_spaargeld",
-                help="100% = spaargeld (forfait ~1,5%); 0% = beleggingen (forfait ~6%). "
-                     "Belasting = 36% over fictief rendement.",
-            )
-        else:
-            box3_spaargeld_pct = 100
-
-
-    st.divider()
-    st.caption("Wijzigingen in componenten worden automatisch opgeslagen.")
-
-    # Sla vermogen en rendementsparameters op
-    nieuwe_spaargeld = Decimal(str(spaargeld))
-    nieuwe_beleggingen = Decimal(str(beleggingen))
-    nieuwe_inleg_sparen = Decimal(str(jaarlijkse_inleg_sparen))
-    nieuwe_inleg_beleggen = Decimal(str(jaarlijkse_inleg_beleggen))
-    nieuwe_inflatie = Decimal(str(inflatie))
-    nieuwe_box3_fractie = Decimal(str(box3_spaargeld_pct)) / Decimal("100")
-    
-    # Rendement: sla beide op als deze ingesteld zijn
-    if gebruik_aparte_rendementen:
-        nieuwe_rendement = rendement_avg  # fallback gemiddelde
-        nieuwe_rendement_sparen = Decimal(str(rendement_sparen))
-        nieuwe_rendement_beleggen = Decimal(str(rendement_beleggen))
-    else:
-        nieuwe_rendement = Decimal(str(rendement_avg))
-        nieuwe_rendement_sparen = None
-        nieuwe_rendement_beleggen = None
-
-    gewijzigd = (
-        scenario.spaargeld_start != nieuwe_spaargeld
-        or scenario.beleggingen_start != nieuwe_beleggingen
-        or scenario.jaarlijkse_inleg_sparen != nieuwe_inleg_sparen
-        or scenario.jaarlijkse_inleg_beleggen != nieuwe_inleg_beleggen
-        or scenario.rendement_pct != nieuwe_rendement
-        or scenario.rendement_sparen_pct != nieuwe_rendement_sparen
-        or scenario.rendement_beleggen_pct != nieuwe_rendement_beleggen
-        or scenario.inflatie_pct != nieuwe_inflatie
-        or scenario.box3_meenemen != box3_meenemen
-        or scenario.box3_spaargeld_fractie != nieuwe_box3_fractie
-    )
-    
-    if gewijzigd:
-        scenario.spaargeld_start = nieuwe_spaargeld
-        scenario.beleggingen_start = nieuwe_beleggingen
-        scenario.jaarlijkse_inleg_sparen = nieuwe_inleg_sparen
-        scenario.jaarlijkse_inleg_beleggen = nieuwe_inleg_beleggen
-        scenario.rendement_pct = nieuwe_rendement
-        scenario.rendement_sparen_pct = nieuwe_rendement_sparen
-        scenario.rendement_beleggen_pct = nieuwe_rendement_beleggen
-        scenario.inflatie_pct = nieuwe_inflatie
-        scenario.box3_meenemen = box3_meenemen
-        scenario.box3_spaargeld_fractie = nieuwe_box3_fractie
-        scenario.laatst_gewijzigd_op = datetime.now()
-
-        for i, sc in enumerate(scenario_lijst):
-            if sc.naam == scenario.naam:
-                scenario_lijst[i] = scenario
-                break
-
-        st.session_state["scenario_lijst"] = scenario_lijst
-
-        sla_sessie_op()
-        st.caption(f"Automatisch opgeslagen: {scenario.naam}")
-
-    # ─── Vorige/Volgende knoppen ────────────────────────────────────────────
-    st.divider()
-    col_vorige, col_volgende = st.columns(2)
-
-    with col_vorige:
-        if st.button("← Vorige"):
-            set_huidge_stap(Stap.SCENARIO, validatie_ok=False)
-            st.rerun()
-
-    with col_volgende:
-        if st.button("Volgende →", use_container_width=True):
-            set_huidge_stap(Stap.BEREKEN, validatie_ok=True)
-            st.rerun()
+                        with st.container(border=True):
+                            render_incidenteel_tile(item, orig_idx, "inc")

@@ -156,6 +156,42 @@ def format_bedrag(bedrag: float | int, prefix: str = "€") -> str:
     return f"{teken}{prefix} {formatted}"
 
 
+def tile_card_css() -> str:
+    """
+    Geef inline CSS voor professionele tile cards met border en shadow.
+    
+    Returns:
+        CSS string voor container styling.
+    """
+    return """
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: box-shadow 0.2s ease;
+        height: 100%;
+    """
+
+
+def tile_card_hover_css() -> str:
+    """
+    Geef inline CSS voor tile cards met hover effect.
+    
+    Returns:
+        CSS string met hover styling.
+    """
+    return """
+        background-color: white;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        height: 100%;
+    """
+
+
 # ============================================================================
 # CSS Injection (bestaande styling)
 # ============================================================================

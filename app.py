@@ -28,7 +28,6 @@ from pensioen.ui.pagina_resultaten import toon_resultaten_pagina
 from pensioen.ui.pagina_scenario import toon_scenario_pagina
 from pensioen.ui.pagina_bereken import toon_bereken_pagina
 from pensioen.ui.pagina_accountant import toon_accountant_pagina
-from pensioen.ui.pagina_vermogen import toon_vermogen_pagina
 from pensioen.ui.sessie_persistentie import autosla_sessie_op, laad_sessie
 from pensioen.ui.style import injecteer_stijl
 from pensioen.ui.scenario_context import (
@@ -50,7 +49,6 @@ STAP_NAAR_PAGINA = {
     Stap.PENSIOENGEGEVENS: toon_import_pagina,
     Stap.SCENARIO: toon_scenario_pagina,
     Stap.COMPONENTEN: toon_componenten_pagina,
-    Stap.VERMOGEN: toon_vermogen_pagina,
     Stap.BEREKEN: toon_bereken_pagina,
     Stap.RESULTATEN: toon_resultaten_pagina,
     Stap.ACCOUNTANT: toon_accountant_pagina,

@@ -14,7 +14,6 @@ class Stap(Enum):
     PENSIOENGEGEVENS = "pensioengegevens"
     SCENARIO = "scenario"
     COMPONENTEN = "componenten"
-    VERMOGEN = "vermogen"
     BEREKEN = "bereken"
     RESULTATEN = "resultaten"
     ACCOUNTANT = "accountant"
@@ -28,7 +27,6 @@ STAPPEN_VOLGORDE = [
     Stap.PENSIOENGEGEVENS,
     Stap.SCENARIO,
     Stap.COMPONENTEN,
-    Stap.VERMOGEN,
     Stap.BEREKEN,
     Stap.RESULTATEN,
     Stap.ACCOUNTANT,
@@ -40,7 +38,6 @@ STAP_LABELS = {
     Stap.PENSIOENGEGEVENS: "Pensioengegevens",
     Stap.SCENARIO: "Scenario",
     Stap.COMPONENTEN: "Componenten",
-    Stap.VERMOGEN: "Vermogen",
     Stap.BEREKEN: "Berekenen",
     Stap.RESULTATEN: "Resultaten",
     Stap.ACCOUNTANT: "Accountant",

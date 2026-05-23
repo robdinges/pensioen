@@ -52,10 +52,13 @@ streamlit run app.py
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
 
-4. Vul in Financiele componenten onder Vermogen en rendement apart in:
-  - Spaargeld nu (€)
-  - Beleggingen nu (€)
-  - optioneel aparte rendementen voor sparen en beleggen.
+4. Vul in het scherm Financiële Planning alle componenten in:
+  - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen
+  - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, auto's, kunst, etc.
+    * Elk vermogensitem heeft zijn eigen rendement/groei percentage
+    * Voor spaargeld en beleggingen is dit het verwachte jaarrendement
+    * Voor andere bezittingen is dit waardestijging of afschrijving
+  - **Eenmalige Posten**: Eenmalige ontvangsten en uitgaven op specifieke data
 
 5. Open in de app het tabblad Accountantsoverzicht en klik op
   Berekening uitvoeren.
