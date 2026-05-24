@@ -137,42 +137,22 @@ def _bereken_jaar(
             if persoon2 else Decimal("0")
         )
 
-        # Overig inkomen (pensioen_inkomen + overig_inkomen)
-        overig_bruto_p1 = (
-            _component_som_maand(
-                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
-            )
-            + _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
-            )
+        # Overig inkomen (alleen OVERIG_INKOMEN componenten, PENSIOEN_INKOMEN wordt apart geteld)
+        overig_bruto_p1 = _component_som_maand(
+            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
         )
         overig_bruto_p2 = Decimal("0")
         if persoon2:
-            overig_bruto_p2 = (
-                _component_som_maand(
-                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
-                )
-                + _component_som_maand(
-                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
-                )
+            overig_bruto_p2 = _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
             )
-        overig_netto_p1 = (
-            _component_som_maand(
-                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.NETTO
-            )
-            + _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
-            )
+        overig_netto_p1 = _component_som_maand(
+            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
         )
         overig_netto_p2 = Decimal("0")
         if persoon2:
-            overig_netto_p2 = (
-                _component_som_maand(
-                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.NETTO
-                )
-                + _component_som_maand(
-                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
-                )
+            overig_netto_p2 = _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
             )
 
         # AOW

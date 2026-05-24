@@ -107,8 +107,50 @@ class JaarResultaat:
 
     @property
     def overig_bruto(self) -> Decimal:
-        """Overig bruto inkomen (PENSIOEN_INKOMEN + OVERIG_INKOMEN componenten)."""
+        """Overig bruto inkomen (alleen OVERIG_INKOMEN componenten, geen PENSIOEN_INKOMEN)."""
         return sum(m.overig_bruto for m in self.maanden)
+
+    @property
+    def inkomen_bruto(self) -> Decimal:
+        """
+        Totaal bruto inkomen (excl. rendement/rente).
+        
+        Dit is de som van alle inkomensbronnen: arbeidsinkomen, AOW, pensioen en overig inkomen.
+        Rendement op vermogen wordt NIET als inkomen beschouwd.
+        
+        Returns:
+            Som van arbeid_bruto + aow_bruto + pensioen_bruto + overig_bruto
+        """
+        return self.arbeid_bruto + self.aow_bruto + self.pensioen_bruto + self.overig_bruto
+    
+    @property
+    def inkomen_bronnen(self) -> dict[str, Decimal]:
+        """
+        Breakdown van bruto inkomen per bron (excl. rendement).
+        
+        Handig voor grafieken en rapporten die inkomstenbronnen willen tonen.
+        
+        Returns:
+            Dict met keys: "Arbeidsinkomen", "AOW", "Pensioen", "Overig inkomen"
+        """
+        return {
+            "Arbeidsinkomen": self.arbeid_bruto,
+            "AOW": self.aow_bruto,
+            "Pensioen": self.pensioen_bruto,
+            "Overig inkomen": self.overig_bruto,
+        }
+    
+    @property
+    def rendement_bruto(self) -> Decimal:
+        """
+        Rendement op vermogen (rente).
+        
+        Dit is het verschil tussen totaal_bruto en inkomen_bruto.
+        
+        Returns:
+            totaal_bruto - inkomen_bruto
+        """
+        return self.totaal_bruto - self.inkomen_bruto
 
     @property
     def totaal_bruto(self) -> Decimal:
@@ -119,8 +161,38 @@ class JaarResultaat:
         return sum(m.totaal_belasting for m in self.maanden)
 
     @property
+    def box1_belasting(self) -> Decimal:
+        """Box 1 belasting (totaal_belasting min box3)."""
+        return sum((m.belasting_p1 + m.belasting_p2) for m in self.maanden)
+
+    @property
+    def box3_heffing(self) -> Decimal:
+        """Box 3 vermogensbelasting."""
+        return sum(m.box3_heffing for m in self.maanden)
+
+    @property
     def totaal_heffingskorting(self) -> Decimal:
         return sum(m.totaal_heffingskorting for m in self.maanden)
+
+    @property
+    def inhoudingen(self) -> Decimal:
+        """Totale inhoudingen (loonheffing, premies, etc.)."""
+        return sum(m.inhoudingen for m in self.maanden)
+
+    @property
+    def huishoudelijke_uitgaven(self) -> Decimal:
+        """Totale jaarlijkse huishoudelijke uitgaven."""
+        return sum(m.huishoudelijke_uitgaven for m in self.maanden)
+
+    @property
+    def eenmalige_uitgaven(self) -> Decimal:
+        """Totale eenmalige uitgaven dit jaar."""
+        return sum(m.eenmalig_uitgave for m in self.maanden)
+
+    @property
+    def eenmalige_ontvangsten(self) -> Decimal:
+        """Totale eenmalige ontvangsten dit jaar."""
+        return sum(m.eenmalig_ontvangst for m in self.maanden)
 
     @property
     def netto(self) -> Decimal:

@@ -11,6 +11,7 @@ from pensioen.models.component import FinancieelComponent, CategorieComponent
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.models.scenario import IncidenteelItem
 from pensioen.ui.style import COLORS, ICONS, badge_html, format_bedrag
+from pensioen.ui.helpers import get_persoon_display_naam
 from pensioen.ui.component_helpers import (
     CATEGORIE_LABELS,
     FREQUENTIE_LABELS,
@@ -73,7 +74,7 @@ def render_component_tile(
         bedrag_str = format_bedrag(float(comp.bedrag))
         freq_label = FREQUENTIE_LABELS[comp.frequentie]
         st.markdown(f"### {bedrag_str}")
-        st.caption(f"per {freq_label.lower()}")
+        st.caption(freq_label.lower())
         
         # Badges
         type_badge = badge_html(BEDRAG_TYPE_LABELS[comp.bedrag_type], badge_type="neutraal", small=True)
@@ -81,7 +82,7 @@ def render_component_tile(
         belegg_badge = badge_html(BELEGGINGS_TYPE_LABELS[comp.beleggings_type], badge_type="vermogen", small=True)
         
         st.markdown(
-            f"{comp.persoon} • {type_badge} {cat_badge} {belegg_badge}",
+            f"{get_persoon_display_naam(comp.persoon)} • {type_badge} {cat_badge} {belegg_badge}",
             unsafe_allow_html=True
         )
         
@@ -145,7 +146,7 @@ def render_vermogensitem_tile(
         
         # Type en persoon
         type_label = item.type.value.replace("_", " ").title()
-        st.caption(f"{type_label} • {item.persoon}")
+        st.caption(f"{type_label} • {get_persoon_display_naam(item.persoon)}")
         
         # RENDEMENT/GROEI - PROMINENT voor liquide middelen
         if item.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):

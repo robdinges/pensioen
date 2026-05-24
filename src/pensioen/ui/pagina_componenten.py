@@ -13,6 +13,7 @@ from pensioen.models.scenario import IncidenteelItem
 from pensioen.ui.flow_context import set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 from pensioen.ui.sessie_persistentie import sla_sessie_op
+from pensioen.ui import helpers
 from pensioen.ui.component_helpers import (
     render_component_form,
     render_incidenteel_form,
@@ -52,7 +53,40 @@ def toon_componenten_pagina() -> None:
     st.caption(f"Actief scenario: **{scenario.naam}**")
     
     heeft_partner = "persoon2" in st.session_state
-    persoon_opties = ["P1", "P2", "Huishouden"] if heeft_partner else ["P1", "Huishouden"]
+    persoon2 = st.session_state.get("persoon2")
+    
+    # Bouw persoon opties - ALTIJD P1/P2/Huishouden gebruiken (niet echte namen)
+    # De echte namen worden alleen gebruikt voor weergave in de UI
+    persoon_display = helpers.get_persoon_display_mapping()
+    
+    # Persoon opties: altijd P1, optioneel P2, en Huishouden
+    persoon_opties = ["P1"]
+    if persoon2:
+        persoon_opties.append("P2")
+    persoon_opties.append("Huishouden")
+    
+    # MIGRATIE: Converteer oude persoon namen naar P1/P2/Huishouden
+    # Dit zorgt ervoor dat bestaande data werkt met het nieuwe systeem
+    migratie_nodig = False
+    reverse_mapping = helpers.get_persoon_reverse_mapping()
+    
+    for comp in scenario.componenten:
+        if comp.persoon not in ["P1", "P2", "Huishouden"]:
+            # Dit is een oude naam, converteer naar P1/P2
+            nieuwe_persoon = reverse_mapping.get(comp.persoon, "P1")
+            comp.persoon = nieuwe_persoon
+            migratie_nodig = True
+    
+    for item in scenario.vermogensitems:
+        if item.persoon not in ["P1", "P2", "Huishouden"]:
+            nieuwe_persoon = reverse_mapping.get(item.persoon, "P1")
+            item.persoon = nieuwe_persoon
+            migratie_nodig = True
+    
+    if migratie_nodig:
+        _update_scenario(scenario, scenario_lijst)
+        st.info("ℹ️ Persoonsgegevens zijn gemigreerd naar het nieuwe formaat (P1/P2).")
+        st.rerun()
     
     # Migreer legacy vermogen indien nodig
     if not scenario.vermogensitems and (scenario.spaargeld_start > Decimal("0") or scenario.beleggingen_start > Decimal("0")):
@@ -64,13 +98,13 @@ def toon_componenten_pagina() -> None:
     st.divider()
     st.markdown(section_header_html("Inkomsten & Uitgaven", "📊", COLORS["inkomen"]), unsafe_allow_html=True)
     
-    _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties)
+    _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties, persoon_display)
     
     # ========== SECTIE 2: VERMOGEN & BEZITTINGEN ==========
     st.divider()
     st.markdown(section_header_html("Vermogen & Bezittingen", "💰", COLORS["vermogen"]), unsafe_allow_html=True)
     
-    _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties)
+    _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_display)
     
     # ========== SECTIE 3: EENMALIGE POSTEN ==========
     st.divider()
@@ -83,7 +117,7 @@ def toon_componenten_pagina() -> None:
 # SECTIE 1: INKOMSTEN & UITGAVEN
 # ==============================================================================
 
-def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties):
+def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties, persoon_display):
     """Render inkomsten & uitgaven sectie met AOW info en filters."""
     
     # AOW automatische berekening info
@@ -93,30 +127,65 @@ def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties):
     st.markdown("---")
     st.markdown("### 💼 Periodieke inkomsten en uitgaven")
     
-    # Filter componenten
-    categorie_filter = [
-        ("arbeidsinkomen", "Arbeidsinkomen"),
-        ("pensioen", "Pensioen"),
-        ("overig_inkomen", "Overig inkomen"),
-        ("uitgave", "Uitgaven"),
-        ("inhouding", "Inhoudingen"),
-    ]
+    # Filters: categorie en persoon
+    col_filter_cat, col_filter_pers = st.columns(2)
     
-    active_filters = render_type_filters(categorie_filter, "comp_inkuit")
+    with col_filter_cat:
+        categorie_filter = [
+            ("arbeidsinkomen", "Arbeidsinkomen"),
+            ("pensioen", "Pensioen"),
+            ("overig_inkomen", "Overig inkomen"),
+            ("uitgave", "Uitgaven"),
+            ("inhouding", "Inhoudingen"),
+        ]
+        active_filters = render_type_filters(categorie_filter, "comp_inkuit")
+    
+    with col_filter_pers:
+        # Persoonfilter - toon echte namen maar gebruik P1/P2 intern
+        persoon_filter_display = ["Alle personen"] + [persoon_display[p] for p in persoon_opties]
+        persoon_filter_selectie = st.multiselect(
+            "Filter op persoon:",
+            options=persoon_filter_display,
+            default=["Alle personen"],
+            key="comp_persoon_filter"
+        )
+        # Map terug naar interne IDs
+        if "Alle personen" in persoon_filter_selectie:
+            persoon_filter_actief = []
+        else:
+            # Reverse mapping: echte naam → P1/P2
+            reverse_display = {v: k for k, v in persoon_display.items()}
+            persoon_filter_actief = [reverse_display.get(naam, naam) for naam in persoon_filter_selectie]
     
     # Maak gefilterde lijsten
     componenten_gefilterd = []
     for comp in scenario.componenten:
+        # Check categorie filter
+        cat_match = False
         if comp.categorie == CategorieComponent.ARBEIDSINKOMEN and "arbeidsinkomen" in active_filters:
-            componenten_gefilterd.append(("arbeidsinkomen", comp))
+            cat_match = True
+            cat_key = "arbeidsinkomen"
         elif comp.categorie == CategorieComponent.PENSIOEN_INKOMEN and "pensioen" in active_filters:
-            componenten_gefilterd.append(("pensioen", comp))
+            cat_match = True
+            cat_key = "pensioen"
         elif comp.categorie == CategorieComponent.OVERIG_INKOMEN and "overig_inkomen" in active_filters:
-            componenten_gefilterd.append(("overig_inkomen", comp))
+            cat_match = True
+            cat_key = "overig_inkomen"
         elif comp.categorie == CategorieComponent.UITGAVE and "uitgave" in active_filters:
-            componenten_gefilterd.append(("uitgave", comp))
+            cat_match = True
+            cat_key = "uitgave"
         elif comp.categorie == CategorieComponent.INHOUDING and "inhouding" in active_filters:
-            componenten_gefilterd.append(("inhouding", comp))
+            cat_match = True
+            cat_key = "inhouding"
+        else:
+            continue
+        
+        # Check persoonfilter
+        if persoon_filter_actief and comp.persoon not in persoon_filter_actief:
+            continue
+        
+        if cat_match:
+            componenten_gefilterd.append((cat_key, comp))
     
     # Toevoeg-knop
     if st.button("➕ Nieuwe component", key="comp_nieuwe"):
@@ -134,6 +203,7 @@ def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties):
             mode="add",
             initial=None,
             persoon_opties=persoon_opties,
+            persoon_display=persoon_display,
         )
         if nieuwe_comp:
             scenario.componenten.append(nieuwe_comp)
@@ -146,6 +216,7 @@ def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties):
             mode="edit",
             initial=scenario.componenten[active_idx],
             persoon_opties=persoon_opties,
+            persoon_display=persoon_display,
         )
         if gewijzigde_comp:
             scenario.componenten[active_idx] = gewijzigde_comp
@@ -239,7 +310,7 @@ def _render_aow_info():
 # SECTIE 2: VERMOGEN & BEZITTINGEN
 # ==============================================================================
 
-def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties):
+def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_display):
     """Render vermogen & bezittingen sectie met filters."""
     
     # Filter vermogensitems
@@ -365,7 +436,7 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
             # Label aanpassen voor liquide middelen
             if vermogenstype in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
                 groei_label = "Rendement (%/jaar)"
-                groei_help = "Verwacht jaarlijks rendement op dit vermogen"
+                groei_help = "Verwacht jaarlijks rendement op dit vermogen. Dit wordt ook gebruikt voor cashflow berekeningen."
             else:
                 groei_label = "Groei/afschrijving (%/jaar)"
                 groei_help = "Positief = waardestijging, negatief = afschrijving"
@@ -378,6 +449,11 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
                 step=0.5,
                 help=groei_help
             )
+            
+            # Waarschuwing voor spaargeld/beleggingen
+            if vermogenstype in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
+                type_label = "sparen" if vermogenstype == VermogensType.SPAARGELD else "beleggen"
+                st.caption(f"⚠️ Dit rendement wordt ook gebruikt voor alle cashflow berekeningen van {type_label}")
         
         # Datums
         col1, col2 = st.columns(2)

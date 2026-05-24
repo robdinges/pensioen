@@ -228,6 +228,7 @@ def render_component_form(
     mode: str,
     initial: FinancieelComponent | None,
     persoon_opties: list[str],
+    persoon_display: dict[str, str] | None = None,  # Deprecated: gebruik helpers.get_persoon_display_mapping()
 ) -> FinancieelComponent | None:
     """
     Render herbruikbaar formulier voor toevoegen of wijzigen van een component.
@@ -236,12 +237,17 @@ def render_component_form(
         section_key: Unieke sectie-identifier.
         mode: "add" of "edit".
         initial: Initiële data (None bij add).
-        persoon_opties: Lijst van mogelijke personen.
+        persoon_opties: Lijst van mogelijke personen (P1, P2, Huishouden).
+        persoon_display: Optionele mapping van P1/P2 → weergave namen.
     
     Returns:
         FinancieelComponent indien opgeslagen, anders None.
     """
     from pensioen.ui.style import ICONS
+    
+    # Als geen display mapping, gebruik de centrale helper
+    if persoon_display is None:
+        persoon_display = helpers.get_persoon_display_mapping()
     
     form_key = f"{section_key}_form_{mode}"
     
@@ -279,7 +285,20 @@ def render_component_form(
         frequentie_label = st.selectbox("Frequentie", options=FREQUENTIE_OPTIES, index=FREQUENTIE_OPTIES.index(freq), key=f"{form_key}_freq")
     
     with col2:
-        persoon = st.selectbox("Persoon", options=persoon_opties, index=persoon_opties.index(pers) if pers in persoon_opties else 0, key=f"{form_key}_pers")
+        # Toon echte namen, maar sla P1/P2 op
+        persoon_display_opties = [persoon_display[p] for p in persoon_opties]
+        current_display = persoon_display.get(pers, pers) if initial else persoon_display[persoon_opties[0]]
+        
+        persoon_display_selected = st.selectbox(
+            "Persoon",
+            options=persoon_display_opties,
+            index=persoon_display_opties.index(current_display) if current_display in persoon_display_opties else 0,
+            key=f"{form_key}_pers"
+        )
+        # Map terug naar intern ID
+        reverse_display = {v: k for k, v in persoon_display.items()}
+        persoon = reverse_display.get(persoon_display_selected, persoon_display_selected)
+        
         bedrag_type_label = st.selectbox("Type bedrag", options=BEDRAG_TYPE_OPTIES, index=BEDRAG_TYPE_OPTIES.index(btype), key=f"{form_key}_btype")
         groei_inp = st.number_input("Groei % per jaar", min_value=0.0, max_value=20.0, value=groei, step=0.1, key=f"{form_key}_groei")
     

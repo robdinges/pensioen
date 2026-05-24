@@ -224,14 +224,22 @@ def _bereken_jaar_detail(
     # Box 3 heffing
     box3_heffing = Decimal("0")
     box3_info = ""
+    spaargeld_fractie_box3 = scenario.box3_spaargeld_fractie  # default waarde
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
+        # Bereken dynamische split op basis van actieve componenten aan het begin van het jaar
+        # (consistent met cashflow_engine.py)
+        peildatum_box3 = date(jaar, 1, 1)
+        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_op_datum(peildatum_box3)
+        
         box3_heffing, box3_info = belasting_engine.bereken_box3_heffing(
             saldo_begin_jaar, config, heeft_partner,
-            spaargeld_fractie=scenario.box3_spaargeld_fractie,
+            spaargeld_fractie=spaargeld_fractie_box3,
         )
 
     # Vermogensberekening: saldo maand-voor-maand
-    maandrendement = vermogen_engine.maandrendement(scenario.rendement_pct)
+    # Rendement en inleg (legacy fallbacks)
+    rendement_pct_gebruikt = scenario.rendement_pct if scenario.rendement_pct is not None else Decimal("0")
+    maandrendement = vermogen_engine.maandrendement(rendement_pct_gebruikt) if rendement_pct_gebruikt > Decimal("0") else Decimal("0")
     inleg_per_maand = (scenario.jaarlijkse_inleg / Decimal("12")).quantize(Decimal("0.01"))
     box3_per_maand = (box3_heffing / Decimal("12")).quantize(Decimal("0.01"))
     maand_bel_p1 = (bel_voor_korting_p1 / Decimal("12")).quantize(Decimal("0.01"))
@@ -242,12 +250,16 @@ def _bereken_jaar_detail(
     vermogen_rijen = []
     saldo = saldo_begin_jaar
     for mb in maand_data:
+        # Bereken spaargeld fractie op peildatum
+        peildatum = date(jaar, mb["maand"], 1)
+        spaargeld_fractie = scenario.bereken_spaargeld_fractie_op_datum(peildatum)
+        
         rente = vermogen_engine.bereken_rente_maand(
             saldo,
             scenario.rendement_pct,
             scenario.rendement_sparen_pct,
             scenario.rendement_beleggen_pct,
-            scenario.box3_spaargeld_fractie,
+            spaargeld_fractie,
         )
         netto_cf = (
             mb["arbeid_p1"] + mb["arbeid_p2"]
@@ -318,7 +330,7 @@ def _bereken_jaar_detail(
         "jaar_huishoudelijke_uitgaven": jaar_huishoud_uitgaven,
         "box3_vrijstelling": config.box3.vrijstelling_per_persoon * (2 if heeft_partner else 1),
         "box3_belastbaar": max(Decimal("0"), saldo_begin_jaar - config.box3.vrijstelling_per_persoon * (2 if heeft_partner else 1)),
-        "box3_spaargeld_fractie": scenario.box3_spaargeld_fractie,
+        "box3_spaargeld_fractie": spaargeld_fractie_box3,  # dynamisch berekend
         "box3_forfait_spaargeld": config.box3.forfaitair_spaargeld,
         "box3_forfait_overig": config.box3.forfaitair_overig,
         "box3_tarief": config.box3.tarief,

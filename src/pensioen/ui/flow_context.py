@@ -25,9 +25,7 @@ class Stap(Enum):
 STAPPEN_VOLGORDE = [
     Stap.PERSONEN,
     Stap.PENSIOENGEGEVENS,
-    Stap.SCENARIO,
     Stap.COMPONENTEN,
-    Stap.BEREKEN,
     Stap.RESULTATEN,
     Stap.ACCOUNTANT,
     Stap.RAPPORT,
@@ -36,9 +34,9 @@ STAPPEN_VOLGORDE = [
 STAP_LABELS = {
     Stap.PERSONEN: "Personen",
     Stap.PENSIOENGEGEVENS: "Pensioengegevens",
-    Stap.SCENARIO: "Scenario",
+    Stap.SCENARIO: "Scenario",  # Verplaatst naar Instellingen
     Stap.COMPONENTEN: "Componenten",
-    Stap.BEREKEN: "Berekenen",
+    Stap.BEREKEN: "Berekenen",  # Verplaatst naar sidebar
     Stap.RESULTATEN: "Resultaten",
     Stap.ACCOUNTANT: "Accountant",
     Stap.RAPPORT: "Rapport",

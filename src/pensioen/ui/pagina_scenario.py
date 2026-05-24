@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 import streamlit as st
 
 from pensioen.models.scenario import Scenario
@@ -183,19 +184,33 @@ def toon_scenario_pagina() -> None:
             st.divider()
             st.subheader(f"Bewerk: {edit_naam}")
             
-            col_form, _ = st.columns([2, 1])
+            col_form, col_params = st.columns([2, 2])
             
             with col_form:
                 nieuwe_naam = st.text_input(
                     "Naam",
                     value=edit_scenario.naam,
-                    key="edit_scenario_naam",
+                    key="edit_scenario_naam_input",
                 )
                 nieuwe_beschrijving = st.text_area(
                     "Beschrijving",
                     value=edit_scenario.omschrijving,
                     key="edit_scenario_beschrijving",
                     height=80,
+                )
+            
+            with col_params:
+                st.markdown("**Parameters**")
+                
+                # Alleen inflatie
+                inflatie = st.number_input(
+                    "Inflatie (%)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=float(edit_scenario.inflatie_pct),
+                    step=0.1,
+                    help="Voor koopkrachtberekening in rapportages",
+                    key="edit_scenario_inflatie"
                 )
             
             col_save, col_cancel = st.columns(2)
@@ -209,6 +224,7 @@ def toon_scenario_pagina() -> None:
                         # Update scenario
                         edit_scenario.naam = nieuwe_naam.strip()
                         edit_scenario.omschrijving = nieuwe_beschrijving.strip()
+                        edit_scenario.inflatie_pct = Decimal(str(inflatie))
                         edit_scenario.laatst_gewijzigd_op = datetime.now()
                         
                         # Replace in list

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 
 st.set_page_config(
@@ -11,6 +13,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.scenario_engine import vergelijk_scenarios
+from pensioen.tax.belasting_loader import laad_tarieven_bereik, resolve_tariefwaarden_voor_jaar
 from pensioen.ui.flow_context import (
     STAP_LABELS,
     STAPPEN_VOLGORDE,
@@ -25,8 +30,6 @@ from pensioen.ui.pagina_componenten import toon_componenten_pagina
 from pensioen.ui.pagina_persoon import toon_persoon_pagina
 from pensioen.ui.pagina_rapport import toon_rapport_pagina
 from pensioen.ui.pagina_resultaten import toon_resultaten_pagina
-from pensioen.ui.pagina_scenario import toon_scenario_pagina
-from pensioen.ui.pagina_bereken import toon_bereken_pagina
 from pensioen.ui.pagina_accountant import toon_accountant_pagina
 from pensioen.ui.sessie_persistentie import autosla_sessie_op, laad_sessie
 from pensioen.ui.style import injecteer_stijl
@@ -47,9 +50,7 @@ scenario_lijst = ensure_scenario_context()
 STAP_NAAR_PAGINA = {
     Stap.PERSONEN: toon_persoon_pagina,
     Stap.PENSIOENGEGEVENS: toon_import_pagina,
-    Stap.SCENARIO: toon_scenario_pagina,
     Stap.COMPONENTEN: toon_componenten_pagina,
-    Stap.BEREKEN: toon_bereken_pagina,
     Stap.RESULTATEN: toon_resultaten_pagina,
     Stap.ACCOUNTANT: toon_accountant_pagina,
     Stap.RAPPORT: toon_rapport_pagina,
@@ -146,7 +147,6 @@ if STAPPEN_VOLGORDE:
 st.sidebar.markdown("---")
 
 # Sidebar scenario selectie
-st.sidebar.markdown("**Scenario**")
 scenario_namen = [s.naam for s in scenario_lijst]
 actief_index = 0
 actief_naam = get_actief_scenario_naam()
@@ -161,12 +161,145 @@ gekozen_actief = st.sidebar.selectbox(
 )
 if gekozen_actief != actief_naam:
     set_actief_scenario_naam(gekozen_actief)
+    # Bij scenario-wissel: herbereken als er al resultaten zijn
+    if st.session_state.get("cashflow_hoofd") is not None:
+        persoon1 = st.session_state.get("persoon1")
+        persoon2 = st.session_state.get("persoon2")
+        if persoon1 and scenario_lijst:
+            from pensioen.ui.scenario_context import get_actief_scenario
+            actief = get_actief_scenario(scenario_lijst)
+            if actief is not None:
+                try:
+                    jaar_van = st.session_state.get("jaar_van", date.today().year)
+                    jaar_tot = st.session_state.get("jaar_tot", date.today().year + 30)
+                    
+                    configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
+                    configs_override = {
+                        y: (
+                            resolve_tariefwaarden_voor_jaar(cfg, y, actief.tarief_periodes)[0],
+                            melding,
+                        )
+                        for y, (cfg, melding) in configs.items()
+                    }
+                    
+                    cashflow = bereken_huishouden(
+                        scenario=actief,
+                        persoon1=persoon1,
+                        persoon2=persoon2,
+                        records1=[],
+                        records2=[],
+                        jaar_van=jaar_van,
+                        jaar_tot=jaar_tot,
+                        belasting_configs=configs_override,
+                    )
+                    st.session_state["cashflow_hoofd"] = cashflow
+                    
+                    if len(scenario_lijst) > 1:
+                        vergelijking = vergelijk_scenarios(
+                            scenarios=scenario_lijst,
+                            persoon1=persoon1,
+                            persoon2=persoon2,
+                            records1=[],
+                            records2=[],
+                            jaar_van=jaar_van,
+                            jaar_tot=jaar_tot,
+                        )
+                        st.session_state["vergelijking"] = vergelijking
+                    else:
+                        st.session_state.pop("vergelijking", None)
+                except Exception:
+                    # Stille fallback: clear cashflow bij fout
+                    st.session_state.pop("cashflow_hoofd", None)
+                    st.session_state.pop("vergelijking", None)
+    st.rerun()
 st.sidebar.markdown("---")
 
 # --- Render huidge pagina op basis van flow ---
 pagina_func = STAP_NAAR_PAGINA.get(huidig_stap)
 if pagina_func:
     pagina_func()
+
+# Bereken knop in sidebar
+st.sidebar.markdown("---")
+
+# Berekeningsperiode defaults
+if "jaar_van" not in st.session_state:
+    st.session_state["jaar_van"] = date.today().year
+if "jaar_tot" not in st.session_state:
+    st.session_state["jaar_tot"] = date.today().year + 30
+
+# Bereken knop
+if st.sidebar.button("▶ Berekenen", key="sidebar_bereken_btn", type="primary", use_container_width=True):
+    persoon1 = st.session_state.get("persoon1")
+    persoon2 = st.session_state.get("persoon2")
+    
+    if not persoon1:
+        st.sidebar.error("⚠️ Vul eerst de persoonsgegevens in")
+    elif not scenario_lijst:
+        st.sidebar.error("⚠️ Definieer eerst een scenario")
+    else:
+        # Haal actief scenario op
+        from pensioen.ui.scenario_context import get_actief_scenario
+        actief = get_actief_scenario(scenario_lijst)
+        
+        if actief is None:
+            st.sidebar.error("⚠️ Kies eerst een actief scenario")
+        else:
+            # Pensioenen zijn nu componenten
+            records1 = []
+            records2 = []
+            
+            try:
+                jaar_van = st.session_state["jaar_van"]
+                jaar_tot = st.session_state["jaar_tot"]
+                
+                with st.sidebar:
+                    with st.spinner("Bezig met berekenen..."):
+                        configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
+                        
+                        # Bereken met tariefoverrides
+                        configs_override = {
+                            y: (
+                                resolve_tariefwaarden_voor_jaar(cfg, y, actief.tarief_periodes)[0],
+                                melding,
+                            )
+                            for y, (cfg, melding) in configs.items()
+                        }
+                        
+                        cashflow = bereken_huishouden(
+                            scenario=actief,
+                            persoon1=persoon1,
+                            persoon2=persoon2,
+                            records1=records1,
+                            records2=records2,
+                            jaar_van=jaar_van,
+                            jaar_tot=jaar_tot,
+                            belasting_configs=configs_override,
+                        )
+                        st.session_state["cashflow_hoofd"] = cashflow
+                        
+                        if len(scenario_lijst) > 1:
+                            vergelijking = vergelijk_scenarios(
+                                scenarios=scenario_lijst,
+                                persoon1=persoon1,
+                                persoon2=persoon2,
+                                records1=records1,
+                                records2=records2,
+                                jaar_van=jaar_van,
+                                jaar_tot=jaar_tot,
+                            )
+                            st.session_state["vergelijking"] = vergelijking
+                        else:
+                            st.session_state.pop("vergelijking", None)
+                        
+                        from pensioen.ui.sessie_persistentie import sla_sessie_op
+                        sla_sessie_op()
+                
+                st.sidebar.success("✅ Berekening voltooid!")
+                set_huidge_stap(Stap.RESULTATEN, validatie_ok=True)
+                st.rerun()
+            except (TypeError, ValueError) as exc:
+                st.sidebar.error(f"Berekeningsfout: {exc}")
 
 # Instellingen altijd beschikbaar buiten flow
 st.sidebar.markdown("---")

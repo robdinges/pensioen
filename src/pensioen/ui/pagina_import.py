@@ -180,7 +180,7 @@ def toon_import_pagina() -> None:
 
     with col_volgende:
         if st.button("Volgende →", use_container_width=True):
-            set_huidge_stap(Stap.SCENARIO, validatie_ok=True)
+            set_huidge_stap(Stap.COMPONENTEN, validatie_ok=True)
             st.rerun()
 
 

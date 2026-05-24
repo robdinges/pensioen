@@ -293,6 +293,51 @@
 
 ---
 
+#### #019: Werkelijke vermogensstand per datum 🔴 HIGH
+**Beschrijving**: Vermogensitems updaten met werkelijke waarde op specifieke datum
+
+**Details**:
+- Mogelijkheid om per vermogensitem (spaarrekening, beleggingen, etc.) de werkelijke stand op een datum in te voeren
+- Vanaf die datum wordt met dat nieuwe bedrag verder gerekend (overschrijft vorige berekende waarde)
+- Rendement wordt vanaf die datum weer toegepast op de nieuwe werkelijke waarde
+- Bij datum midden in een jaar: rendement pro-rata berekenen (bijv. bij invoer op 1 juli = 50% van jaarrendement)
+- Meerdere datumpunten mogelijk voor dezelfde bezitting (historie van correcties)
+- Gebruik: jaarlijkse correctie met bankafschrift, beleggingswaarde op peildatum
+
+**Scenario's**:
+- Spaarrekening: start €10.000, na 1 jaar werkelijke stand €10.500 (i.p.v. berekende €10.300), verder rekenen met €10.500
+- Beleggingen: jaarlijkse correctie met werkelijke waarde van broker statement
+- Eigen woning: WOZ-waarde bijwerken per 1 januari elk jaar
+
+**Impact**: Nauwkeurigere vermogensprognose, elimineren van cumulatieve rekenfouten
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #020: Spaarrekening als vaste bezitting 🔴 HIGH
+**Beschrijving**: Spaarrekening kan niet worden verwijderd, ontvangt automatisch overschot
+
+**Details**:
+- Systeem vereist minimaal 1 spaarrekening/spaargeld bezitting
+- Jaarlijks netto overschot wordt automatisch toegevoegd aan de (eerste) spaarrekening
+- Bij tekort wordt automatisch van de spaarrekening afgehaald
+- Gebruiker kan niet de spaarrekening verwijderen indien het de enige is
+- Indien meerdere spaarrekeningen: duidelijk aangeven welke de "primaire" is voor overschot
+- Volgorde: eerst primaire spaarrekening, dan secundaire, dan beleggingen bij uitzonderlijk hoge overschotten
+
+**Logica**:
+- Einde maand: netto cashflow berekend
+- Positief → toevoegen aan primaire spaarrekening
+- Negatief → afhalen van primaire spaarrekening (kan negatief worden = schuld)
+- Rendering van primaire spaarrekening anders: badge "Hoofdrekening" of vergelijkbaar
+
+**Impact**: Realistischer vermogensverloop, consistent met praktijk
+
+**Status**: 📝 PLANNED
+
+---
+
 #### #018: Successieplanning 🟢 LOW
 **Beschrijving**: Erfenis en schenking
 

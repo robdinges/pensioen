@@ -34,7 +34,7 @@ def maandrendement(jaarrendement_pct: Decimal) -> Decimal:
 
 def bereken_rente_maand(
     saldo: Decimal,
-    jaarrendement_pct: Decimal,
+    jaarrendement_pct: Decimal | None = None,
     jaarrendement_sparen_pct: Decimal | None = None,
     jaarrendement_beleggen_pct: Decimal | None = None,
     spaargeld_fractie: Decimal = Decimal("1"),
@@ -50,8 +50,9 @@ def bereken_rente_maand(
         saldo: Beginsaldo van de maand.
         jaarrendement_pct: Verwacht jaarrendement in % (bijv. 3.0 voor 3%).
             Gebruikt als fallback als aparte rendementen niet ingesteld zijn.
-        jaarrendement_sparen_pct: Rendement op spaargeld deel (optioneel).
-        jaarrendement_beleggen_pct: Rendement op beleggelingen deel (optioneel).
+            DEPRECATED: rendement wordt nu per vermogensitem ingesteld.
+        jaarrendement_sparen_pct: Rendement op spaargeld deel (optioneel). DEPRECATED.
+        jaarrendement_beleggen_pct: Rendement op beleggelingen deel (optioneel). DEPRECATED.
         spaargeld_fractie: Fractie van saldo dat als spaargeld telt (0-1). Default 1 (alles spaargeld).
 
     Returns:
@@ -77,8 +78,8 @@ def bereken_rente_maand(
         
         return rente_sparen + rente_beleggen
     
-    # Fallback: gebruik enkel jaarrendement_pct
-    if jaarrendement_pct == Decimal("0"):
+    # Fallback: gebruik jaarrendement_pct indien beschikbaar
+    if jaarrendement_pct is None or jaarrendement_pct == Decimal("0"):
         return Decimal("0")
     maand_rente = maandrendement(jaarrendement_pct)
     return _rond_af(saldo * maand_rente)
@@ -86,10 +87,10 @@ def bereken_rente_maand(
 
 def bereken_vermogensontwikkeling(
     beginsaldo: Decimal,
-    jaarrendement_pct: Decimal,
-    mutaties: list[tuple[date, Decimal]],
-    jaar_van: int,
-    jaar_tot: int,
+    jaarrendement_pct: Decimal | None = None,
+    mutaties: list[tuple[date, Decimal]] = None,
+    jaar_van: int = 2025,
+    jaar_tot: int = 2050,
     jaarrendement_sparen_pct: Decimal | None = None,
     jaarrendement_beleggen_pct: Decimal | None = None,
     spaargeld_fractie: Decimal = Decimal("1"),
@@ -114,6 +115,9 @@ def bereken_vermogensontwikkeling(
     """
     import calendar
 
+    if mutaties is None:
+        mutaties = []
+    
     saldo = beginsaldo
     resultaten: list[tuple[date, Decimal]] = []
 

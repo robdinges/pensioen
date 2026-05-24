@@ -237,9 +237,9 @@ class TestCashflowHuishouden:
             belasting_configs=configs,
         )
         # Gecombineerd pensioeninkomen per maand ≈ (12000+6000)/12 = 1500
-        # Pensioen zit nu in overig_bruto (categorie PENSIOEN_INKOMEN)
-        totaal_overig = cashflow.jaren[0].overig_bruto
-        assert float(totaal_overig) == pytest.approx(18000, rel=1e-3)
+        # Pensioen zit nu in pensioen_bruto (categorie PENSIOEN_INKOMEN)
+        totaal_pensioen = cashflow.jaren[0].pensioen_bruto
+        assert float(totaal_pensioen) == pytest.approx(18000, rel=1e-3)
 
     def test_toekomstig_jaar_tarief_fallback(self, persoon1: Persoon) -> None:
         """Voor een jaar zonder config wordt fallback gebruikt en melding opgeslagen."""

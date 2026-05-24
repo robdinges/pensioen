@@ -9,14 +9,14 @@ import pandas as pd
 
 import streamlit as st
 
-from pensioen.models.scenario import TariefPeriodeItem
+from pensioen.models.scenario import TariefPeriodeItem, Scenario
 from pensioen.tax.belasting_loader import (
     beschikbare_jaren,
     config_naar_tariefwaarden,
     laad_tarieven,
     resolve_tariefwaarden_voor_jaar,
 )
-from pensioen.ui.scenario_context import get_actief_scenario
+from pensioen.ui.scenario_context import get_actief_scenario, SCENARIO_DEFAULT_KEY, set_actief_scenario_naam
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 from pensioen.ui.helpers import fmt_eur, fmt_pct, toon_gap_badge
 
@@ -367,4 +367,245 @@ def toon_instellingen_pagina() -> None:
             f"Sla `{bestandsnaam}` op in de map `config/` van het project "
             "en herstart de applicatie om de nieuwe tarieven te activeren."
         )
+    
+    # ─── Scenario management ─────────────────────────────────────────────────
+    st.divider()
+    st.subheader("Scenario's")
+    st.caption(
+        "Scenario's worden gebruikt voor het vergelijken van verschillende planningsopties. "
+        "Elk scenario heeft eigen componenten, vermogensitems en parameters."
+    )
+    
+    _render_scenario_management()
+
+
+def _render_scenario_management() -> None:
+    """Render scenario CRUD section."""
+    from decimal import Decimal
+    from pensioen.ui.scenario_context import get_actief_scenario_naam
+    
+    scenario_lijst: list[Scenario] = st.session_state.get("scenario_lijst", [])
+    actief_naam = get_actief_scenario_naam()
+    default_naam = st.session_state.get(SCENARIO_DEFAULT_KEY)
+
+    # ─── Nieuw scenario dialog ───────────────────────────────────────────────
+    col_nieuw, col_info = st.columns([1, 4])
+    
+    with col_nieuw:
+        if st.button("➕ Nieuw scenario", key="nieuw_scenario_btn"):
+            st.session_state["_toon_nieuw_scenario_dialog"] = True
+
+    with col_info:
+        st.caption(f"{len(scenario_lijst)} scenario's beschikbaar")
+
+    # Dialog: Nieuw scenario
+    if st.session_state.get("_toon_nieuw_scenario_dialog"):
+        st.divider()
+        st.markdown("**Nieuw scenario**")
+        
+        col_form, col_kopie = st.columns([2, 1])
+        
+        with col_form:
+            naam = st.text_input("Naam", placeholder="Bijv. Voorzichtig", key="nieuw_scenario_naam")
+            beschrijving = st.text_area("Beschrijving", placeholder="Bijv. Met voorzichtige aannames...", key="nieuw_scenario_beschrijving", height=80)
+        
+        with col_kopie:
+            st.write("**Kopie van:**")
+            kopie_opties = ["— Leeg —"] + [s.naam for s in scenario_lijst]
+            kopie_van = st.selectbox("Basisscenario", options=kopie_opties, key="nieuw_scenario_kopie_van")
+
+        col_save, col_cancel = st.columns(2)
+        with col_save:
+            if st.button("✅ Opslaan", key="save_nieuw_scenario"):
+                if not naam or not naam.strip():
+                    st.error("Naam mag niet leeg zijn")
+                elif any(s.naam == naam for s in scenario_lijst):
+                    st.error(f"Scenario '{naam}' bestaat al")
+                else:
+                    if kopie_van == "— Leeg —":
+                        # Nieuw leeg scenario
+                        nieuw = Scenario(
+                            naam=naam.strip(),
+                            omschrijving=beschrijving.strip(),
+                            aangemaakt_op=datetime.now(),
+                            laatst_gewijzigd_op=datetime.now(),
+                            is_default=False,
+                        )
+                    else:
+                        # Kopie van bestaand
+                        bron = next(s for s in scenario_lijst if s.naam == kopie_van)
+                        nieuw = bron.model_copy(deep=True)
+                        nieuw.naam = naam.strip()
+                        nieuw.omschrijving = beschrijving.strip()
+                        nieuw.is_default = False
+                        nieuw.aangemaakt_op = datetime.now()
+                        nieuw.laatst_gewijzigd_op = datetime.now()
+                    
+                    scenario_lijst.append(nieuw)
+                    st.session_state["scenario_lijst"] = scenario_lijst
+                    set_actief_scenario_naam(nieuw.naam)
+                    sla_sessie_op()
+                    st.session_state["_toon_nieuw_scenario_dialog"] = False
+                    st.success(f"✅ Scenario '{naam}' aangemaakt")
+                    st.rerun()
+        
+        with col_cancel:
+            if st.button("❌ Annuleren", key="cancel_nieuw_scenario"):
+                st.session_state["_toon_nieuw_scenario_dialog"] = False
+                st.rerun()
+
+    st.divider()
+
+    # ─── Scenario lijst ──────────────────────────────────────────────────────
+    if not scenario_lijst:
+        st.info("Geen scenario's beschikbaar. Maak een nieuw scenario aan.")
+    else:
+        scenario_namen = [s.naam for s in scenario_lijst]
+        default_index = scenario_namen.index(default_naam) if default_naam in scenario_namen else 0
+
+        gekozen_default = st.radio(
+            "Standaard scenario",
+            options=scenario_namen,
+            index=default_index,
+            key="scenario_default_radio",
+            horizontal=True,
+        )
+        if gekozen_default != default_naam:
+            st.session_state[SCENARIO_DEFAULT_KEY] = gekozen_default
+            default_naam = gekozen_default
+            sla_sessie_op()
+
+        st.divider()
+
+        header_cols = st.columns([0.7, 2.2, 4.2, 1.3, 0.8, 0.8, 0.8])
+        header_cols[0].markdown("**Actief**")
+        header_cols[1].markdown("**Scenario**")
+        header_cols[2].markdown("**Beschrijving**")
+        header_cols[3].markdown("**Standaard**")
+        header_cols[4].markdown("**Ga**")
+        header_cols[5].markdown("**Bewerk**")
+        header_cols[6].markdown("**Verwijder**")
+
+        for s in scenario_lijst:
+            is_actief = s.naam == actief_naam
+            is_default = s.naam == default_naam
+
+            cols = st.columns([0.7, 2.2, 4.2, 1.3, 0.8, 0.8, 0.8])
+
+            with cols[0]:
+                st.markdown("🟢" if is_actief else "⚪")
+
+            with cols[1]:
+                st.write(s.naam)
+
+            with cols[2]:
+                st.write(s.omschrijving or "—")
+
+            with cols[3]:
+                st.write("Ja" if is_default else "Nee")
+
+            with cols[4]:
+                if st.button("➡", key=f"select_{s.naam}", help="Maak actief"):
+                    set_actief_scenario_naam(s.naam)
+                    sla_sessie_op()
+                    st.rerun()
+
+            with cols[5]:
+                if st.button("✏", key=f"edit_{s.naam}", help="Bewerk scenario"):
+                    st.session_state["_edit_scenario_naam"] = s.naam
+                    st.session_state["_toon_edit_dialog"] = True
+                    st.rerun()
+
+            with cols[6]:
+                if st.button(
+                    "🗑",
+                    key=f"delete_{s.naam}",
+                    help="Verwijder scenario",
+                    disabled=len(scenario_lijst) == 1,
+                ):
+                    scenario_lijst = [sc for sc in scenario_lijst if sc.naam != s.naam]
+                    st.session_state["scenario_lijst"] = scenario_lijst
+
+                    if actief_naam == s.naam and scenario_lijst:
+                        set_actief_scenario_naam(scenario_lijst[0].naam)
+
+                    if default_naam == s.naam and scenario_lijst:
+                        st.session_state[SCENARIO_DEFAULT_KEY] = scenario_lijst[0].naam
+
+                    sla_sessie_op()
+                    st.success(f"Scenario '{s.naam}' verwijderd")
+                    st.rerun()
+
+    # ─── Edit scenario dialog ────────────────────────────────────────────────
+    if st.session_state.get("_toon_edit_dialog"):
+        edit_naam = st.session_state.get("_edit_scenario_naam")
+        edit_scenario = next((s for s in scenario_lijst if s.naam == edit_naam), None)
+        
+        if edit_scenario:
+            st.divider()
+            st.markdown(f"**Bewerk scenario: {edit_naam}**")
+            
+            col_form, col_params = st.columns([2, 2])
+            
+            with col_form:
+                nieuwe_naam = st.text_input(
+                    "Naam",
+                    value=edit_scenario.naam,
+                    key="edit_scenario_naam_input",
+                )
+                nieuwe_beschrijving = st.text_area(
+                    "Beschrijving",
+                    value=edit_scenario.omschrijving,
+                    key="edit_scenario_beschrijving",
+                    height=80,
+                )
+            
+            with col_params:
+                st.markdown("**Parameters**")
+                
+                # Alleen inflatie
+                inflatie = st.number_input(
+                    "Inflatie (%)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=float(edit_scenario.inflatie_pct),
+                    step=0.1,
+                    help="Voor koopkrachtberekening in rapportages",
+                    key="edit_scenario_inflatie"
+                )
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.button("✅ Opslaan", key="save_edit_scenario"):
+                    if not nieuwe_naam or not nieuwe_naam.strip():
+                        st.error("Naam mag niet leeg zijn")
+                    elif nieuwe_naam != edit_naam and any(s.naam == nieuwe_naam for s in scenario_lijst):
+                        st.error(f"Scenario '{nieuwe_naam}' bestaat al")
+                    else:
+                        # Update scenario
+                        edit_scenario.naam = nieuwe_naam.strip()
+                        edit_scenario.omschrijving = nieuwe_beschrijving.strip()
+                        edit_scenario.inflatie_pct = Decimal(str(inflatie))
+                        edit_scenario.laatst_gewijzigd_op = datetime.now()
+                        
+                        # Replace in list
+                        scenario_lijst = [s for s in scenario_lijst if s.naam != edit_naam]
+                        scenario_lijst.append(edit_scenario)
+                        st.session_state["scenario_lijst"] = scenario_lijst
+                        
+                        # Update active/default names if renamed
+                        if actief_naam == edit_naam:
+                            set_actief_scenario_naam(nieuwe_naam)
+                        if default_naam == edit_naam:
+                            st.session_state[SCENARIO_DEFAULT_KEY] = nieuwe_naam
+                        
+                        sla_sessie_op()
+                        st.session_state["_toon_edit_dialog"] = False
+                        st.success("Scenario bijgewerkt")
+                        st.rerun()
+            
+            with col_cancel:
+                if st.button("❌ Annuleren", key="cancel_edit_scenario"):
+                    st.session_state["_toon_edit_dialog"] = False
+                    st.rerun()
 

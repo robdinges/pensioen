@@ -44,9 +44,12 @@ class Scenario(BaseModel):
     jaarlijkse_inleg: Decimal = Decimal("0")  # DEPRECATED: gebruik jaarlijkse_inleg_sparen + jaarlijkse_inleg_beleggen
     jaarlijkse_inleg_sparen: Decimal = Decimal("0")    # jaarlijkse toevoeging aan spaargeld
     jaarlijkse_inleg_beleggen: Decimal = Decimal("0")  # jaarlijkse toevoeging aan beleggingen
-    rendement_pct: Decimal = Decimal("3")     # verwacht jaarlijks rendement in %
-    rendement_sparen_pct: Decimal | None = None    # rendement op spaargeld (als None: gebruik rendement_pct)
-    rendement_beleggen_pct: Decimal | None = None  # rendement op beleggingen (als None: gebruik rendement_pct)
+    
+    # DEPRECATED: rendement wordt nu per vermogensitem ingesteld (zie VermogensItem.groei_pct)
+    # Behouden voor backward compatibility met oude sessies
+    rendement_pct: Decimal | None = None     # DEPRECATED
+    rendement_sparen_pct: Decimal | None = None    # DEPRECATED
+    rendement_beleggen_pct: Decimal | None = None  # DEPRECATED
 
     # Vermogensitems (nieuwe structuur voor spaargeld, beleggingen en overige bezittingen)
     vermogensitems: list[VermogensItem] = Field(default_factory=list)
@@ -57,12 +60,13 @@ class Scenario(BaseModel):
     # Incidentele eenmalige cashflows (niet belastbaar)
     incidentele_items: list[IncidenteelItem] = []
 
-    # Inflatie
+    # Inflatie (voor koopkrachtberekening in rapportages)
     inflatie_pct: Decimal = Decimal("2")  # verwachte jaarlijkse inflatie in %
 
     # Box 3
     box3_meenemen: bool = True
-    box3_spaargeld_fractie: Decimal = Decimal("1")  # 0=beleggingen, 1=spaargeld
+    # DEPRECATED: box3 type wordt nu automatisch bepaald per VermogensItem
+    box3_spaargeld_fractie: Decimal | None = None  # DEPRECATED
 
     # Periodegebaseerde tariefoverrides
     tarief_periodes: list[TariefPeriodeItem] = []
@@ -73,12 +77,7 @@ class Scenario(BaseModel):
             raise ValueError("spaargeld_start mag niet negatief zijn.")
         if self.beleggingen_start < Decimal("0"):
             raise ValueError("beleggingen_start mag niet negatief zijn.")
-        if not (Decimal("0") <= self.rendement_pct <= Decimal("30")):
-            raise ValueError("rendement_pct moet tussen 0% en 30% liggen.")
-        if self.rendement_sparen_pct is not None and not (Decimal("0") <= self.rendement_sparen_pct <= Decimal("30")):
-            raise ValueError("rendement_sparen_pct moet tussen 0% en 30% liggen.")
-        if self.rendement_beleggen_pct is not None and not (Decimal("0") <= self.rendement_beleggen_pct <= Decimal("30")):
-            raise ValueError("rendement_beleggen_pct moet tussen 0% en 30% liggen.")
+        # Deprecated rendement velden: skip validatie (backward compatibility)
         if not (Decimal("0") <= self.inflatie_pct <= Decimal("20")):
             raise ValueError("inflatie_pct moet tussen 0% en 20% liggen.")
         for p in self.tarief_periodes:
@@ -89,12 +88,30 @@ class Scenario(BaseModel):
         return self
 
     def get_rendement_sparen(self) -> Decimal:
-        """Geef rendement voor spaargeld; fallback naar rendement_pct als niet expliciet gezet."""
-        return self.rendement_sparen_pct if self.rendement_sparen_pct is not None else self.rendement_pct
+        """
+        Geef rendement voor spaargeld (voor backward compatibility).
+        
+        DEPRECATED: Rendement wordt nu per vermogensitem ingesteld.
+        Deze method gebruikt een fallback van 3% voor migratie van oude data.
+        """
+        if self.rendement_sparen_pct is not None:
+            return self.rendement_sparen_pct
+        if self.rendement_pct is not None:
+            return self.rendement_pct
+        return Decimal("3")  # Default fallback
 
     def get_rendement_beleggen(self) -> Decimal:
-        """Geef rendement voor beleggingen; fallback naar rendement_pct als niet expliciet gezet."""
-        return self.rendement_beleggen_pct if self.rendement_beleggen_pct is not None else self.rendement_pct
+        """
+        Geef rendement voor beleggingen (voor backward compatibility).
+        
+        DEPRECATED: Rendement wordt nu per vermogensitem ingesteld.
+        Deze method gebruikt een fallback van 5% voor migratie van oude data.
+        """
+        if self.rendement_beleggen_pct is not None:
+            return self.rendement_beleggen_pct
+        if self.rendement_pct is not None:
+            return self.rendement_pct
+        return Decimal("5")  # Default fallback voor beleggingen
 
     def totaal_vermogen_start(self) -> Decimal:
         """Totaal startvermogen (spaargeld + beleggingen)."""
@@ -180,9 +197,12 @@ class Scenario(BaseModel):
         
         totaal = saldo_sparen + saldo_beleggen
         
-        # Als er geen componenten zijn, gebruik de scenario-instelling
+        # Als er geen componenten zijn, gebruik een default van 50/50
         if totaal == Decimal("0"):
-            return self.box3_spaargeld_fractie
+            # Fallback: gebruik oude box3_spaargeld_fractie indien beschikbaar
+            if self.box3_spaargeld_fractie is not None:
+                return self.box3_spaargeld_fractie
+            return Decimal("0.5")  # Default 50/50 split
         
         # Fractie spaargeld
         fractie_sparen = saldo_sparen / totaal if totaal > Decimal("0") else Decimal("1")
