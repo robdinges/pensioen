@@ -7,6 +7,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
+from pensioen.calculations.inheritance_engine import resolve_scenario
 from pensioen.models.cashflow import HuishoudCashflow, JaarResultaat, MaandResultaat
 from pensioen.models.component import BedragType, CategorieComponent
 from pensioen.models.pensioen_record import PensioenRecord
@@ -359,6 +360,7 @@ def bereken_huishouden(
     jaar_van: int,
     jaar_tot: int,
     belasting_configs: dict[int, tuple[BelastingConfig, str]],
+    scenario_lijst: list[Scenario] | None = None,
 ) -> HuishoudCashflow:
     """
     Bereken de volledige cashflowprognose voor het huishouden.
@@ -372,12 +374,23 @@ def bereken_huishouden(
         jaar_van: Eerste prognosejaar.
         jaar_tot: Laatste prognosejaar (inclusief).
         belasting_configs: Dict van {jaar: (BelastingConfig, aanname_melding)}.
+        scenario_lijst: Lijst van alle scenario's (voor inheritance resolution).
+            Als None: scenario wordt niet geresolveerd (backward compatible).
 
     Returns:
         HuishoudCashflow met resultaten per jaar en aannames.
     """
-    cashflow = HuishoudCashflow(scenario_naam=scenario.naam)
-    saldo = scenario.totaal_vermogen_start()
+    # Resolve scenario als het een afgeleid scenario is
+    if scenario.is_derived_scenario() and scenario_lijst is not None:
+        logger.info(
+            f"Resolving derived scenario '{scenario.naam}' (parent: {scenario.parent_naam})"
+        )
+        scenario_resolved = resolve_scenario(scenario, scenario_lijst)
+    else:
+        scenario_resolved = scenario
+
+    cashflow = HuishoudCashflow(scenario_naam=scenario_resolved.naam)
+    saldo = scenario_resolved.totaal_vermogen_start()
 
     for jaar in range(jaar_van, jaar_tot + 1):
         config, aanname_melding = belasting_configs[jaar]
@@ -388,7 +401,7 @@ def bereken_huishouden(
             persoon2=persoon2,
             records1=records1,
             records2=records2,
-            scenario=scenario,
+            scenario=scenario_resolved,  # Use resolved scenario
             belasting_config=config,
             aanname_melding=aanname_melding,
             saldo_begin_jaar=saldo,

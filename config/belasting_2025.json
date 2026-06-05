@@ -4,21 +4,40 @@
   "jaar": 2025,
 
   "box1_niet_aow": {
-    "_toelichting": "Schijven voor personen onder de AOW-leeftijd",
+    "_toelichting": "Schijven voor personen onder de AOW-leeftijd. PURE INKOMSTENBELASTING (zonder premies).",
     "schijven": [
-      {"tot": 38441, "tarief": 0.3697, "_omschrijving": "Schijf 1 inclusief AOW-premie"},
+      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB 8,17% (gelijk aan AOW-tarief). Premies worden apart berekend."},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
   },
 
   "box1_aow": {
-    "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). Indicatief.",
+    "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). PURE INKOMSTENBELASTING.",
     "schijven": [
-      {"tot": 38441, "tarief": 0.1907, "_omschrijving": "Schijf 1 zonder AOW-premie"},
+      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB zonder AOW-premie (uit aangifte 2025)"},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
+  },
+
+  "premies_volksverzekeringen": {
+    "_toelichting": "Premies volksverzekeringen worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).",
+    "_bron": "Aangifte 2025 + Belastingdienst",
+    "premiegrens": 38441,
+    "aow": {
+      "_toelichting": "AOW-premie alleen voor niet-AOW-gerechtigden. Te verifiëren: verschil tussen 36,97% en 19,07% = 17,90%?",
+      "tarief_niet_aow": 0.1790,
+      "tarief_aow": 0.0000
+    },
+    "anw": {
+      "_toelichting": "Nabestaandenwet premie (uit aangifte 2025: €38 op €38.441 = 0,1%)",
+      "tarief": 0.001
+    },
+    "wlz": {
+      "_toelichting": "Wet langdurige zorg premie (uit aangifte 2025: €3.709 op €38.441 = 9,65%)",
+      "tarief": 0.0965
+    }
   },
 
   "algemene_heffingskorting": {
@@ -45,10 +64,18 @@
     "minimum": 0
   },
 
+  "alleenstaandeouderenkorting": {
+    "_toelichting": "Extra korting voor alleenstaande AOW-gerechtigden. Bedrag uit aangifte 2025. Geen afbouw bij inkomen €86.813 (volledige €531 toegekend in aangifte), dus afbouwdrempel zeer hoog of geen afbouw.",
+    "max": 531,
+    "afbouw_inkomen_van": 999999,
+    "afbouw_pct": 0.0,
+    "minimum": 0
+  },
+
   "box3": {
     "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken over rechtsherstel box 3. Belasting = 36% over fictief rendement.",
     "_disclaimer": "Box 3 tarieven zijn onder voorbehoud van rechterlijke uitspraken en lopende wetgeving (Wet werkelijk rendement box 3). Gebruik met grote voorzichtigheid.",
-    "vrijstelling_per_persoon": 57000,
+    "vrijstelling_per_persoon": 57684,
     "tarief": 0.36,
     "forfaitair_spaargeld": 0.015,
     "forfaitair_overig": 0.06

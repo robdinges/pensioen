@@ -1,0 +1,101 @@
+{
+  "saved_at": "2025-12-15T10:00:00.000000",
+  "household_id": "TestCase_Alleenstaand_Simpel",
+  "data": {
+    "household_id": "TestCase_Alleenstaand_Simpel",
+    "fiscal_partner": false,
+    "children_count": 0,
+    "household_box1": {
+      "own_home": {
+        "has_own_home": false,
+        "woz_value": 0,
+        "period_fraction": 1
+      }
+    },
+    "dividend_withholding_total": 0,
+    "foreign_dividend_withholding_total": 0,
+    "box3_household": {
+      "savings_accounts": [
+        {
+          "name": "Spaarrekening ING",
+          "amount": 45000,
+          "is_green": false
+        }
+      ],
+      "investment_accounts": [
+        {
+          "name": "Beleggingsrekening DeGiro",
+          "amount": 25000,
+          "is_green": false,
+          "dividend_withholding": 0,
+          "foreign_dividend_withholding": 0
+        }
+      ],
+      "other_assets_items": [],
+      "debt_items": [],
+      "savings": 45000,
+      "investments": 25000,
+      "other_assets": 0,
+      "debts": 0,
+      "total_dividend_withholding": 0,
+      "total_foreign_dividend_withholding": 0
+    },
+    "joint_distribution": {
+      "eigenwoningforfait": {
+        "T001": 0
+      },
+      "aftrek_geen_of_kleine_eigenwoningschuld": {
+        "T001": 0
+      },
+      "grondslag_voordeel_sparen_beleggen": {
+        "T001": 12000
+      },
+      "vrijstelling_groene_beleggingen": {
+        "T001": 0
+      },
+      "ingehouden_dividendbelasting": {
+        "T001": 0
+      },
+      "ingehouden_buitenlandse_dividendbelasting": {
+        "T001": 0
+      }
+    },
+    "members": [
+      {
+        "member_id": "T001",
+        "full_name": "Jan Testpersoon",
+        "bsn": "123456789",
+        "wage_withholding": 0,
+        "box1": {
+          "incomes": [
+            {
+              "type": "PENSION",
+              "amount": 18500,
+              "labor_credit": 0,
+              "source": "AOW",
+              "description": "AOW uitkering"
+            }
+          ],
+          "deductions": [],
+          "has_aow": true,
+          "tax_credits": [
+            {
+              "name": "Algemeen",
+              "amount": 2917
+            },
+            {
+              "name": "Ouderen",
+              "amount": 1884
+            }
+          ]
+        },
+        "box2": {
+          "has_substantial_interest": false,
+          "dividend_income": 0,
+          "sale_gain": 0,
+          "acquisition_price": 0
+        }
+      }
+    ]
+  }
+}

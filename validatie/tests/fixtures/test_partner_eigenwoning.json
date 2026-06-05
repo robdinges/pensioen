@@ -1,0 +1,160 @@
+{
+  "saved_at": "2025-12-15T10:00:00.000000",
+  "household_id": "TestCase_Partner_Complexer",
+  "data": {
+    "household_id": "TestCase_Partner_Complexer",
+    "fiscal_partner": true,
+    "children_count": 0,
+    "household_box1": {
+      "own_home": {
+        "has_own_home": true,
+        "woz_value": 350000,
+        "period_fraction": 1
+      }
+    },
+    "dividend_withholding_total": 125,
+    "foreign_dividend_withholding_total": 0,
+    "box3_household": {
+      "savings_accounts": [
+        {
+          "name": "Gezamenlijke spaarrekening",
+          "amount": 85000,
+          "is_green": false
+        }
+      ],
+      "investment_accounts": [
+        {
+          "name": "Beleggingen P1",
+          "amount": 60000,
+          "is_green": false,
+          "dividend_withholding": 75,
+          "foreign_dividend_withholding": 0
+        },
+        {
+          "name": "Beleggingen P2",
+          "amount": 40000,
+          "is_green": false,
+          "dividend_withholding": 50,
+          "foreign_dividend_withholding": 0
+        }
+      ],
+      "other_assets_items": [],
+      "debt_items": [],
+      "savings": 85000,
+      "investments": 100000,
+      "other_assets": 0,
+      "debts": 0,
+      "total_dividend_withholding": 125,
+      "total_foreign_dividend_withholding": 0
+    },
+    "joint_distribution": {
+      "eigenwoningforfait": {
+        "T002": 875
+      },
+      "aftrek_geen_of_kleine_eigenwoningschuld": {
+        "T002": 0
+      },
+      "grondslag_voordeel_sparen_beleggen": {
+        "T002": 62500,
+        "T003": 62500
+      },
+      "vrijstelling_groene_beleggingen": {
+        "T002": 0,
+        "T003": 0
+      },
+      "ingehouden_dividendbelasting": {
+        "T002": 75,
+        "T003": 50
+      },
+      "ingehouden_buitenlandse_dividendbelasting": {
+        "T002": 0,
+        "T003": 0
+      }
+    },
+    "members": [
+      {
+        "member_id": "T002",
+        "full_name": "Marie Testpersoon",
+        "bsn": "234567890",
+        "wage_withholding": 0,
+        "box1": {
+          "incomes": [
+            {
+              "type": "PENSION",
+              "amount": 24000,
+              "labor_credit": 0,
+              "source": "Werkgeverspensioen ABP",
+              "description": "Pensioen uitkering"
+            },
+            {
+              "type": "PENSION",
+              "amount": 14500,
+              "labor_credit": 0,
+              "source": "AOW",
+              "description": "AOW uitkering"
+            }
+          ],
+          "deductions": [
+            {
+              "type": "PERSONAL_ALLOWANCE",
+              "name": "Beddengoed aftrek",
+              "amount": 450
+            }
+          ],
+          "has_aow": true,
+          "tax_credits": [
+            {
+              "name": "Algemeen",
+              "amount": 2200
+            },
+            {
+              "name": "Ouderen",
+              "amount": 1650
+            }
+          ]
+        },
+        "box2": {
+          "has_substantial_interest": false,
+          "dividend_income": 0,
+          "sale_gain": 0,
+          "acquisition_price": 0
+        }
+      },
+      {
+        "member_id": "T003",
+        "full_name": "Pieter Testpersoon",
+        "bsn": "345678901",
+        "wage_withholding": 0,
+        "box1": {
+          "incomes": [
+            {
+              "type": "PENSION",
+              "amount": 14500,
+              "labor_credit": 0,
+              "source": "AOW",
+              "description": "AOW uitkering"
+            }
+          ],
+          "deductions": [],
+          "has_aow": true,
+          "tax_credits": [
+            {
+              "name": "Algemeen",
+              "amount": 2917
+            },
+            {
+              "name": "Ouderen",
+              "amount": 1884
+            }
+          ]
+        },
+        "box2": {
+          "has_substantial_interest": false,
+          "dividend_income": 0,
+          "sale_gain": 0,
+          "acquisition_price": 0
+        }
+      }
+    ]
+  }
+}

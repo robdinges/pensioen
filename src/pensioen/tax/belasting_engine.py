@@ -22,9 +22,22 @@ class BelastingResultaat:
     """Uitgebreid resultaat van een belastingberekening inclusief transparantie."""
 
     bruto: Decimal
-    belasting: Decimal
+    
+    # Opsplitsing belasting en premies (vanaf 2025)
+    inkomstenbelasting: Decimal  # Pure inkomstenbelasting (box 1)
+    premie_aow: Decimal  # AOW-premie
+    premie_anw: Decimal  # Nabestaandenwet premie
+    premie_wlz: Decimal  # Wet langdurige zorg premie
+    totaal_premies: Decimal  # Som van alle premies
+    
+    # Legacy veld voor backward compatibility
+    belasting: Decimal  # Totaal IB + premies (voor oude code)
+    
+    # Kortingen en netto
     heffingskorting: Decimal
     netto: Decimal
+    
+    # Metadata
     effectief_tarief: Decimal  # percentage
     gebruikte_tarieven: dict = field(default_factory=dict)
     aannames: list[str] = field(default_factory=list)
@@ -93,16 +106,55 @@ def bereken_box1_belasting(
     return rond_af(gewogen)
 
 
+def bereken_premies_volksverzekeringen(
+    bruto_inkomen: Decimal,
+    config: BelastingConfig,
+    is_aow: bool,
+) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """
+    Bereken premies volksverzekeringen (AOW, Anw, Wlz).
+    
+    Premies worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).
+    
+    Args:
+        bruto_inkomen: Totaal bruto jaarinkomen.
+        config: Belastingconfiguratie voor het jaar.
+        is_aow: Of de persoon (heel jaar) AOW-gerechtigd is.
+    
+    Returns:
+        Tuple van (premie_aow, premie_anw, premie_wlz, totaal_premies).
+        Retourneert (0, 0, 0, 0) als config.premies None is (backward compatibility).
+    """
+    if config.premies is None:
+        # Backward compatibility: oude configs zonder premies-sectie
+        return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")
+    
+    # Grondslag: max tot premiegrens (alleen schijf 1)
+    grondslag = min(bruto_inkomen, config.premies.premiegrens)
+    
+    # AOW-premie: 0 als al AOW-gerechtigd, anders tarief_niet_aow
+    tarief_aow = config.premies.aow_tarief_aow if is_aow else config.premies.aow_tarief_niet_aow
+    premie_aow = rond_af(grondslag * tarief_aow)
+    
+    # Anw en Wlz: voor iedereen
+    premie_anw = rond_af(grondslag * config.premies.anw_tarief)
+    premie_wlz = rond_af(grondslag * config.premies.wlz_tarief)
+    
+    totaal = premie_aow + premie_anw + premie_wlz
+    return premie_aow, premie_anw, premie_wlz, totaal
+
+
 def netto_uit_bruto(
     bruto: Decimal,
     arbeidsinkomen: Decimal,
     config: BelastingConfig,
     geboortedatum: date,
     jaar: int,
+    is_alleenstaand: bool = True,
     aannames: list[str] | None = None,
 ) -> BelastingResultaat:
     """
-    Bereken het netto jaarinkomen vanuit bruto, inclusief heffingskortingen.
+    Bereken het netto jaarinkomen vanuit bruto, inclusief heffingskortingen en premies.
 
     Args:
         bruto: Totaal bruto jaarinkomen (arbeid + pensioen + AOW + overig).
@@ -110,10 +162,11 @@ def netto_uit_bruto(
         config: Belastingconfiguratie voor het jaar.
         geboortedatum: Geboortedatum van de persoon (voor AOW-status).
         jaar: Belastingjaar.
+        is_alleenstaand: Of de persoon alleenstaand is (voor alleenstaandeouderenkorting).
         aannames: Eventuele extra aannames voor transparantie.
 
     Returns:
-        BelastingResultaat met bruto, belasting, heffingskorting, netto, tarief.
+        BelastingResultaat met bruto, IB, premies, heffingskorting, netto, tarief.
     """
     if aannames is None:
         aannames = []
@@ -122,25 +175,35 @@ def netto_uit_bruto(
 
     # AOW-status
     aow_breuk = aow_engine.aow_breuk_jaar(geboortedatum, jaar)
-    is_aow = aow_breuk > Decimal("0")
+    is_aow_heel_jaar = aow_breuk >= Decimal("1")  # Voor premies: hele jaar AOW?
+    is_aow_deels = aow_breuk > Decimal("0")  # Voor kortingen: deels AOW?
 
-    # Box 1 belasting (vóór heffingskortingen)
-    belasting_voor_kortingen = bereken_box1_belasting(bruto, config, aow_breuk)
+    # Box 1 inkomstenbelasting (pure IB, zonder premies)
+    ib = bereken_box1_belasting(bruto, config, aow_breuk)
+    
+    # Premies volksverzekeringen (apart berekend, alleen over schijf 1)
+    premie_aow, premie_anw, premie_wlz, totaal_premies = bereken_premies_volksverzekeringen(
+        bruto, config, is_aow_heel_jaar
+    )
+    
+    # Totaal belasting + premies
+    totaal_belasting_en_premies = ib + totaal_premies
 
-    # Heffingskortingen
+    # Heffingskortingen (inclusief alleenstaandeouderenkorting)
     totale_korting = heffingskorting.bereken_totale_heffingskortingen(
         bruto_inkomen=bruto,
         arbeidsinkomen=arbeidsinkomen,
         config=config,
-        is_aow=is_aow,
+        is_aow=is_aow_deels,
+        is_alleenstaand=is_alleenstaand,
     )
 
     # Netto belasting (nooit negatief — kortingen kunnen belasting niet overstijgen)
-    netto_belasting = max(Decimal("0"), belasting_voor_kortingen - totale_korting)
-    netto = rond_af(bruto - netto_belasting)
+    netto_verschuldigd = max(Decimal("0"), totaal_belasting_en_premies - totale_korting)
+    netto = rond_af(bruto - netto_verschuldigd)
 
     effectief_tarief = (
-        netto_belasting / bruto * Decimal("100")
+        netto_verschuldigd / bruto * Decimal("100")
         if bruto > Decimal("0")
         else Decimal("0")
     )
@@ -148,11 +211,20 @@ def netto_uit_bruto(
     gebruikte_tarieven = {
         "belastingjaar": config.jaar,
         "aow_breuk": float(aow_breuk),
-        "belasting_voor_kortingen": float(belasting_voor_kortingen),
+        "inkomstenbelasting": float(ib),
+        "premie_aow": float(premie_aow),
+        "premie_anw": float(premie_anw),
+        "premie_wlz": float(premie_wlz),
+        "totaal_premies": float(totaal_premies),
         "ahk": float(heffingskorting.bereken_ahk(bruto, config)),
         "arbeidskorting": float(heffingskorting.bereken_arbeidskorting(arbeidsinkomen, config)),
         "ouderenkorting": float(
-            heffingskorting.bereken_ouderenkorting(bruto, config, is_aow)
+            heffingskorting.bereken_ouderenkorting(bruto, config, is_aow_deels)
+        ),
+        "alleenstaandeouderenkorting": float(
+            heffingskorting.bereken_alleenstaandeouderenkorting(
+                bruto, config, is_aow_deels, is_alleenstaand
+            )
         ),
     }
 
@@ -164,7 +236,12 @@ def netto_uit_bruto(
 
     return BelastingResultaat(
         bruto=bruto,
-        belasting=rond_af(belasting_voor_kortingen),
+        inkomstenbelasting=rond_af(ib),
+        premie_aow=premie_aow,
+        premie_anw=premie_anw,
+        premie_wlz=premie_wlz,
+        totaal_premies=totaal_premies,
+        belasting=rond_af(totaal_belasting_en_premies),  # Legacy veld
         heffingskorting=rond_af(totale_korting),
         netto=netto,
         effectief_tarief=rond_af(effectief_tarief),

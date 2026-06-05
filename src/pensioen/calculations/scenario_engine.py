@@ -7,6 +7,7 @@ from decimal import Decimal
 from statistics import median
 
 from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.inheritance_engine import get_parent_chain
 from pensioen.models.cashflow import HuishoudCashflow
 from pensioen.models.component import CategorieComponent
 from pensioen.models.pensioen_record import PensioenRecord
@@ -39,7 +40,8 @@ class ScenarioResultaat:
     vermogen_op_80: Decimal
     gemiddelde_belastingdruk: Decimal  # effectief tarief
     aantal_tekortjaren: int
-    cashflow: HuishoudCashflow = field(repr=False)
+    cashflow: HuishoudCashflow  # Moved before field with default
+    parent_chain: list[str] = field(default_factory=list)  # inheritance chain
 
 
 @dataclass
@@ -61,9 +63,10 @@ class ScenarioVergelijking:
 
 
 def _bereken_samenvatting(
+    scenario: Scenario,
     cashflow: HuishoudCashflow,
     persoon1: Persoon,
-    scenario: Scenario,
+    scenario_lijst: list[Scenario],
 ) -> ScenarioResultaat:
     """Bereken de samenvattingsstatistieken voor één scenario."""
     netto_per_maand_alle_jaren = [
@@ -89,6 +92,9 @@ def _bereken_samenvatting(
         else Decimal("0")
     )
 
+    # Determine parent chain for inheritance tracking
+    parent_chain = get_parent_chain(scenario, scenario_lijst)
+
     return ScenarioResultaat(
         scenario_naam=scenario.naam,
         stopdatum_werk=_stopdatum_werk(scenario),
@@ -99,6 +105,7 @@ def _bereken_samenvatting(
         vermogen_op_80=vermogen_80,
         gemiddelde_belastingdruk=gemiddeld_tarief,
         aantal_tekortjaren=len(cashflow.tekortjaren),
+        parent_chain=parent_chain,
         cashflow=cashflow,
     )
 
@@ -140,8 +147,9 @@ def vergelijk_scenarios(
             jaar_van=jaar_van,
             jaar_tot=jaar_tot,
             belasting_configs=belasting_configs,
+            scenario_lijst=scenarios,  # Pass full list for inheritance resolution
         )
-        samenvatting = _bereken_samenvatting(cashflow, persoon1, scenario)
+        samenvatting = _bereken_samenvatting(scenario, cashflow, persoon1, scenarios)
         vergelijking.scenario_resultaten.append(samenvatting)
 
     return vergelijking

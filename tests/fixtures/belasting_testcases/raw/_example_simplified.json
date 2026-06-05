@@ -1,0 +1,64 @@
+{
+  "_comment": "VEREENVOUDIGDE VERSIE van tc_2025_002 - alleen huishouden-totalen",
+  "_purpose": "Voorbeeld voor pensioenplanning: per-persoon detail niet nodig",
+  
+  "testcase_id": "tc_2025_002_simplified",
+  "naam": "Gehuwd paar - vereenvoudigd (huishouden-totaal)",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-06-05",
+  "bron_formaat": "simplified",
+  
+  "huishouden": {
+    "type": "GEHUWD",
+    "aantal_personen": 2,
+    "is_gehuwd": true,
+    "eigen_huis": false
+  },
+  
+  "personen": [
+    {
+      "naam": "Persoon 1",
+      "geboortedatum": "1955-01-01",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 86813,
+      "is_aow_heel_jaar": true
+    },
+    {
+      "naam": "Persoon 2",
+      "geboortedatum": "1965-01-01",
+      "bruto_arbeid": 85000,
+      "bruto_pensioen": 0,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  
+  "vermogen": {
+    "totaal": 500000,
+    "spaargeld_fractie": 0.4,
+    "_comment": "Verdeling tussen personen niet relevant voor cashflow"
+  },
+  
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 61192,
+    "_comment": "Huishouden-totaal, per-persoon breakdown niet nodig voor pensioenplanning",
+    "_bruto_totaal_huishouden": 171813,
+    "_box1_totaal_huishouden": 44044,
+    "_box3_totaal_huishouden": 5643,
+    "_premies_totaal_huishouden": 14375,
+    "_kortingen_totaal_huishouden": 2870
+  },
+  
+  "metadata": {
+    "uitgangspunten": [
+      "Gehuwd paar (fiscaal partners)",
+      "Persoon 1: AOW-gerechtigd, pensioen €86.813",
+      "Persoon 2: Werkend, bruto €85.000",
+      "Vermogen: €500.000 (40% sparen, 60% beleggen)",
+      "Geen eigen huis"
+    ],
+    "data_kwaliteit": "minimaal",
+    "validatie_doel": "Pensioenplanning cashflow - huishouden-totaal voldoende",
+    "bron": "Afgeleide van tc_2025_002 (volledig)",
+    "_incomplete": false
+  }
+}

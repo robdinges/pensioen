@@ -69,11 +69,33 @@ def bereken_ouderenkorting(inkomen: Decimal, config: BelastingConfig, is_aow: bo
     return _afbouw_korting(inkomen, config.ouderenkorting)
 
 
+def bereken_alleenstaandeouderenkorting(
+    inkomen: Decimal,
+    config: BelastingConfig,
+    is_aow: bool,
+    is_alleenstaand: bool,
+) -> Decimal:
+    """
+    Bereken de alleenstaandeouderenkorting.
+
+    Alleen van toepassing op alleenstaande AOW-gerechtigden.
+    Vanaf belastingjaar 2025.
+    """
+    if not (is_aow and is_alleenstaand):
+        return Decimal("0")
+    
+    if config.alleenstaandeouderenkorting is None:
+        return Decimal("0")
+    
+    return _afbouw_korting(inkomen, config.alleenstaandeouderenkorting)
+
+
 def bereken_totale_heffingskortingen(
     bruto_inkomen: Decimal,
     arbeidsinkomen: Decimal,
     config: BelastingConfig,
     is_aow: bool,
+    is_alleenstaand: bool = True,
 ) -> Decimal:
     """
     Bereken de totale heffingskortingen voor één persoon.
@@ -83,6 +105,7 @@ def bereken_totale_heffingskortingen(
         arbeidsinkomen: Alleen het deel dat als arbeidsinkomen telt (voor arbeidskorting).
         config: Belastingconfiguratie voor het betreffende jaar.
         is_aow: Of de persoon AOW-gerechtigd is (voor ouderenkorting).
+        is_alleenstaand: Of de persoon alleenstaand is (voor alleenstaandeouderenkorting).
 
     Returns:
         Totale heffingskorting in euro's.
@@ -90,4 +113,5 @@ def bereken_totale_heffingskortingen(
     ahk = bereken_ahk(bruto_inkomen, config)
     ak = bereken_arbeidskorting(arbeidsinkomen, config)
     ok = bereken_ouderenkorting(bruto_inkomen, config, is_aow)
-    return ahk + ak + ok
+    aok = bereken_alleenstaandeouderenkorting(bruto_inkomen, config, is_aow, is_alleenstaand)
+    return ahk + ak + ok + aok

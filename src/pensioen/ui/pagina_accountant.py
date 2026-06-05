@@ -195,16 +195,31 @@ def _bereken_jaar_detail(
     aow_breuk_p1 = aow_engine.aow_breuk_jaar(persoon1.geboortedatum, jaar)
     is_aow_p1 = aow_breuk_p1 > Decimal("0")
     bel_voor_korting_p1 = belasting_engine.bereken_box1_belasting(bruto_p1, config, aow_breuk_p1)
+    
+    # Premies volksverzekeringen persoon 1
+    premie_aow_p1, premie_anw_p1, premie_wlz_p1, totaal_premies_p1 = (
+        belasting_engine.bereken_premies_volksverzekeringen(bruto_p1, config, is_aow_p1)
+    )
+    
+    # Heffingskortingen persoon 1
     ahk_p1 = heffingskorting.bereken_ahk(bruto_p1, config)
     ak_p1 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, config)
     ok_p1 = heffingskorting.bereken_ouderenkorting(bruto_p1, config, is_aow_p1)
-    totale_hk_p1 = ahk_p1 + ak_p1 + ok_p1
-    netto_bel_p1 = max(Decimal("0"), bel_voor_korting_p1 - totale_hk_p1)
+    aok_p1 = heffingskorting.bereken_alleenstaandeouderenkorting(
+        bruto_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
+    )
+    totale_hk_p1 = ahk_p1 + ak_p1 + ok_p1 + aok_p1
+    
+    # Totaal verschuldigd persoon 1
+    totaal_ib_en_premies_p1 = bel_voor_korting_p1 + totaal_premies_p1
+    netto_bel_p1 = max(Decimal("0"), totaal_ib_en_premies_p1 - totale_hk_p1)
     netto_p1 = bruto_p1 - netto_bel_p1
 
     # Belasting persoon 2 — detailberekening
     bel_voor_korting_p2 = Decimal("0")
-    ahk_p2 = ak_p2 = ok_p2 = totale_hk_p2 = netto_bel_p2 = Decimal("0")
+    premie_aow_p2 = premie_anw_p2 = premie_wlz_p2 = totaal_premies_p2 = Decimal("0")
+    ahk_p2 = ak_p2 = ok_p2 = aok_p2 = totale_hk_p2 = Decimal("0")
+    totaal_ib_en_premies_p2 = netto_bel_p2 = Decimal("0")
     aow_breuk_p2 = Decimal("0")
     is_aow_p2 = False
     netto_p2 = Decimal("0")
@@ -212,11 +227,22 @@ def _bereken_jaar_detail(
         aow_breuk_p2 = aow_engine.aow_breuk_jaar(persoon2.geboortedatum, jaar)
         is_aow_p2 = aow_breuk_p2 > Decimal("0")
         bel_voor_korting_p2 = belasting_engine.bereken_box1_belasting(bruto_p2, config, aow_breuk_p2)
+        
+        # Premies volksverzekeringen persoon 2
+        premie_aow_p2, premie_anw_p2, premie_wlz_p2, totaal_premies_p2 = (
+            belasting_engine.bereken_premies_volksverzekeringen(bruto_p2, config, is_aow_p2)
+        )
+        
+        # Heffingskortingen persoon 2
         ahk_p2 = heffingskorting.bereken_ahk(bruto_p2, config)
         ak_p2 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, config)
         ok_p2 = heffingskorting.bereken_ouderenkorting(bruto_p2, config, is_aow_p2)
-        totale_hk_p2 = ahk_p2 + ak_p2 + ok_p2
-        netto_bel_p2 = max(Decimal("0"), bel_voor_korting_p2 - totale_hk_p2)
+        aok_p2 = Decimal("0")  # Alleenstaandeouderenkorting alleen voor alleenstaanden
+        totale_hk_p2 = ahk_p2 + ak_p2 + ok_p2 + aok_p2
+        
+        # Totaal verschuldigd persoon 2
+        totaal_ib_en_premies_p2 = bel_voor_korting_p2 + totaal_premies_p2
+        netto_bel_p2 = max(Decimal("0"), totaal_ib_en_premies_p2 - totale_hk_p2)
         netto_p2 = bruto_p2 - netto_bel_p2
 
     totaal_netto_inkomen = netto_p1 + netto_p2
@@ -314,8 +340,18 @@ def _bereken_jaar_detail(
         "is_aow_p2": is_aow_p2,
         "bel_voor_korting_p1": bel_voor_korting_p1,
         "bel_voor_korting_p2": bel_voor_korting_p2,
-        "ahk_p1": ahk_p1, "ak_p1": ak_p1, "ok_p1": ok_p1,
-        "ahk_p2": ahk_p2, "ak_p2": ak_p2, "ok_p2": ok_p2,
+        "premie_aow_p1": premie_aow_p1,
+        "premie_anw_p1": premie_anw_p1,
+        "premie_wlz_p1": premie_wlz_p1,
+        "totaal_premies_p1": totaal_premies_p1,
+        "premie_aow_p2": premie_aow_p2,
+        "premie_anw_p2": premie_anw_p2,
+        "premie_wlz_p2": premie_wlz_p2,
+        "totaal_premies_p2": totaal_premies_p2,
+        "totaal_ib_en_premies_p1": totaal_ib_en_premies_p1,
+        "totaal_ib_en_premies_p2": totaal_ib_en_premies_p2,
+        "ahk_p1": ahk_p1, "ak_p1": ak_p1, "ok_p1": ok_p1, "aok_p1": aok_p1,
+        "ahk_p2": ahk_p2, "ak_p2": ak_p2, "ok_p2": ok_p2, "aok_p2": aok_p2,
         "totale_hk_p1": totale_hk_p1,
         "totale_hk_p2": totale_hk_p2,
         "netto_bel_p1": netto_bel_p1,
@@ -379,7 +415,7 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
     ]
     st.table(_maak_tabel(cols, rijen))
 
-    st.markdown("#### B. Box 1 belasting vóór heffingskortingen")
+    st.markdown("#### B. Box 1 inkomstenbelasting (IB)")
     if d["aow_breuk_p1"] > Decimal("0") and d["aow_breuk_p1"] < Decimal("1"):
         st.caption(
             f"⚠️ {naam_p1} bereikt AOW-leeftijd dit jaar. "
@@ -398,7 +434,7 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
          _fmt(d["bruto_p1"]),
          *([_fmt(d["bruto_p2"])] if heeft_p2 else []),
          _fmt(d["bruto_p1"] + d["bruto_p2"])],
-        ["Schijventarief (zie noot *)",
+        ["Inkomstenbelasting (IB) schijventarief *",
          _fmt(d["bel_voor_korting_p1"]),
          *([_fmt(d["bel_voor_korting_p2"])] if heeft_p2 else []),
          _fmt(d["bel_voor_korting_p1"] + d["bel_voor_korting_p2"])],
@@ -415,12 +451,39 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
         niet_aow_delen.append(f"schijf {i} {grens}: {float(schijf.tarief) * 100:.2f}%")
 
     st.caption(
-        f"\\* Toegepaste tarieven ({config.jaar}) - "
+        f"\\* IB-tarieven ({config.jaar}, ZONDER premies) - "
         f"AOW: {' | '.join(aow_delen)}. "
         f"Niet-AOW: {' | '.join(niet_aow_delen)}."
     )
 
-    st.markdown("#### C. Heffingskortingen")
+    st.markdown("#### C. Premies volksverzekeringen")
+    premiegrens = config.premies.premiegrens if config.premies else Decimal("0")
+    rijen_premies = [
+        ["AOW-premie (alleen niet-AOW)",
+         _fmt(d["premie_aow_p1"]),
+         *([_fmt(d["premie_aow_p2"])] if heeft_p2 else []),
+         _fmt(d["premie_aow_p1"] + d["premie_aow_p2"])],
+        ["Anw-premie",
+         _fmt(d["premie_anw_p1"]),
+         *([_fmt(d["premie_anw_p2"])] if heeft_p2 else []),
+         _fmt(d["premie_anw_p1"] + d["premie_anw_p2"])],
+        ["Wlz-premie",
+         _fmt(d["premie_wlz_p1"]),
+         *([_fmt(d["premie_wlz_p2"])] if heeft_p2 else []),
+         _fmt(d["premie_wlz_p1"] + d["premie_wlz_p2"])],
+        ["**Totaal premies**",
+         f"**{_fmt(d['totaal_premies_p1'])}**",
+         *([f"**{_fmt(d['totaal_premies_p2'])}**"] if heeft_p2 else []),
+         f"**{_fmt(d['totaal_premies_p1'] + d['totaal_premies_p2'])}**"],
+    ]
+    st.table(_maak_tabel(cols, rijen_premies))
+    st.caption(
+        f"ℹ️ Premies worden alleen geheven over inkomen tot de premiegrens "
+        f"(€{float(premiegrens):,.0f} in {config.jaar}). "
+        f"AOW-premie (17,9%) geldt alleen voor niet-AOW-gerechtigden."
+    )
+
+    st.markdown("#### D. Heffingskortingen")
     rijen_c = [
         ["Algemene heffingskorting (AHK)",
          _fmt(d["ahk_p1"]),
@@ -434,6 +497,10 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
          _fmt(d["ok_p1"]),
          *([_fmt(d["ok_p2"])] if heeft_p2 else []),
          _fmt(d["ok_p1"] + d["ok_p2"])],
+        ["Alleenstaandeouderenkorting",
+         _fmt(d["aok_p1"]),
+         *([_fmt(d["aok_p2"])] if heeft_p2 else []),
+         _fmt(d["aok_p1"] + d["aok_p2"])],
         ["**Totaal kortingen**",
          f"**{_fmt(d['totale_hk_p1'])}**",
          *([f"**{_fmt(d['totale_hk_p2'])}**"] if heeft_p2 else []),
@@ -465,25 +532,38 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
             f"ℹ️ **{naam_p2}**: ouderenkorting = € 0,00 door inkomen boven afbouwgrens."
         )
 
-    st.markdown("#### D. Netto belasting en netto inkomen")
+    st.markdown("#### E. Totaal verschuldigd belasting en premies")
     rijen_d = [
-        ["Belasting vóór kortingen (B)",
+        ["IB vóór kortingen (B)",
          _fmt(d["bel_voor_korting_p1"]),
          *([_fmt(d["bel_voor_korting_p2"])] if heeft_p2 else []),
          _fmt(d["bel_voor_korting_p1"] + d["bel_voor_korting_p2"])],
-        ["Af: totaal heffingskortingen (C)",
+        ["Premies volksverzekeringen (C)",
+         _fmt(d["totaal_premies_p1"]),
+         *([_fmt(d["totaal_premies_p2"])] if heeft_p2 else []),
+         _fmt(d["totaal_premies_p1"] + d["totaal_premies_p2"])],
+        ["**= Totaal IB + premies**",
+         f"**{_fmt(d['totaal_ib_en_premies_p1'])}**",
+         *([f"**{_fmt(d['totaal_ib_en_premies_p2'])}**"] if heeft_p2 else []),
+         f"**{_fmt(d['totaal_ib_en_premies_p1'] + d['totaal_ib_en_premies_p2'])}**"],
+        ["Af: totaal heffingskortingen (D)",
          _fmt(d["totale_hk_p1"]),
          *([_fmt(d["totale_hk_p2"])] if heeft_p2 else []),
          _fmt(d["totale_hk_p1"] + d["totale_hk_p2"])],
-        ["**= Netto belasting**",
+        ["**= Totaal verschuldigd Box 1**",
          f"**{_fmt(d['netto_bel_p1'])}**",
          *([f"**{_fmt(d['netto_bel_p2'])}**"] if heeft_p2 else []),
          f"**{_fmt(d['netto_bel_p1'] + d['netto_bel_p2'])}**"],
+    ]
+    st.table(_maak_tabel(cols, rijen_d))
+    
+    st.markdown("#### F. Netto inkomen")
+    rijen_f = [
         ["Bruto inkomen (A)",
          _fmt(d["bruto_p1"]),
          *([_fmt(d["bruto_p2"])] if heeft_p2 else []),
          _fmt(d["bruto_p1"] + d["bruto_p2"])],
-        ["Af: netto belasting",
+        ["Af: verschuldigd Box 1 (E)",
          _fmt(d["netto_bel_p1"]),
          *([_fmt(d["netto_bel_p2"])] if heeft_p2 else []),
          _fmt(d["netto_bel_p1"] + d["netto_bel_p2"])],
@@ -502,12 +582,12 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
          ] if heeft_p2 else []),
          f"**{_fmt(d['totaal_netto_inkomen'] + d['jaar_netto_component_inkomen'])}**"],
     ]
-    st.table(_maak_tabel(cols, rijen_d))
+    st.table(_maak_tabel(cols, rijen_f))
 
 
 def _toon_vermogen_detail(d: dict) -> None:
     """Toon de vermogensberekening: box 3 + maandopbouw."""
-    st.markdown("#### E. Box 3 heffing")
+    st.markdown("#### G. Box 3 heffing")
     belastbaar = d["box3_belastbaar"]
     fractie_s = d["box3_spaargeld_fractie"]
     fractie_o = Decimal("1") - fractie_s

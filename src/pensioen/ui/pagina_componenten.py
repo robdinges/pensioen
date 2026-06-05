@@ -52,6 +52,15 @@ def toon_componenten_pagina() -> None:
     scenario = actief
     st.caption(f"Actief scenario: **{scenario.naam}**")
     
+    # Toon info bij afgeleid scenario
+    if scenario.parent_naam:
+        st.info(
+            f"🔗 **Afgeleid scenario** (parent: {scenario.parent_naam})\n\n"
+            f"ℹ️ Componenten en vermogensitems worden gekopieerd bij aanmaak. "
+            f"Wijzigingen in de parent worden niet automatisch doorgevoerd. "
+            f"Voor scenario-parameters (inflatie) werkt inheritance wel automatisch."
+        )
+    
     heeft_partner = "persoon2" in st.session_state
     persoon2 = st.session_state.get("persoon2")
     

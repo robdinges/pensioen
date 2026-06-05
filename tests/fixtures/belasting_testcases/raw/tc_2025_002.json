@@ -1,0 +1,121 @@
+{
+  "testcase_id": "tc_2025_002",
+  "naam": "Gehuwd paar - 1 AOW + 1 werkend 2025",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-06-05",
+  "bron_formaat": "screen_scrape",
+  "huishouden": {
+    "type": "GEHUWD",
+    "aantal_personen": 2,
+    "is_gehuwd": true,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Johan van Dijk",
+      "geboortedatum": "1955-01-01",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 75245,
+      "bruto_aow": 11568,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": true
+    },
+    {
+      "naam": "Tilly van Dijk",
+      "geboortedatum": "1965-01-01",
+      "bruto_arbeid": 85000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  "vermogen": {
+    "totaal": 500000,
+    "spaargeld_fractie": 0.4,
+    "spaargeld": 200000,
+    "beleggingen": 300000,
+    "verdeling_personen": {
+      "p1_deel": 500000,
+      "p2_deel": 0,
+      "_comment": "Volledig vermogen op naam persoon 1 (Johan) voor Box 3"
+    }
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd_p1": 31861,
+    "totaal_verschuldigd_p2": 29331,
+    "totaal_verschuldigd_huishouden": 61192,
+    "bruto_p1": 86813,
+    "bruto_p2": 85000,
+    "box1_ib_p1": 22471,
+    "box1_schijf1_p1": 3140,
+    "box1_schijf2_p1": 14383,
+    "box1_schijf3_p1": 4948,
+    "box1_ib_p2": 21573,
+    "box1_schijf1_p2": 3140,
+    "box1_schijf2_p2": 14383,
+    "box1_schijf3_p2": 4050,
+    "premie_aow_p1": 0,
+    "premie_anw_p1": 38,
+    "premie_wlz_p1": 3709,
+    "totaal_premies_p1": 3747,
+    "premie_aow_p2": 6880,
+    "premie_anw_p2": 38,
+    "premie_wlz_p2": 3709,
+    "totaal_premies_p2": 10628,
+    "ahk_p1": 0,
+    "arbeidskorting_p1": 0,
+    "ouderenkorting_p1": 0,
+    "totaal_kortingen_p1": 0,
+    "ahk_p2": 0,
+    "arbeidskorting_p2": 2870,
+    "ouderenkorting_p2": 0,
+    "totaal_kortingen_p2": 2870,
+    "box3_vrijstelling": 115368,
+    "box3_grondslag_totaal": 384632,
+    "box3_grondslag_p1": 384632,
+    "box3_grondslag_p2": 0,
+    "box3_fictief_rendement_p1": 15676,
+    "box3_fictief_rendement_p2": 0,
+    "box3_heffing_p1": 5643,
+    "box3_heffing_p2": 0,
+    "totaal_ib_en_premies_p1": 31861,
+    "totaal_ib_en_premies_p2": 32201,
+    "_berekening_details": {
+      "verzamelinkomen_p1": 102489,
+      "verzamelinkomen_p2": 85000,
+      "box1_tarieven": {
+        "schijf1_grens": 38441,
+        "schijf1_tarief_aow": 0.0817,
+        "schijf1_tarief_niet_aow": 0.0817,
+        "schijf2_grens": 76817,
+        "schijf2_tarief": 0.3748,
+        "schijf3_tarief": 0.495
+      },
+      "premie_tarieven": {
+        "premiegrens": 38441,
+        "aow_tarief_aow": 0.0,
+        "aow_tarief_niet_aow": 0.179,
+        "anw_tarief": 0.001,
+        "wlz_tarief": 0.0965
+      },
+      "box3_tarief": 0.36
+    },
+    "totaal_verschuldigd": 61192
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Gehuwd paar (fiscaal partners)",
+      "Persoon 1 (Johan): AOW-gerechtigd, pensioeninkomen €86.813",
+      "Persoon 2 (Tilly): Werkend, bruto salaris €85.000, nog geen AOW",
+      "Vermogen: €500.000 volledig op naam persoon 1",
+      "Verdeling vermogen: 40% bankrekeningen/sparen, 60% beleggingen",
+      "Geen eigen huis",
+      "Box 3 vrijstelling fiscaal partners: €115.368 (2x €57.684)"
+    ],
+    "opmerkingen": "Interessante testcase: mix AOW/werkend, vermogen volledig bij 1 persoon, verschillende premietarieven",
+    "data_kwaliteit": "volledig",
+    "bron": "Echte aangifte 2025 via Belastingdienst screen scrape (beide partners)",
+    "_incomplete": false
+  }
+}

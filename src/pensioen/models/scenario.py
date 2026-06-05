@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -37,6 +38,10 @@ class Scenario(BaseModel):
     aangemaakt_op: datetime = Field(default_factory=datetime.now)
     laatst_gewijzigd_op: datetime = Field(default_factory=datetime.now)
     is_default: bool = False
+
+    # Inheritance: afgeleid scenario (parent-child relatie)
+    parent_naam: str | None = None  # naam van parent scenario (None = base scenario)
+    overrides: dict[str, Any] = Field(default_factory=dict)  # sparse storage van gewijzigde velden
 
     # Spaargeld en rendement (LEGACY: zie vermogensitems voor nieuwe structuur)
     spaargeld_start: Decimal = Decimal("0")   # beginsaldo in euro's
@@ -85,6 +90,13 @@ class Scenario(BaseModel):
                 raise ValueError("Bij tarief_periodes moet eindjaar >= startjaar zijn.")
             if not (Decimal("0") <= p.inflatie_pct <= Decimal("20")):
                 raise ValueError("inflatie_pct in tarief_periodes moet tussen 0% en 20% liggen.")
+        
+        # Valideer inheritance: prevent self-parenting
+        if self.parent_naam is not None and self.parent_naam == self.naam:
+            raise ValueError(
+                f"Scenario '{self.naam}' kan niet naar zichzelf als parent wijzen (self-parenting)."
+            )
+        
         return self
 
     def get_rendement_sparen(self) -> Decimal:
@@ -298,3 +310,51 @@ class Scenario(BaseModel):
         """
         actieve_items = self.get_vermogensitems_actief(peildatum)
         return [item for item in actieve_items if item.box3_belast]
+
+    # --- Inheritance helpers ---
+    
+    def is_base_scenario(self) -> bool:
+        """Check of dit een base scenario is (geen parent)."""
+        return self.parent_naam is None
+
+    def is_derived_scenario(self) -> bool:
+        """Check of dit een afgeleid scenario is (heeft parent)."""
+        return self.parent_naam is not None
+
+    def is_override(self, field_path: str) -> bool:
+        """
+        Check of een veld een override is in dit scenario.
+        
+        Args:
+            field_path: Dotted path naar veld, bijv. "rendement_pct".
+        
+        Returns:
+            True als het veld een override is in dit scenario.
+        """
+        return field_path in self.overrides
+
+    def get_override_count(self) -> int:
+        """Aantal overrides in dit scenario."""
+        return len(self.overrides)
+
+    def set_override(self, field_path: str, value: Any) -> None:
+        """
+        Stel een override in voor een veld.
+        
+        Args:
+            field_path: Dotted path naar veld.
+            value: De nieuwe waarde.
+        """
+        self.overrides[field_path] = value
+        self.laatst_gewijzigd_op = datetime.now()
+
+    def remove_override(self, field_path: str) -> None:
+        """
+        Verwijder een override (valt terug op parent waarde).
+        
+        Args:
+            field_path: Dotted path naar veld.
+        """
+        self.overrides.pop(field_path, None)
+        self.laatst_gewijzigd_op = datetime.now()
+

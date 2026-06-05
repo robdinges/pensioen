@@ -12,6 +12,8 @@ from pensioen.ui.scenario_context import (
     SCENARIO_DEFAULT_KEY,
     get_actief_scenario_naam,
     set_actief_scenario_naam,
+    get_resolved_scenario,
+    is_field_overridden,
 )
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 
@@ -45,11 +47,39 @@ def toon_scenario_pagina() -> None:
         with col_form:
             naam = st.text_input("Naam", placeholder="Bijv. Voorzichtig", key="nieuw_scenario_naam")
             beschrijving = st.text_area("Beschrijving", placeholder="Bijv. Met voorzichtige aannames...", key="nieuw_scenario_beschrijving", height=80)
+            
+            # Parent scenario optie (inheritance)
+            st.markdown("**Overerving**")
+            afgeleid_van_parent = st.checkbox(
+                "🔗 Afgeleid scenario (overerft waarden van parent)",
+                value=False,
+                key="nieuw_scenario_afgeleid",
+                help="Een afgeleid scenario slaat alleen wijzigingen op voor scenario-parameters (inflatie, rendement). Componenten en vermogensitems worden gekopieerd bij aanmaak."
+            )
+            
+            if afgeleid_van_parent:
+                parent_opties = [s.naam for s in scenario_lijst]
+                if parent_opties:
+                    parent_keuze = st.selectbox(
+                        "Parent scenario",
+                        options=parent_opties,
+                        key="nieuw_scenario_parent",
+                        help="Kies het parent scenario waarvan dit scenario afgeleid is"
+                    )
+                else:
+                    st.warning("Geen scenarios beschikbaar om van af te leiden")
+                    afgeleid_van_parent = False
+                    parent_keuze = None
+            else:
+                parent_keuze = None
         
         with col_kopie:
             st.write("**Kopie van:**")
             kopie_opties = ["— Leeg —"] + [s.naam for s in scenario_lijst]
             kopie_van = st.selectbox("Basisscenario", options=kopie_opties, key="nieuw_scenario_kopie_van")
+            
+            if afgeleid_van_parent:
+                st.info("ℹ️ Bij afgeleid scenario wordt kopie genegeerd - waarden worden overgeërfd van parent.")
 
         col_save, col_cancel = st.columns(2)
         with col_save:
@@ -59,7 +89,20 @@ def toon_scenario_pagina() -> None:
                 elif any(s.naam == naam for s in scenario_lijst):
                     st.error(f"Scenario '{naam}' bestaat al")
                 else:
-                    if kopie_van == "— Leeg —":
+                    if afgeleid_van_parent and parent_keuze:
+                        # Nieuw afgeleid scenario met parent
+                        # BELANGRIJK: Kopieer componenten/vermogensitems van parent omdat
+                        # list inheritance nog niet volledig geïmplementeerd is
+                        parent_scenario = next(s for s in scenario_lijst if s.naam == parent_keuze)
+                        nieuw = parent_scenario.model_copy(deep=True)
+                        nieuw.naam = naam.strip()
+                        nieuw.omschrijving = beschrijving.strip()
+                        nieuw.aangemaakt_op = datetime.now()
+                        nieuw.laatst_gewijzigd_op=datetime.now()
+                        nieuw.is_default = False
+                        nieuw.parent_naam = parent_keuze
+                        nieuw.overrides = {}  # Start met lege overrides
+                    elif kopie_van == "— Leeg —":
                         # Nieuw leeg scenario
                         nieuw = Scenario(
                             naam=naam.strip(),
@@ -77,13 +120,20 @@ def toon_scenario_pagina() -> None:
                         nieuw.is_default = False
                         nieuw.aangemaakt_op = datetime.now()
                         nieuw.laatst_gewijzigd_op = datetime.now()
+                        # Reset inheritance voor kopie
+                        nieuw.parent_naam = None
+                        nieuw.overrides = {}
                     
                     scenario_lijst.append(nieuw)
                     st.session_state["scenario_lijst"] = scenario_lijst
                     set_actief_scenario_naam(nieuw.naam)
                     sla_sessie_op()
                     st.session_state["_toon_nieuw_scenario_dialog"] = False
-                    st.success(f"✅ Scenario '{naam}' aangemaakt")
+                    
+                    if afgeleid_van_parent:
+                        st.success(f"✅ Afgeleid scenario '{naam}' aangemaakt (parent: {parent_keuze})")
+                    else:
+                        st.success(f"✅ Scenario '{naam}' aangemaakt")
                     st.rerun()
         
         with col_cancel:
@@ -135,10 +185,19 @@ def toon_scenario_pagina() -> None:
                 st.markdown("🟢" if is_actief else "⚪")
 
             with cols[1]:
-                st.write(s.naam)
+                # Toon 🔗 icoon voor afgeleide scenarios
+                if s.parent_naam:
+                    st.write(f"🔗 {s.naam}")
+                else:
+                    st.write(s.naam)
 
             with cols[2]:
-                st.write(s.omschrijving or "—")
+                # Toon parent info in beschrijving voor afgeleide scenarios
+                if s.parent_naam:
+                    beschrijving_text = s.omschrijving or "—"
+                    st.write(f"{beschrijving_text} (parent: {s.parent_naam})")
+                else:
+                    st.write(s.omschrijving or "—")
 
             with cols[3]:
                 st.write("Ja" if is_default else "Nee")
@@ -184,6 +243,13 @@ def toon_scenario_pagina() -> None:
             st.divider()
             st.subheader(f"Bewerk: {edit_naam}")
             
+            # Toon inheritance info
+            if edit_scenario.parent_naam:
+                st.info(f"🔗 Afgeleid scenario (parent: **{edit_scenario.parent_naam}**)")
+            
+            # Voor afgeleide scenarios: gebruik resolved waarden voor weergave
+            display_scenario = get_resolved_scenario(edit_scenario, scenario_lijst)
+            
             col_form, col_params = st.columns([2, 2])
             
             with col_form:
@@ -198,20 +264,49 @@ def toon_scenario_pagina() -> None:
                     key="edit_scenario_beschrijving",
                     height=80,
                 )
+                
+                # Parent wijzigen (alleen voor afgeleide scenarios)
+                if edit_scenario.parent_naam:
+                    st.markdown("**Parent scenario**")
+                    parent_opties = [s.naam for s in scenario_lijst if s.naam != edit_scenario.naam]
+                    huidige_parent_idx = parent_opties.index(edit_scenario.parent_naam) if edit_scenario.parent_naam in parent_opties else 0
+                    nieuwe_parent = st.selectbox(
+                        "Parent",
+                        options=parent_opties,
+                        index=huidige_parent_idx,
+                        key="edit_scenario_parent",
+                        help="Het scenario waarvan dit scenario zijn waarden erft"
+                    )
+                else:
+                    nieuwe_parent = None
             
             with col_params:
                 st.markdown("**Parameters**")
                 
-                # Alleen inflatie
+                # Inflatie - toon resolved waarde, markeer override
+                is_inflatie_override = is_field_overridden(edit_scenario, "inflatie_pct")
+                inflatie_label = "Inflatie (%) 🔗" if is_inflatie_override else "Inflatie (%)"
+                inflatie_help = "Voor koopkrachtberekening in rapportages"
+                if is_inflatie_override:
+                    inflatie_help += f" | ✏️ Overschrijft parent-waarde"
+                
                 inflatie = st.number_input(
-                    "Inflatie (%)",
+                    inflatie_label,
                     min_value=0.0,
                     max_value=20.0,
-                    value=float(edit_scenario.inflatie_pct),
+                    value=float(display_scenario.inflatie_pct),  # Gebruik resolved waarde
                     step=0.1,
-                    help="Voor koopkrachtberekening in rapportages",
+                    help=inflatie_help,
                     key="edit_scenario_inflatie"
                 )
+                
+                # Toon parent waarde indien afgeleid scenario
+                if edit_scenario.parent_naam:
+                    parent_scenario = next((s for s in scenario_lijst if s.naam == edit_scenario.parent_naam), None)
+                    if parent_scenario:
+                        parent_inflatie = float(parent_scenario.inflatie_pct) if parent_scenario.inflatie_pct else 2.0
+                        if is_inflatie_override:
+                            st.caption(f"📊 Parent waarde: {parent_inflatie:.1f}%")
             
             col_save, col_cancel = st.columns(2)
             with col_save:
@@ -224,8 +319,28 @@ def toon_scenario_pagina() -> None:
                         # Update scenario
                         edit_scenario.naam = nieuwe_naam.strip()
                         edit_scenario.omschrijving = nieuwe_beschrijving.strip()
-                        edit_scenario.inflatie_pct = Decimal(str(inflatie))
                         edit_scenario.laatst_gewijzigd_op = datetime.now()
+                        
+                        # Update parent indien gewijzigd
+                        if nieuwe_parent is not None:
+                            edit_scenario.parent_naam = nieuwe_parent
+                        
+                        # Inflatie: maak override als afgeleid scenario en waarde is gewijzigd
+                        nieuwe_inflatie = Decimal(str(inflatie))
+                        if edit_scenario.parent_naam:
+                            # Afgeleid scenario: check of waarde is gewijzigd t.o.v. parent
+                            parent_scenario = next((s for s in scenario_lijst if s.naam == edit_scenario.parent_naam), None)
+                            if parent_scenario:
+                                parent_inflatie = parent_scenario.inflatie_pct if parent_scenario.inflatie_pct else Decimal("2")
+                                if nieuwe_inflatie != parent_inflatie:
+                                    # Maak override
+                                    edit_scenario.set_override("inflatie_pct", str(nieuwe_inflatie))
+                                elif is_field_overridden(edit_scenario, "inflatie_pct"):
+                                    # Waarde is terug naar parent waarde - verwijder override
+                                    edit_scenario.remove_override("inflatie_pct")
+                        else:
+                            # Base scenario: update direct
+                            edit_scenario.inflatie_pct = nieuwe_inflatie
                         
                         # Replace in list
                         scenario_lijst = [s for s in scenario_lijst if s.naam != edit_naam]

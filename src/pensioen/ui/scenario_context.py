@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 import streamlit as st
 
 from pensioen.models.scenario import Scenario
+from pensioen.calculations.inheritance_engine import resolve_scenario
 
 NIEUW_SCENARIO_LABEL = "— Nieuw scenario —"
 SCENARIO_SELECTIE_KEY = "scenario_selectie"
@@ -119,3 +120,46 @@ def get_actief_scenario(
     if actieve_naam is None:
         return None
     return next((scenario for scenario in scenario_lijst if scenario.naam == actieve_naam), None)
+
+
+def get_resolved_scenario(
+    scenario: Scenario,
+    scenario_lijst: Sequence[Scenario],
+) -> Scenario:
+    """
+    Geef resolved scenario terug (met parent-waarden gemerged).
+    
+    Voor base scenarios (parent_naam=None) wordt het scenario zelf teruggegeven.
+    Voor afgeleide scenarios wordt resolve_scenario() gebruikt om parent-waarden te mergen.
+    
+    Args:
+        scenario: Het scenario om te resolven
+        scenario_lijst: Alle beschikbare scenarios (voor parent lookup)
+    
+    Returns:
+        Resolved scenario met alle effectieve waarden
+    """
+    if scenario.parent_naam is None:
+        # Base scenario - geen resolution nodig
+        return scenario
+    
+    # Afgeleid scenario - resolve inheritance
+    return resolve_scenario(scenario, list(scenario_lijst))
+
+
+def is_field_overridden(scenario: Scenario, field_path: str) -> bool:
+    """
+    Check of een veld is overschreven in dit scenario.
+    
+    Args:
+        scenario: Het scenario om te checken
+        field_path: Dotted path naar het veld (bijv. "inflatie_pct", "rendement_sparen_pct")
+    
+    Returns:
+        True als het veld is overschreven, False anders
+    """
+    if scenario.parent_naam is None:
+        # Base scenario heeft geen overrides
+        return False
+    
+    return scenario.is_override(field_path)

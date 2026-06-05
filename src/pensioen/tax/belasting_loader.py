@@ -69,6 +69,17 @@ class AOWBedragConfig:
 
 
 @dataclass
+class PremiesConfig:
+    """Premies volksverzekeringen (AOW, Anw, Wlz)."""
+
+    premiegrens: Decimal  # Inkomen tot deze grens is premieplichtig
+    aow_tarief_niet_aow: Decimal  # AOW-premie voor niet-AOW-gerechtigden
+    aow_tarief_aow: Decimal  # AOW-premie voor AOW-gerechtigden (altijd 0)
+    anw_tarief: Decimal  # Nabestaandenwet premie
+    wlz_tarief: Decimal  # Wet langdurige zorg premie
+
+
+@dataclass
 class BelastingConfig:
     """Volledige belastingconfiguratie voor één belastingjaar."""
 
@@ -78,8 +89,10 @@ class BelastingConfig:
     ahk: HeffingskortingConfig
     arbeidskorting: ArbeidskortingConfig
     ouderenkorting: HeffingskortingConfig
+    alleenstaandeouderenkorting: HeffingskortingConfig | None  # Nieuw: alleen vanaf 2025
     box3: Box3Config
     aow_bedrag: AOWBedragConfig
+    premies: PremiesConfig | None  # Nieuw: gescheiden premies (vanaf 2025)
 
 
 @dataclass
@@ -168,6 +181,16 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             afbouw_pct=_d(data["ouderenkorting"]["afbouw_pct"]),
             minimum=_d(data["ouderenkorting"].get("minimum", 0)),
         ),
+        alleenstaandeouderenkorting=(
+            HeffingskortingConfig(
+                max_bedrag=_d(data["alleenstaandeouderenkorting"]["max"]),
+                afbouw_inkomen_van=_d(data["alleenstaandeouderenkorting"]["afbouw_inkomen_van"]),
+                afbouw_pct=_d(data["alleenstaandeouderenkorting"]["afbouw_pct"]),
+                minimum=_d(data["alleenstaandeouderenkorting"].get("minimum", 0)),
+            )
+            if "alleenstaandeouderenkorting" in data
+            else None
+        ),
         box3=Box3Config(
             vrijstelling_per_persoon=_d(data["box3"]["vrijstelling_per_persoon"]),
             tarief=_d(data["box3"]["tarief"]),
@@ -180,6 +203,17 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             gehuwd_of_samenwonend_per_maand=_d(
                 data["aow_bedrag"]["gehuwd_of_samenwonend_per_maand"]
             ),
+        ),
+        premies=(
+            PremiesConfig(
+                premiegrens=_d(data["premies_volksverzekeringen"]["premiegrens"]),
+                aow_tarief_niet_aow=_d(data["premies_volksverzekeringen"]["aow"]["tarief_niet_aow"]),
+                aow_tarief_aow=_d(data["premies_volksverzekeringen"]["aow"]["tarief_aow"]),
+                anw_tarief=_d(data["premies_volksverzekeringen"]["anw"]["tarief"]),
+                wlz_tarief=_d(data["premies_volksverzekeringen"]["wlz"]["tarief"]),
+            )
+            if "premies_volksverzekeringen" in data
+            else None
         ),
     )
     return config, aanname_melding
@@ -283,6 +317,7 @@ def pas_tariefwaarden_toe_op_config(
             afbouw_pct=waarden.get("ok_afbouw_pct", config.ouderenkorting.afbouw_pct),
             minimum=waarden.get("ok_minimum", config.ouderenkorting.minimum),
         ),
+        alleenstaandeouderenkorting=config.alleenstaandeouderenkorting,  # Overnemen (niet in tariefwaarden)
         box3=Box3Config(
             vrijstelling_per_persoon=waarden.get("box3_vrijstelling", config.box3.vrijstelling_per_persoon),
             tarief=waarden.get("box3_tarief", config.box3.tarief),
@@ -294,6 +329,7 @@ def pas_tariefwaarden_toe_op_config(
             alleenstaande_per_maand=waarden.get("aow_alleenstaand_pm", config.aow_bedrag.alleenstaande_per_maand),
             gehuwd_of_samenwonend_per_maand=waarden.get("aow_gehuwd_pm", config.aow_bedrag.gehuwd_of_samenwonend_per_maand),
         ),
+        premies=config.premies,  # Overnemen (niet in tariefwaarden)
     )
 
 
