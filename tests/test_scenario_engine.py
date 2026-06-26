@@ -12,6 +12,7 @@ from pensioen.models.component import CategorieComponent, FinancieelComponent, F
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 
 
 class TestScenarioModel:
@@ -56,6 +57,37 @@ class TestScenarioModel:
         """spaargeld_start heeft standaard Decimal('0')."""
         scenario = Scenario(naam="Test")
         assert scenario.spaargeld_start == Decimal("0")
+
+    def test_sync_eigen_woning_uit_vermogensitems_telt_jaar_overlap_mee(self) -> None:
+        """Woning en hypotheek tellen mee zodra ze ergens in het belastingjaar bestaan."""
+        scenario = Scenario(
+            naam="Eigen woning",
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Woning",
+                    type=VermogensType.EIGEN_WONING,
+                    aanschafwaarde=Decimal("500000"),
+                    woz_waarde=Decimal("500000"),
+                    aanschafdatum=date(2026, 6, 26),
+                    box3_belast=False,
+                ),
+                VermogensItem(
+                    omschrijving="Hypotheek",
+                    type=VermogensType.HYPOTHEEK,
+                    aanschafwaarde=Decimal("200000"),
+                    aanschafdatum=date(2026, 6, 26),
+                    is_primaire_woning=True,
+                    hypotheekrente_pct=Decimal("3.0"),
+                    box3_belast=False,
+                ),
+            ],
+        )
+
+        resultaat = scenario.sync_eigen_woning_uit_vermogensitems(2026)
+
+        assert resultaat.woz_waarde == Decimal("500000")
+        assert resultaat.betaalde_hypotheekrente == Decimal("6000")
+        assert resultaat.eigenwoningschuld_begin == Decimal("200000")
 
 
 class TestVergelijkScenarios:

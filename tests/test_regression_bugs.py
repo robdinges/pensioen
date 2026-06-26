@@ -15,7 +15,9 @@ from pensioen.models.component import (
 )
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
+from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 
 
 def test_grafiek_toont_alle_inkomenscategorieen():
@@ -229,9 +231,94 @@ def test_accountant_p1_p2_breakdown():
         scenario, CategorieComponent.OVERIG_INKOMEN, "P2", 2026, 1, BedragType.BRUTO
     )
     assert overig_p2 == Decimal("0")
-    
+
     # Verify totaal zonder persoon filter
     arbeid_totaal = _component_som_maand(
         scenario, CategorieComponent.ARBEIDSINKOMEN, None, 2026, 1, BedragType.BRUTO
     )
     assert arbeid_totaal == Decimal("9500")  # 7000 + 2500
+
+
+def test_accountant_eigen_woning_blok_bij_effect_partner2():
+    """Eigen woning sectie moet zichtbaar zijn als alleen partner 2 effect heeft."""
+    from pensioen.ui.pagina_accountant import _heeft_eigen_woning_effect
+
+    partner1 = EigenWoningResultaat(
+        eigenwoningforfait=Decimal("0"),
+        aftrekbare_hypotheekrente=Decimal("0"),
+        overige_aftrekbare_kosten=Decimal("0"),
+        totaal_aftrek=Decimal("0"),
+        saldo_eigen_woning=Decimal("0"),
+        hillen_correctie=Decimal("0"),
+        box1_mutatie=Decimal("0"),
+        tariefsaanpassing=Decimal("0"),
+        box3_bezittingen=Decimal("0"),
+        box3_schulden=Decimal("0"),
+    )
+    partner2 = EigenWoningResultaat(
+        eigenwoningforfait=Decimal("875"),
+        aftrekbare_hypotheekrente=Decimal("3000"),
+        overige_aftrekbare_kosten=Decimal("0"),
+        totaal_aftrek=Decimal("3000"),
+        saldo_eigen_woning=Decimal("-2125"),
+        hillen_correctie=Decimal("0"),
+        box1_mutatie=Decimal("-2125"),
+        tariefsaanpassing=Decimal("0"),
+        box3_bezittingen=Decimal("0"),
+        box3_schulden=Decimal("0"),
+    )
+
+    assert not _heeft_eigen_woning_effect(partner1)
+    assert _heeft_eigen_woning_effect(partner2)
+
+
+def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
+    """Accountantdetail moet de vermogensitem-bron gebruiken voor eigen woning en hypotheek."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    scenario = Scenario(
+        naam="Eigen woning",
+        vermogensitems=[
+            VermogensItem(
+                omschrijving="Woning",
+                type=VermogensType.EIGEN_WONING,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("500000"),
+                woz_waarde=Decimal("500000"),
+                box3_belast=False,
+            ),
+            VermogensItem(
+                omschrijving="Hypotheek",
+                type=VermogensType.HYPOTHEEK,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("150000"),
+                is_primaire_woning=True,
+                hypotheekrente_pct=Decimal("4.0"),
+                einddatum_aftrekbaarheid=date(2056, 1, 1),
+                box3_belast=False,
+            ),
+        ],
+    )
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True)
+    persoon2 = Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True)
+    config, aanname = laad_tarieven(2026)
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("0"),
+    )
+
+    assert detail["ew_woz_waarde"] == Decimal("500000")
+    assert detail["ew_betaalde_hypotheekrente"] == Decimal("6000")
+    assert detail["ew_p1"].eigenwoningforfait == Decimal("875.00")
+    assert detail["ew_p1"].aftrekbare_hypotheekrente == Decimal("3000.00")
+    assert detail["ew_p2"].eigenwoningforfait == Decimal("875.00")
+    assert detail["ew_p2"].aftrekbare_hypotheekrente == Decimal("3000.00")

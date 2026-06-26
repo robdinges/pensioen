@@ -147,6 +147,17 @@ def render_vermogensitem_tile(
         # Type en persoon
         type_label = item.type.value.replace("_", " ").title()
         st.caption(f"{type_label} • {get_persoon_display_naam(item.persoon)}")
+
+        if item.type == VermogensType.EIGEN_WONING:
+            st.caption(f"🏠 WOZ {format_bedrag(float(item.woz_waarde or item.aanschafwaarde))}")
+            st.caption(f"📈 WOZ-stijging {float(item.woz_jaarlijkse_stijging_pct):.1f}% /jaar")
+        elif item.type == VermogensType.HYPOTHEEK:
+            st.caption(f"🏦 Schuld {format_bedrag(float(abs(waarde)))}")
+            st.caption(f"🏠 Primaire woning: {'ja' if item.is_primaire_woning else 'nee'}")
+            if item.hypotheekrente_pct is not None:
+                st.caption(f"💶 Rente {float(item.hypotheekrente_pct):.2f}% /jaar")
+            if item.einddatum_aftrekbaarheid is not None:
+                st.caption(f"📅 Aftrek t/m {item.einddatum_aftrekbaarheid.strftime('%d-%m-%Y')}")
         
         # RENDEMENT/GROEI - PROMINENT voor liquide middelen
         if item.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):

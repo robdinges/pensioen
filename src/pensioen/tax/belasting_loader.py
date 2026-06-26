@@ -363,6 +363,7 @@ def pas_tariefwaarden_toe_op_config(
             gehuwd_of_samenwonend_per_maand=waarden.get("aow_gehuwd_pm", config.aow_bedrag.gehuwd_of_samenwonend_per_maand),
         ),
         premies=config.premies,  # Overnemen (niet in tariefwaarden)
+        eigen_woning=config.eigen_woning,  # Overnemen (niet in tariefwaarden)
     )
 
 

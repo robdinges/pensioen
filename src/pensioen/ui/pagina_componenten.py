@@ -39,6 +39,14 @@ def _update_scenario(scenario, scenario_lijst):
     sla_sessie_op()
 
 
+def _plus_jaren(brondatum: date, jaren: int) -> date:
+    """Geef een datum n jaren later terug, met veilige fallback op 28 februari."""
+    try:
+        return brondatum.replace(year=brondatum.year + jaren)
+    except ValueError:
+        return brondatum.replace(month=2, day=28, year=brondatum.year + jaren)
+
+
 def toon_componenten_pagina() -> None:
     """Financiële componenten, vermogen en eenmalige posten in één overzichtelijke pagina."""
     st.header("💼 Financiële Planning")
@@ -327,6 +335,7 @@ def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_di
         ("spaargeld", "Spaargeld"),
         ("beleggingen", "Beleggingen"),
         ("eigen_woning", "Eigen woning"),
+        ("hypotheek", "Hypotheek"),
         ("auto", "Auto"),
         ("kunst", "Kunst & Antiek"),
         ("boot", "Boot"),
@@ -341,6 +350,7 @@ def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_di
         "spaargeld": VermogensType.SPAARGELD,
         "beleggingen": VermogensType.BELEGGINGEN,
         "eigen_woning": VermogensType.EIGEN_WONING,
+        "hypotheek": VermogensType.HYPOTHEEK,
         "auto": VermogensType.AUTO,
         "kunst": VermogensType.KUNST,
         "boot": VermogensType.BOOT,
@@ -358,6 +368,9 @@ def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_di
         st.session_state["verm_active_mode"] = "add"
         st.session_state["verm_active_idx"] = None
         st.rerun()
+
+    # Fiscale eigen woning synchroniseren vanuit vermogensitems voor de accountant
+    scenario.sync_eigen_woning_uit_vermogensitems()
     
     # Formulier indien actief
     active_mode = st.session_state.get("verm_active_mode")
@@ -434,18 +447,38 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
         
         col1, col2 = st.columns(2)
         with col1:
-            aanschafwaarde = st.number_input(
-                "Aanschafwaarde / Huidige waarde (€)",
-                min_value=0,
-                value=int(item.aanschafwaarde) if item else 0,
-                step=1000,
-            )
+            if vermogenstype == VermogensType.EIGEN_WONING:
+                aanschafwaarde = st.number_input(
+                    "WOZ-waarde (€)",
+                    min_value=0,
+                    value=int(item.woz_waarde if item and item.woz_waarde is not None else (item.aanschafwaarde if item else 0)),
+                    step=5000,
+                    help="WOZ-waarde per 1 januari",
+                )
+            elif vermogenstype == VermogensType.HYPOTHEEK:
+                aanschafwaarde = st.number_input(
+                    "Resterende schuld (€)",
+                    min_value=0,
+                    value=int(item.aanschafwaarde) if item else 0,
+                    step=1000,
+                    help="Resterende hypotheekschuld per 1 januari",
+                )
+            else:
+                aanschafwaarde = st.number_input(
+                    "Aanschafwaarde / Huidige waarde (€)",
+                    min_value=0,
+                    value=int(item.aanschafwaarde) if item else 0,
+                    step=1000,
+                )
         
         with col2:
             # Label aanpassen voor liquide middelen
             if vermogenstype in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
                 groei_label = "Rendement (%/jaar)"
                 groei_help = "Verwacht jaarlijks rendement op dit vermogen. Dit wordt ook gebruikt voor cashflow berekeningen."
+            elif vermogenstype == VermogensType.HYPOTHEEK:
+                groei_label = "Schuldontwikkeling (%/jaar)"
+                groei_help = "Negatief = aflossing, positief = schuldtoename"
             else:
                 groei_label = "Groei/afschrijving (%/jaar)"
                 groei_help = "Positief = waardestijging, negatief = afschrijving"
@@ -493,16 +526,48 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
             if verkoopprijs == 0:
                 verkoopprijs = None
         
-        # Box 3
-        if vermogenstype != VermogensType.EIGEN_WONING:
+        # Type-specifieke velden
+        if vermogenstype == VermogensType.EIGEN_WONING:
+            woz_jaarlijkse_stijging_pct = st.number_input(
+                "Jaarlijkse waardestijging (%/jaar)",
+                min_value=-100.0,
+                max_value=100.0,
+                value=float(item.woz_jaarlijkse_stijging_pct) if item else 2.0,
+                step=0.5,
+                help="Verwachte jaarlijkse stijging van de WOZ-waarde",
+            )
+            st.info("ℹ️ Eigen woning is vrijgesteld van box 3 (eigenwoningforfait box 1)")
+            box3_belast = False
+        elif vermogenstype == VermogensType.HYPOTHEEK:
+            col_h1, col_h2 = st.columns(2)
+            with col_h1:
+                is_primaire_woning = st.checkbox(
+                    "Primaire woning",
+                    value=item.is_primaire_woning if item and item.is_primaire_woning is not None else True,
+                    help="Vink aan als dit de primaire woning betreft",
+                )
+            with col_h2:
+                hypotheekrente_pct = st.number_input(
+                    "Hypotheekrente (%/jaar)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=float(item.hypotheekrente_pct) if item and item.hypotheekrente_pct is not None else 3.5,
+                    step=0.1,
+                    help="Jaarlijkse hypotheekrente",
+                )
+            einddatum_aftrekbaarheid = st.date_input(
+                "Einddatum renteaftrek",
+                value=item.einddatum_aftrekbaarheid if item and item.einddatum_aftrekbaarheid else _plus_jaren(date.today(), 30),
+                help="Datum waarna rente niet langer aftrekbaar is",
+            )
+            box3_belast = False
+            st.info("ℹ️ Hypotheekschuld is fiscale invoer voor box 1 en telt niet mee in box 3")
+        else:
             box3_belast = st.checkbox(
                 "Box 3 belast",
                 value=item.box3_belast if item else True,
                 help="Vink uit voor vrijgestelde items (bijv. recreatievaartuig)"
             )
-        else:
-            box3_belast = False
-            st.info("ℹ️ Eigen woning is vrijgesteld van box 3 (eigenwoningforfait box 1)")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -516,6 +581,15 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
                 return
             
             try:
+                extra_kwargs = {}
+                if vermogenstype == VermogensType.EIGEN_WONING:
+                    extra_kwargs["woz_waarde"] = Decimal(str(aanschafwaarde))
+                    extra_kwargs["woz_jaarlijkse_stijging_pct"] = Decimal(str(woz_jaarlijkse_stijging_pct))
+                elif vermogenstype == VermogensType.HYPOTHEEK:
+                    extra_kwargs["is_primaire_woning"] = is_primaire_woning
+                    extra_kwargs["hypotheekrente_pct"] = Decimal(str(hypotheekrente_pct))
+                    extra_kwargs["einddatum_aftrekbaarheid"] = einddatum_aftrekbaarheid
+
                 nieuw_item = VermogensItem(
                     omschrijving=omschrijving,
                     type=vermogenstype,
@@ -526,6 +600,7 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
                     verkoopdatum=verkoopdatum if verkoopdatum else None,
                     verkoopprijs=Decimal(str(verkoopprijs)) if verkoopprijs else None,
                     box3_belast=box3_belast,
+                    **extra_kwargs,
                 )
                 
                 if is_edit:

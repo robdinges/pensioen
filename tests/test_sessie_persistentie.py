@@ -14,6 +14,7 @@ import pytest
 
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 
 
 # ---------------------------------------------------------------------------
@@ -210,3 +211,51 @@ class TestLaadSessie:
 
             laad_sessie()  # Zou niks mogen doen want _sessie_geladen=True
             assert "persoon1" not in session_data
+
+    def test_vermogensitems_eigen_woning_roundtrip(self, tmp_path: Path) -> None:
+        """Eigen woning- en hypotheekvelden blijven behouden bij sessie-opslag en herladen."""
+        scenario = Scenario(
+            naam="Woning",
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Huis",
+                    type=VermogensType.EIGEN_WONING,
+                    aanschafwaarde=Decimal("500000"),
+                    woz_waarde=Decimal("500000"),
+                    woz_jaarlijkse_stijging_pct=Decimal("2.0"),
+                    box3_belast=False,
+                ),
+                VermogensItem(
+                    omschrijving="Hypotheek",
+                    type=VermogensType.HYPOTHEEK,
+                    aanschafwaarde=Decimal("200000"),
+                    is_primaire_woning=True,
+                    hypotheekrente_pct=Decimal("3.5"),
+                    einddatum_aftrekbaarheid=date(2056, 6, 26),
+                    box3_belast=False,
+                ),
+            ],
+        )
+        session_data: dict = {
+            "scenario_lijst": [scenario],
+        }
+        sessie_pad = tmp_path / ".sessie.json"
+
+        with (
+            patch("pensioen.ui.sessie_persistentie.st") as mock_st,
+            patch("pensioen.ui.sessie_persistentie.SESSIE_PAD", sessie_pad),
+        ):
+            mock_st.session_state = session_data
+            from pensioen.ui.sessie_persistentie import laad_sessie, sla_sessie_op
+
+            sla_sessie_op()
+
+            nieuwe_session: dict = {}
+            mock_st.session_state = nieuwe_session
+            laad_sessie()
+
+            geladen_scenario = nieuwe_session["scenario_lijst"][0]
+            assert len(geladen_scenario.vermogensitems) == 2
+            assert geladen_scenario.vermogensitems[0].woz_waarde == Decimal("500000")
+            assert geladen_scenario.vermogensitems[1].hypotheekrente_pct == Decimal("3.5")
+            assert geladen_scenario.vermogensitems[1].is_primaire_woning is True

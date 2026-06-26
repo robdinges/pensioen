@@ -13,7 +13,7 @@ from pensioen.tax.belasting_engine import (
     bereken_box3_heffing,
     netto_uit_bruto,
 )
-from pensioen.tax.belasting_loader import laad_tarieven
+from pensioen.tax.belasting_loader import laad_tarieven, resolve_tariefwaarden_voor_jaar
 
 
 class TestBerekenBox1:
@@ -25,7 +25,8 @@ class TestBerekenBox1:
         belasting = bereken_box1_belasting(
             bruto=Decimal("30000"), config=config, aow_breuk=Decimal("0")
         )
-        verwacht = Decimal("30000") * Decimal("0.3575")
+        # 2026: pure IB is 8,1% (premies worden apart berekend)
+        verwacht = Decimal("30000") * Decimal("0.081")
         assert float(belasting) == pytest.approx(float(verwacht), rel=1e-3)
 
     def test_box1_twee_schijven(self) -> None:
@@ -34,8 +35,9 @@ class TestBerekenBox1:
         belasting = bereken_box1_belasting(
             bruto=Decimal("50000"), config=config, aow_breuk=Decimal("0")
         )
+        # 2026: pure IB tarieven zonder premies
         verwacht = (
-            Decimal("38883") * Decimal("0.3575")
+            Decimal("38883") * Decimal("0.081")
             + Decimal("11117") * Decimal("0.3756")
         )
         assert float(belasting) == pytest.approx(float(verwacht), rel=1e-3)
@@ -46,15 +48,16 @@ class TestBerekenBox1:
         belasting = bereken_box1_belasting(
             bruto=Decimal("100000"), config=config, aow_breuk=Decimal("0")
         )
+        # 2026: pure IB tarieven zonder premies
         verwacht = (
-            Decimal("38883") * Decimal("0.3575")
+            Decimal("38883") * Decimal("0.081")
             + (Decimal("78426") - Decimal("38883")) * Decimal("0.3756")
             + (Decimal("100000") - Decimal("78426")) * Decimal("0.4950")
         )
         assert float(belasting) == pytest.approx(float(verwacht), rel=1e-3)
 
     def test_box1_aow_gerechtigd_heel_jaar(self) -> None:
-        """AOW-tarief schijf 1 is lager dan niet-AOW tarief."""
+        """In 2026: pure IB is gelijk voor AOW en niet-AOW (8,1%)."""
         config, _ = laad_tarieven(2026)
         belasting_niet_aow = bereken_box1_belasting(
             Decimal("30000"), config, Decimal("0")
@@ -62,7 +65,8 @@ class TestBerekenBox1:
         belasting_aow = bereken_box1_belasting(
             Decimal("30000"), config, Decimal("1")
         )
-        assert belasting_aow < belasting_niet_aow
+        # Pure IB is nu gelijk, verschil zit in premies (apart berekend)
+        assert belasting_aow == belasting_niet_aow
 
     def test_box1_aow_breuk_50_procent(self) -> None:
         """Gewogen belasting bij 50% AOW-breuk zit tussen beide extremen."""
@@ -82,6 +86,16 @@ class TestBerekenBox1:
         """Negatief inkomen levert geen belasting op."""
         config, _ = laad_tarieven(2026)
         assert bereken_box1_belasting(Decimal("-100"), config, Decimal("0")) == Decimal("0")
+
+    def test_resolve_tariefwaarden_behoudt_eigen_woning_config(self) -> None:
+        """Jaarresolutie mag eigen-woning-configuratie niet weggooien."""
+        config, _ = laad_tarieven(2026)
+
+        resolved, _ = resolve_tariefwaarden_voor_jaar(config, 2026, [])
+
+        assert resolved.eigen_woning is not None
+        assert resolved.eigen_woning.tariefsaanpassing_pct == config.eigen_woning.tariefsaanpassing_pct
+        assert resolved.eigen_woning.wet_hillen_pct == config.eigen_woning.wet_hillen_pct
 
 
 class TestNettoUitBruto:

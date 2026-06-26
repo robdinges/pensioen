@@ -169,6 +169,8 @@ def bereken_vermogen_totaal(vermogensitems: list[VermogensItem], peildatum: date
     """
     totaal = Decimal("0")
     for item in vermogensitems:
+        if item.type in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
+            continue
         totaal += item.waarde_op_datum(peildatum)
     
     return totaal
@@ -189,7 +191,7 @@ def bereken_vermogen_box3_belast(vermogensitems: list[VermogensItem], peildatum:
     """
     totaal = Decimal("0")
     for item in vermogensitems:
-        if item.box3_belast and item.is_actief_op(peildatum):
+        if item.box3_belast and item.is_actief_op(peildatum) and item.type not in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
             totaal += item.waarde_op_datum(peildatum)
     
     return totaal

@@ -292,6 +292,8 @@ class Scenario(BaseModel):
         
         totaal = Decimal("0")
         for item in self.vermogensitems:
+            if item.type in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
+                continue
             totaal += item.waarde_op_datum(peildatum)
         
         return totaal
@@ -324,6 +326,76 @@ class Scenario(BaseModel):
         """
         actieve_items = self.get_vermogensitems_actief(peildatum)
         return [item for item in actieve_items if item.box3_belast]
+
+    def verzamel_eigen_woning_invoer_uit_vermogensitems(self, jaar: int | None = None) -> dict[str, Any]:
+        """Verzamel fiscale eigen-woninginvoer uit vermogensitems.
+
+        Retourneert de ruwe bronwaarden die uit Vermogen & Bezittingen zijn afgeleid,
+        zodat zowel opslag/uitlezing als accountantberekening dezelfde bron gebruiken.
+        """
+        eigen_woning_items = [item for item in self.vermogensitems if item.type == VermogensType.EIGEN_WONING]
+        hypotheek_items = [item for item in self.vermogensitems if item.type == VermogensType.HYPOTHEEK]
+
+        peildatum = date(jaar, 1, 1) if jaar is not None else date.today()
+        jaar_start = date(jaar, 1, 1) if jaar is not None else peildatum
+        jaar_einde = date(jaar, 12, 31) if jaar is not None else peildatum
+
+        def is_relevant_voor_jaar(item: VermogensItem) -> bool:
+            if item.aanschafdatum and item.aanschafdatum > jaar_einde:
+                return False
+            if item.verkoopdatum and item.verkoopdatum < jaar_start:
+                return False
+            return True
+
+        relevante_woningen = [item for item in eigen_woning_items if is_relevant_voor_jaar(item)]
+        relevante_hypotheken = [item for item in hypotheek_items if is_relevant_voor_jaar(item)]
+
+        woz_waarde = sum(
+            (item.woz_waarde if item.woz_waarde is not None else item.aanschafwaarde)
+            for item in relevante_woningen
+        )
+        betaalde_hypotheekrente = sum(
+            item.aanschafwaarde * (item.hypotheekrente_pct or Decimal("0")) / Decimal("100")
+            for item in relevante_hypotheken
+            if item.is_primaire_woning
+            and (item.einddatum_aftrekbaarheid is None or item.einddatum_aftrekbaarheid >= jaar_start)
+        )
+        eigenwoningschuld_begin = sum(
+            item.aanschafwaarde
+            for item in relevante_hypotheken
+            if item.is_primaire_woning
+        )
+
+        return {
+            "heeft_invoer": bool(relevante_woningen or relevante_hypotheken),
+            "woning_items": relevante_woningen,
+            "hypotheek_items": relevante_hypotheken,
+            "woz_waarde": woz_waarde,
+            "betaalde_hypotheekrente": betaalde_hypotheekrente,
+            "eigenwoningschuld_begin": eigenwoningschuld_begin,
+            "eigenwoningschuld_eind": eigenwoningschuld_begin,
+        }
+
+    def sync_eigen_woning_uit_vermogensitems(self, jaar: int | None = None) -> EigenWoningData:
+        """Haal eigen-woninggegevens uit vermogensitems voor de fiscale berekening.
+
+        De vermogensitems blijven de invoerbron in de UI, maar de accountant gebruikt
+        nog steeds Scenario.eigen_woning als fiscale rekenbron. Deze helper vult die
+        rekenbron afgeleid aan vanuit eigen woning- en hypotheekitems.
+        """
+        invoer = self.verzamel_eigen_woning_invoer_uit_vermogensitems(jaar)
+        if not invoer["heeft_invoer"]:
+            return self.eigen_woning
+
+        self.heeft_eigen_woning = bool(invoer["heeft_invoer"] or self.heeft_eigen_woning)
+        self.eigen_woning = EigenWoningData(
+            woz_waarde=invoer["woz_waarde"],
+            betaalde_hypotheekrente=invoer["betaalde_hypotheekrente"],
+            overige_aftrekbare_kosten=self.eigen_woning.overige_aftrekbare_kosten,
+            eigenwoningschuld_begin=invoer["eigenwoningschuld_begin"],
+            eigenwoningschuld_eind=invoer["eigenwoningschuld_eind"],
+        )
+        return self.eigen_woning
 
     # --- Inheritance helpers ---
     

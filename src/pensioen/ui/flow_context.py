@@ -25,6 +25,7 @@ class Stap(Enum):
 STAPPEN_VOLGORDE = [
     Stap.PERSONEN,
     Stap.PENSIOENGEGEVENS,
+    Stap.SCENARIO,
     Stap.COMPONENTEN,
     Stap.RESULTATEN,
     Stap.ACCOUNTANT,
@@ -34,7 +35,7 @@ STAPPEN_VOLGORDE = [
 STAP_LABELS = {
     Stap.PERSONEN: "Personen",
     Stap.PENSIOENGEGEVENS: "Pensioengegevens",
-    Stap.SCENARIO: "Scenario",  # Verplaatst naar Instellingen
+    Stap.SCENARIO: "Scenario",
     Stap.COMPONENTEN: "Componenten",
     Stap.BEREKEN: "Berekenen",  # Verplaatst naar sidebar
     Stap.RESULTATEN: "Resultaten",
@@ -59,102 +60,129 @@ def _init_flow() -> None:
 
 
 def get_huidge_stap() -> Stap:
-    """Geef de huidge stap terug."""
+    """Haal huidge stap op."""
     _init_flow()
     waarde = st.session_state.get(HUIDGE_STAP_KEY, Stap.PERSONEN)
     return waarde if isinstance(waarde, Stap) else Stap.PERSONEN
 
 
 def set_huidge_stap(stap: Stap, validatie_ok: bool = True) -> None:
-    """Stel huidge stap in. Invalideer volgende stappen als we teruggaan."""
+    """Zet huidge stap en markeer vorige als voltooid."""
     _init_flow()
+    
+    if validatie_ok:
+        st.session_state[VOLTOOIDE_STAPPEN_KEY].add(get_huidge_stap())
+    
     huidig = get_huidge_stap()
-
-    if stap == huidig:
-        return
-
-    # Bepaal of we teruggaan of vooruitgaan
     huidig_index = STAPPEN_VOLGORDE.index(huidig) if huidig in STAPPEN_VOLGORDE else -1
     stap_index = STAPPEN_VOLGORDE.index(stap) if stap in STAPPEN_VOLGORDE else -1
-
-    if huidig_index > stap_index:
-        # Teruggaan: invalideer alles na de vorige stap
-        st.session_state[HUIDGE_STAP_KEY] = stap
-        volgende_index = stap_index + 1
+    
+    # Als we vooruit gaan, markeer alles ertussen als voltooid
+    if stap_index > huidig_index >= 0:
+        volgende_index = huidig_index + 1
         for i in range(volgende_index, len(STAPPEN_VOLGORDE)):
             st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].add(STAPPEN_VOLGORDE[i])
-    else:
-        # Vooruitgaan: markeer huidge als voltooid (als validatie OK)
-        st.session_state[HUIDGE_STAP_KEY] = stap
-        if validatie_ok and huidig in STAPPEN_VOLGORDE:
-            st.session_state[VOLTOOIDE_STAPPEN_KEY].add(huidig)
-            # Zorg dat vorige niet meer "opnieuw nodig" is
-            if huidig in st.session_state[STAPPEN_OPNIEUW_NODIG_KEY]:
-                st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].discard(huidig)
+    
+    # Markeer als voltooid
+    if validatie_ok and huidig in STAPPEN_VOLGORDE:
+        st.session_state[VOLTOOIDE_STAPPEN_KEY].add(huidig)
+        st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].discard(huidig)
+    
+    st.session_state[HUIDGE_STAP_KEY] = stap
 
 
-def mark_stap_voltooid(stap: Stap) -> None:
-    """Markeer een stap als voltooid."""
+def stap_voltooid(stap: Stap) -> bool:
+    """Check of een stap voltooid is."""
+    _init_flow()
+    return stap in st.session_state.get(VOLTOOIDE_STAPPEN_KEY, set())
+
+
+def stap_opnieuw_nodig(stap: Stap) -> bool:
+    """Check of een stap opnieuw doorlopen moet worden."""
+    _init_flow()
+    return stap in st.session_state.get(STAPPEN_OPNIEUW_NODIG_KEY, set())
+
+
+def voltooi_stap(stap: Stap) -> None:
+    """Markeer stap als voltooid."""
     _init_flow()
     st.session_state[VOLTOOIDE_STAPPEN_KEY].add(stap)
     if stap in st.session_state[STAPPEN_OPNIEUW_NODIG_KEY]:
         st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].discard(stap)
 
 
-def is_stap_voltooid(stap: Stap) -> bool:
-    """Controleer of een stap voltooid is."""
+def volgende_stap(stap: Stap) -> Stap | None:
+    """Haal volgende stap op."""
+    if stap not in STAPPEN_VOLGORDE:
+        return None
+    
+    index = STAPPEN_VOLGORDE.index(stap)
+    if index + 1 < len(STAPPEN_VOLGORDE):
+        return STAPPEN_VOLGORDE[index + 1]
+    
+    return None
+
+
+def vorige_stap(stap: Stap) -> Stap | None:
+    """Haal vorige stap op."""
+    if stap not in STAPPEN_VOLGORDE:
+        return None
+    
+    index = STAPPEN_VOLGORDE.index(stap)
+    if index > 0:
+        return STAPPEN_VOLGORDE[index - 1]
+    
+    return None
+
+
+def invalideer_stappen_na(stap: Stap) -> None:
+    """Markeer alle stappen na de gegeven stap als opnieuw nodig."""
     _init_flow()
-    return stap in st.session_state.get(VOLTOOIDE_STAPPEN_KEY, set())
+    
+    stap_index = STAPPEN_VOLGORDE.index(stap)
+    for i in range(stap_index, len(STAPPEN_VOLGORDE)):
+        st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].add(STAPPEN_VOLGORDE[i])
+
+
+def mark_stap_voltooid(stap: Stap) -> None:
+    """Compatibele alias voor voltooi_stap."""
+    voltooi_stap(stap)
+
+
+def is_stap_voltooid(stap: Stap) -> bool:
+    """Compatibele alias voor stap_voltooid."""
+    return stap_voltooid(stap)
 
 
 def stap_status(stap: Stap) -> str:
-    """Geef de status van een stap: 'voltooid', 'huidig', 'opnieuw_nodig', 'toekomstig'."""
+    """Compatibele stapstatus voor oudere callsites."""
     _init_flow()
     huidig = get_huidge_stap()
-    opnieuw_nodig = st.session_state.get(STAPPEN_OPNIEUW_NODIG_KEY, set())
-    voltooide = st.session_state.get(VOLTOOIDE_STAPPEN_KEY, set())
-
-    if stap in opnieuw_nodig:
+    if stap_opnieuw_nodig(stap):
         return "opnieuw_nodig"
-    elif stap == huidig:
+    if stap == huidig:
         return "huidig"
-    elif stap in voltooide:
+    if stap_voltooid(stap):
         return "voltooid"
-    else:
-        return "toekomstig"
+    return "toekomstig"
 
 
 def get_volgende_stap(stap: Stap | None = None) -> Stap | None:
-    """Geef de volgende stap terug."""
+    """Compatibele alias voor volgende_stap."""
     _init_flow()
     if stap is None:
         stap = get_huidge_stap()
-    try:
-        index = STAPPEN_VOLGORDE.index(stap)
-        if index + 1 < len(STAPPEN_VOLGORDE):
-            return STAPPEN_VOLGORDE[index + 1]
-    except ValueError:
-        pass
-    return None
+    return volgende_stap(stap)
 
 
 def get_vorige_stap(stap: Stap | None = None) -> Stap | None:
-    """Geef de vorige stap terug."""
+    """Compatibele alias voor vorige_stap."""
     _init_flow()
     if stap is None:
         stap = get_huidge_stap()
-    try:
-        index = STAPPEN_VOLGORDE.index(stap)
-        if index > 0:
-            return STAPPEN_VOLGORDE[index - 1]
-    except ValueError:
-        pass
-    return None
+    return vorige_stap(stap)
 
 
 def invalidate_berekeningen() -> None:
-    """Invalideer BEREKEN en volgende stappen (gebruikt door instellingen)."""
-    _init_flow()
-    bereken_index = STAPPEN_VOLGORDE.index(Stap.BEREKEN)
-    for i in range(bereken_index, len(STAPPEN_VOLGORDE)):
-        st.session_state[STAPPEN_OPNIEUW_NODIG_KEY].add(STAPPEN_VOLGORDE[i])
+    """Compatibele alias voor het invalideren vanaf de berekenstap."""
+    invalideer_stappen_na(Stap.BEREKEN)

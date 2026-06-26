@@ -28,6 +28,11 @@ cashflowprognose voor een huishouden.
   - jaarlijkse huishoudelijke uitgaven
   - eenmalige ontvangsten/uitgaven
   - regels zijn per blok toe te voegen en te verwijderen.
+  - typekeuze voor eigen woning, hypotheek, spaargeld, beleggingen en overige bezittingen
+  - eigen woningvelden voor WOZ-waarde en jaarlijkse waardestijging
+  - hypotheekvelden voor primaire woning, hypotheekrente en einddatum renteaftrek
+  - eigen woning en hypotheek blijven fiscale invoer voor de box 1-berekening
+  - hypotheek telt niet mee als negatieve vermogenspost in de vermogenssom
 - Scenario-overzicht als compacte lijst met acties per rij:
   - eerste kolom toont welk scenario actief is
   - direct bewerken, selecteren en verwijderen vanuit dezelfde rij
@@ -54,7 +59,10 @@ streamlit run app.py
 
 4. Vul in het scherm Financiële Planning alle componenten in:
   - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen
-  - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, auto's, kunst, etc.
+  - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, hypotheek, auto's, kunst, etc.
+    * Kies bij het type **Eigen woning** voor de woningvelden zoals WOZ-waarde en jaarlijkse waardestijging
+    * Kies bij het type **Hypotheek** voor primaire woning, hypotheekrente en einddatum renteaftrek
+    * De hypotheek blijft fiscale invoer voor box 1 en telt niet mee als negatieve vermogenspost in de totalen
     * Elk vermogensitem heeft zijn eigen rendement/groei percentage
     * Voor spaargeld en beleggingen is dit het verwachte jaarrendement
     * Voor andere bezittingen is dit waardestijging of afschrijving

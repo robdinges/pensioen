@@ -15,6 +15,7 @@ class VermogensType(str, Enum):
     SPAARGELD = "spaargeld"              # spaarrekening met rente
     BELEGGINGEN = "beleggingen"          # beleggingsportefeuille met rendement
     EIGEN_WONING = "eigen_woning"        # eigen woning (box 1 eigenwoningforfait, niet box 3)
+    HYPOTHEEK = "hypotheek"              # hypotheekschuld (fiscale invoer box 1; niet in vermogenstotaal)
     AUTO = "auto"                        # auto met afschrijving
     KUNST = "kunst"                      # kunst met waardestijging
     BOOT = "boot"                        # boot met afschrijving
@@ -35,6 +36,20 @@ class VermogensItem(BaseModel):
     - groei_pct = waardestijging (+) of afschrijving (-)
     - verkoopdatum = moment van verkoop (optioneel)
     - verkoopprijs = opbrengst bij verkoop (optioneel)
+    
+    Voor eigen woning (type=EIGEN_WONING):
+    - aanschafwaarde = WOZ-waarde (wordt genegeerd bij berekening; gebruik woz_waarde ipv)
+    - woz_waarde = WOZ-waarde per 1 januari van het belastingjaar
+    - groei_pct = jaarlijkse waardestijging (default 2%)
+    - box3_belast = altijd False (eigen woning niet in box 3)
+    
+    Voor hypotheek (type=HYPOTHEEK):
+    - aanschafwaarde = Resterende schuld per 1 januari
+    - groei_pct = jaarlijkse afname van schuld (aflossing; default 0)
+    - is_primaire_woning = True voor primaire woning (renteaftrek box 1)
+    - hypotheekrente_pct = jaarlijkse rentevoet (bijv. 2.5)
+    - einddatum_aftrekbaarheid = Datum waarna rente niet meer aftrekbaar (Wet eigen woning)
+    - box3_belast = altijd False (hypotheekschuld niet in box 3)
     """
 
     omschrijving: str
@@ -53,6 +68,15 @@ class VermogensItem(BaseModel):
     # Box 3 belasting
     box3_belast: bool = True             # wel/niet box 3 heffing
     
+    # Eigen woning specifiek (voor type=EIGEN_WONING)
+    woz_waarde: Decimal | None = None    # WOZ-waarde per 1 januari
+    woz_jaarlijkse_stijging_pct: Decimal = Decimal("2")  # verwachte jaarlijkse waardestijging
+    
+    # Hypotheek specifiek (voor type=HYPOTHEEK)
+    is_primaire_woning: bool | None = None  # primaire woning (aftrekbaarheid rente)
+    hypotheekrente_pct: Decimal | None = None  # jaarlijkse rente percentage
+    einddatum_aftrekbaarheid: date | None = None  # einddatum renteaftrek (Wet eigen woning)
+    
     @field_validator("aanschafwaarde")
     @classmethod
     def aanschafwaarde_niet_negatief(cls, v: Decimal) -> Decimal:
@@ -67,6 +91,13 @@ class VermogensItem(BaseModel):
             raise ValueError("groei_pct moet tussen -100% en +100% liggen.")
         return v
     
+    @field_validator("hypotheekrente_pct")
+    @classmethod
+    def hypotheekrente_pct_realistisch(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None and not (Decimal("0") <= v <= Decimal("20")):
+            raise ValueError("hypotheekrente_pct moet tussen 0% en 20% liggen.")
+        return v
+    
     @model_validator(mode="after")
     def valideer_verkoop(self) -> VermogensItem:
         """Valideer verkoopdatum en verkoopprijs consistentie."""
@@ -79,11 +110,25 @@ class VermogensItem(BaseModel):
         return self
     
     @model_validator(mode="after")
-    def valideer_box3_vrijstellingen(self) -> VermogensItem:
-        """Zet box3_belast automatisch op False voor vrijgestelde types."""
+    def valideer_eigen_woning(self) -> VermogensItem:
+        """Valideer eigen woning specifieke velden."""
         if self.type == VermogensType.EIGEN_WONING:
-            # Eigen woning valt sinds 2026 niet meer onder box 3 (eigenwoningforfait box 1)
-            self.box3_belast = False
+            if self.woz_waarde is None:
+                self.woz_waarde = self.aanschafwaarde
+            if self.woz_waarde <= Decimal("0"):
+                raise ValueError("Eigen woning vereist een positieve WOZ-waarde.")
+            self.box3_belast = False  # Eigenwoningforfait (box 1), niet box 3
+        return self
+    
+    @model_validator(mode="after")
+    def valideer_hypotheek(self) -> VermogensItem:
+        """Valideer hypotheek specifieke velden."""
+        if self.type == VermogensType.HYPOTHEEK:
+            if self.is_primaire_woning is None:
+                raise ValueError("Hypotheek vereist is_primaire_woning.")
+            if self.hypotheekrente_pct is None or self.hypotheekrente_pct < Decimal("0"):
+                raise ValueError("Hypotheek vereist positief rente percentage.")
+            self.box3_belast = False  # Hypotheekschuld niet in box 3
         return self
     
     def waarde_op_datum(self, peildatum: date) -> Decimal:
@@ -99,10 +144,35 @@ class VermogensItem(BaseModel):
         # Nog niet aangekocht
         if self.aanschafdatum and peildatum < self.aanschafdatum:
             return Decimal("0")
-        
+
         # Al verkocht
         if self.verkoopdatum and peildatum > self.verkoopdatum:
             return Decimal("0")
+
+        # Eigen woning: gebruik expliciete WOZ-waarde en eigen groeiperiode
+        if self.type == VermogensType.EIGEN_WONING:
+            basiswaarde = self.woz_waarde if self.woz_waarde is not None else self.aanschafwaarde
+            groei_pct = self.woz_jaarlijkse_stijging_pct if self.woz_jaarlijkse_stijging_pct is not None else self.groei_pct
+            if groei_pct == Decimal("0"):
+                return basiswaarde
+
+            startdatum = self.aanschafdatum if self.aanschafdatum else peildatum
+            jaren = Decimal(str((peildatum - startdatum).days / 365.25))
+            groei_basis = Decimal("1") + groei_pct / Decimal("100")
+            groei_factor = Decimal(str(float(groei_basis) ** float(jaren)))
+            return basiswaarde * groei_factor
+
+        # Hypotheek: toon als aparte fiscale invoer, niet als minpost in vermogenstotalen
+        if self.type == VermogensType.HYPOTHEEK:
+            schuld = self.aanschafwaarde
+            if self.groei_pct == Decimal("0"):
+                return schuld
+
+            startdatum = self.aanschafdatum if self.aanschafdatum else peildatum
+            jaren = Decimal(str((peildatum - startdatum).days / 365.25))
+            groei_basis = Decimal("1") + self.groei_pct / Decimal("100")
+            groei_factor = Decimal(str(float(groei_basis) ** float(jaren)))
+            return schuld * groei_factor
         
         # Op verkoopdatum: gebruik verkoopprijs indien opgegeven
         if self.verkoopdatum and peildatum == self.verkoopdatum:
