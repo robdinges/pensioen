@@ -1,0 +1,47 @@
+{
+  "testcase_id": "tc_2025_003",
+  "naam": "Plain vanilla alleenstaande werkend 2025",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-06-26",
+  "bron_formaat": "persona_draft",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "is_gehuwd": false,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Persoon 1",
+      "geboortedatum": "1970-01-01",
+      "bruto_arbeid": 100000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  "vermogen": {
+    "totaal": 300000,
+    "spaargeld_fractie": 0.3333,
+    "spaargeld": 100000,
+    "beleggingen": 200000
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 0
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Persona draft voor ijkjaar 2025 validatie via Belastingdienst-simulator",
+      "Alleenstaand, geen kinderen, leeftijd 55 in 2025",
+      "Werkinkomen: €100.000",
+      "Geen eigen woning",
+      "Vermogen: €100.000 sparen + €200.000 beleggen",
+      "Pensioenopbouw doel vanaf 68 jaar: €65.000 per jaar"
+    ],
+    "opmerkingen": "Verwachte belastingcomponenten nog invullen op basis van exacte simulatoruitkomst Belastingdienst 2025.",
+    "data_kwaliteit": "minimaal",
+    "bron": "Handmatig persona-ontwerp gebruiker (26-06-2026)",
+    "_incomplete": true
+  }
+}

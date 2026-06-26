@@ -1,0 +1,59 @@
+{
+  "testcase_id": "tc_2025_004",
+  "naam": "Echtpaar met woning en hypotheek 2025",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-06-26",
+  "bron_formaat": "persona_draft",
+  "huishouden": {
+    "type": "GEHUWD",
+    "aantal_personen": 2,
+    "is_gehuwd": true,
+    "eigen_huis": true
+  },
+  "personen": [
+    {
+      "naam": "Persoon 1",
+      "geboortedatum": "1975-01-01",
+      "bruto_arbeid": 100000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    },
+    {
+      "naam": "Persoon 2",
+      "geboortedatum": "1970-01-01",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 40000,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  "vermogen": {
+    "totaal": 400000,
+    "spaargeld_fractie": 0.75,
+    "spaargeld": 300000,
+    "beleggingen": 100000
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 0
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Persona draft voor ijkjaar 2025 validatie via Belastingdienst-simulator",
+      "Echtpaar, geen minderjarige of inwonende kinderen, leeftijden 50 en 55 in 2025",
+      "Persoon 1 werkinkomen: €100.000",
+      "Persoon 2 uitkering: €40.000",
+      "Eigen woning WOZ: €500.000",
+      "Hypotheekschuld: €150.000",
+      "Betaalde hypotheekrente: €6.000",
+      "Vermogen box 3 input: €300.000 sparen + €100.000 beleggen",
+      "Pensioenopbouw doel op 68 jaar: persoon 1 €60.000, persoon 2 €25.000"
+    ],
+    "opmerkingen": "Eigenwoningforfait en hypotheekrenteaftrek moeten in model nog volledig worden ondersteund voor exacte fiscale match.",
+    "data_kwaliteit": "minimaal",
+    "bron": "Handmatig persona-ontwerp gebruiker (26-06-2026)",
+    "_incomplete": true
+  }
+}

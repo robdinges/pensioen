@@ -1,6 +1,6 @@
 # Belasting Testcases
 
-Dit directory bevat testcases voor validatie van de belastingberekeningen in het pensioenmodel. Elke testcase representeert een concreet huishouden met bekende belastinguitkomst (bijv. echte aangifte).
+Dit directory bevat testcases voor validatie van de belastingberekeningen in het pensioenmodel. Elke testcase representeert een concreet huishouden met een bekende of nog te bevestigen belastinguitkomst (bijv. echte aangifte of persona-draft).
 
 ---
 
@@ -11,10 +11,15 @@ belasting_testcases/
 ├── raw/                    # Ruwe JSONs zoals aangeleverd
 │   ├── tc_2025_001.json   # Verschillende structuren mogelijk
 │   ├── tc_2025_002.json
-│   └── tc_2026_001.json
+│   ├── tc_2025_003.json   # Persona draft: alleenstaand werkend
+│   ├── tc_2025_004.json   # Persona draft: echtpaar met woning/hypotheek
+│   └── tc_2025_005.json   # Persona draft: gepensioneerde alleenstaand
 ├── normalized/             # Genormaliseerde JSONs (uniform schema)
 │   ├── tc_2025_001_normalized.json
-│   └── tc_2025_002_normalized.json
+│   ├── tc_2025_002_normalized.json
+│   ├── tc_2025_003_normalized.json
+│   ├── tc_2025_004_normalized.json
+│   └── tc_2025_005_normalized.json
 ├── schema.md              # JSON schema documentatie
 ├── README.md              # Dit bestand
 └── normalization_report.md  # Rapport van normalisatie-proces (gegenereerd)
@@ -72,7 +77,7 @@ Dit script:
 ### 3️⃣ Validatie (Geautomatiseerd)
 
 ```bash
-python tests/run_all_testcases.py
+PYTHONPATH=src:. /usr/local/bin/python3.11 tools/test_validatie_pipeline.py
 ```
 
 Voor elke testcase:
@@ -83,9 +88,23 @@ Voor elke testcase:
 5. Rapport: ✅ matches / ❌ afwijkingen
 
 **Output**:
-- Terminal: Colored summary per testcase
-- `rapporten/validatie_batch_{datum}.md`: Volledig rapport
-- `rapporten/validatie_batch_latest.json`: Machine-readable
+- Terminal: Samenvatting per testcase (verwacht, berekend, verschil, status)
+
+---
+
+## Huidige Status (2026-06-26)
+
+- 5 testcases aanwezig in `raw/` en genormaliseerd in `normalized/`.
+- Nieuwe 2025 persona-drafts: `tc_2025_003`, `tc_2025_004`, `tc_2025_005`.
+- Voor deze 3 persona-drafts zijn `verwachte_belasting`-uitkomsten nog placeholder en nog niet afkomstig uit de Belastingdienst-simulator.
+- Laatste validatie-run (pipeline) gaf momenteel 5x `FAIL`:
+	- `tc_2025_001`: afwijking -€380
+	- `tc_2025_002`: afwijking +€353
+	- `tc_2025_003`: placeholder verwacht 0, berekend €41.863
+	- `tc_2025_004`: placeholder verwacht 0, berekend €52.583
+	- `tc_2025_005`: placeholder verwacht 0, berekend €33.289
+- Belangrijke beperking voor exacte fiscale match in 2025:
+	- Eigen woning, hypotheekrente en eigenwoningforfait zijn nog niet volledig end-to-end opgenomen in deze testcase-validatieflow.
 
 ---
 
@@ -93,7 +112,11 @@ Voor elke testcase:
 
 | ID | Naam | Jaar | Type | Status | Opmerking |
 |----|------|------|------|--------|-----------|
-| *Nog geen testcases aangeleverd* | | | | | |
+| tc_2025_001 | Alleenstaand AOW-ontvanger 2025 | 2025 | ALLEENSTAAND | ❌ Failed | Referentiecase met kleine structurele afwijking |
+| tc_2025_002 | Gehuwd paar - 1 AOW + 1 werkend 2025 | 2025 | GEHUWD | ❌ Failed | Referentiecase met kleine structurele afwijking |
+| tc_2025_003 | Plain vanilla alleenstaande werkend 2025 | 2025 | ALLEENSTAAND | ⚠️ Partial | Persona-draft, fiscale uitkomst nog invullen |
+| tc_2025_004 | Echtpaar met woning en hypotheek 2025 | 2025 | GEHUWD | ⚠️ Partial | Persona-draft + woning/hypotheek deels nog niet gemodelleerd |
+| tc_2025_005 | Gepensioneerde alleenstaande met woning 2025 | 2025 | ALLEENSTAAND | ⚠️ Partial | Persona-draft, AOW/simulatordetail nog invullen |
 
 **Status**:
 - 📥 Raw: Ruwe JSON aanwezig
@@ -103,7 +126,7 @@ Voor elke testcase:
 - ⚠️ Partial: Gedeeltelijke match (kleine afwijkingen)
 - ❌ Failed: Grote afwijkingen (actie nodig)
 
-*(Deze tabel wordt automatisch bijgewerkt na normalisatie)*
+*(Deze tabel is handmatig bijgewerkt op 2026-06-26.)*
 
 ---
 
@@ -197,17 +220,17 @@ A: Rapport toont exact welke component afwijkt + suggestie (bijv. "Check vermoge
 | `tools/convert_aanlevering_to_json.py` | Parse screen scrape → JSON | Tekst/Excel/CSV | `raw/*.json` |
 | `tools/analyze_raw_testcases.py` | Analyseer raw JSONs | `raw/*.json` | Console rapport |
 | `tools/normalize_testcases.py` | Normaliseer alle testcases | `raw/*.json` | `normalized/*.json` + rapport |
-| `tests/run_all_testcases.py` | Valideer alle testcases | `normalized/*.json` | Validatie rapport |
+| `tools/test_validatie_pipeline.py` | Valideer alle testcases | `normalized/*.json` | Terminal rapport |
 
 ---
 
 ## Volgende Stappen
 
-1. **Lever eerste testcase aan** via chat (elk formaat)
-2. **Verzamel 5-10 testcases** (verschillende huishouden-types, jaren)
+1. **Vul Belastingdienst-simulator uitkomsten in** voor `tc_2025_003`, `tc_2025_004`, `tc_2025_005`.
+2. **Werk `verwachte_belasting` bij** in raw JSONs (liefst met zoveel mogelijk tussenresultaten).
 3. **Run normalisatie**: `python tools/normalize_testcases.py`
 4. **Review warnings** in `normalization_report.md`
-5. **Run validatie**: `python tests/run_all_testcases.py`
+5. **Run validatie**: `PYTHONPATH=src:. /usr/local/bin/python3.11 tools/test_validatie_pipeline.py`
 6. **Analyseer afwijkingen** en pas model/config aan indien nodig
 
 ---
