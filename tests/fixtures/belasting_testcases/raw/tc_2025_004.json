@@ -49,6 +49,13 @@
     "p2_premies": 10472,
     "p2_heffingskortingen": 2243
   },
+  "eigen_woning": {
+    "woz_waarde": 500000,
+    "betaalde_hypotheekrente": 6000,
+    "overige_aftrekbare_kosten": 0,
+    "eigenwoningschuld_begin": 150000,
+    "eigenwoningschuld_eind": 150000
+  },
   "metadata": {
     "uitgangspunten": [
       "Uitkomst gevalideerd met Belastingdienst aangiftesimulator 2025 (casus 269)",

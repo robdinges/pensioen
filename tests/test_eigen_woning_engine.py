@@ -90,13 +90,12 @@ class TestTariefsaanpassing:
     """Tests voor tariefsaanpassing aftrekposten bij hoog inkomen."""
 
     def test_tariefsaanpassing_hoog_inkomen(self, config_2025):
-        """Inkomen in schijf 3 (€100.000): tariefsaanpassing = 12,02% × aftrek in schijf 3.
+        """Inkomen in schijf 3 (€100.000): tariefsaanpassing op totale renteaftrek (€3.000).
 
-        Referentie: simulator tc_2025_004 persoon 1.
-        Per persoon: woz=250.000, forfait=875, rente=3.000, saldo=-2.125.
-        bruto_inkomen=100.000, schijf3-grens=76.817.
-        aftrek_in_schijf3 = min(2125, 100000 - 76817) = min(2125, 23183) = 2125
-        aanpassing = 2125 × 0.1202 = 255.43
+        Art. 3.123a Wet IB 2001: grondslag = totale aftrekbare kosten (rente + overige),
+        niet het netto saldo. aftrek_in_schijf3 = min(3000, 100000 - 76817) = 3000.
+        aanpassing = 3000 × 0.1202 = 360.60.
+        Referentie: Belastingdienst simulator tc_2025_004 P1 toont 12,02% × €3.000 = €360.
         """
         invoer = EigenWoningInvoer(
             woz_waarde=Decimal("250000"),  # per persoon
@@ -104,8 +103,8 @@ class TestTariefsaanpassing:
             bruto_inkomen_box1=Decimal("100000"),
         )
         resultaat = bereken_eigen_woning(invoer, config_2025)
-        # 2125 × 0.1202 = 255.425 → afgerond ROUND_HALF_UP = 255.43
-        assert resultaat.tariefsaanpassing == Decimal("255.43")
+        # 3000 × 0.1202 = 360.60 → overeenkomend met simulator (€360 bij hele-euro afronding)
+        assert resultaat.tariefsaanpassing == Decimal("360.60")
 
     def test_tariefsaanpassing_laag_inkomen(self, config_2025):
         """Inkomen beneden schijf 3: geen tariefsaanpassing.

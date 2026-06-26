@@ -193,6 +193,16 @@ class TestMetadata(BaseModel):
     model_config = {"extra": "allow"}
 
 
+class EigenWoningTestData(BaseModel):
+    """Gestructureerde eigen woning gegevens voor testcase."""
+
+    woz_waarde: Decimal = Decimal("0")
+    betaalde_hypotheekrente: Decimal = Decimal("0")
+    overige_aftrekbare_kosten: Decimal = Decimal("0")
+    eigenwoningschuld_begin: Decimal = Decimal("0")
+    eigenwoningschuld_eind: Decimal = Decimal("0")
+
+
 class TestCase(BaseModel):
     """Complete testcase voor belasting validatie.
     
@@ -213,6 +223,7 @@ class TestCase(BaseModel):
     personen: list[TestPersoon] = Field(min_length=1, max_length=2)
     vermogen: TestVermogen
     verwachte_belasting: TestVerwachteBelasting
+    eigen_woning: EigenWoningTestData | None = None
     metadata: TestMetadata = Field(default_factory=TestMetadata)
     
     @field_validator("personen")

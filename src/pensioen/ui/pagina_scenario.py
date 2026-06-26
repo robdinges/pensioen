@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 import streamlit as st
 
-from pensioen.models.scenario import Scenario
+from pensioen.models.scenario import EigenWoningData, Scenario
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import (
     SCENARIO_DEFAULT_KEY,
@@ -307,6 +307,61 @@ def toon_scenario_pagina() -> None:
                         parent_inflatie = float(parent_scenario.inflatie_pct) if parent_scenario.inflatie_pct else 2.0
                         if is_inflatie_override:
                             st.caption(f"📊 Parent waarde: {parent_inflatie:.1f}%")
+
+            # ─── Eigen woning sectie ────────────────────────────────────────
+            st.divider()
+            st.markdown("**Eigen woning (box 1)**")
+            heeft_ew = st.checkbox(
+                "Eigen woning aanwezig",
+                value=getattr(edit_scenario, "heeft_eigen_woning", False),
+                key="edit_heeft_eigen_woning",
+                help="Vink aan als het scenario een eigen woning (hoofdverblijf) omvat.",
+            )
+            if heeft_ew:
+                ew = edit_scenario.eigen_woning
+                col_ew1, col_ew2 = st.columns(2)
+                with col_ew1:
+                    woz = st.number_input(
+                        "WOZ-waarde (€)",
+                        min_value=0,
+                        value=int(ew.woz_waarde),
+                        step=5000,
+                        key="edit_ew_woz",
+                        help="WOZ-waarde per 1 januari van het belastingjaar.",
+                    )
+                    rente = st.number_input(
+                        "Betaalde hypotheekrente (€/jaar)",
+                        min_value=0,
+                        value=int(ew.betaalde_hypotheekrente),
+                        step=100,
+                        key="edit_ew_rente",
+                        help="Totaal betaalde hypotheekrente in het belastingjaar.",
+                    )
+                    overig = st.number_input(
+                        "Overige aftrekbare kosten (€/jaar)",
+                        min_value=0,
+                        value=int(ew.overige_aftrekbare_kosten),
+                        step=100,
+                        key="edit_ew_overig",
+                        help="Bijv. afsluitprovisie (gelijkmatig verdeeld).",
+                    )
+                with col_ew2:
+                    schuld_begin = st.number_input(
+                        "Eigenwoningschuld 1 jan (€)",
+                        min_value=0,
+                        value=int(ew.eigenwoningschuld_begin),
+                        step=1000,
+                        key="edit_ew_schuld_begin",
+                        help="Resterende hypotheekschuld per 1 januari.",
+                    )
+                    schuld_eind = st.number_input(
+                        "Eigenwoningschuld 31 dec (€)",
+                        min_value=0,
+                        value=int(ew.eigenwoningschuld_eind),
+                        step=1000,
+                        key="edit_ew_schuld_eind",
+                        help="Resterende hypotheekschuld per 31 december.",
+                    )
             
             col_save, col_cancel = st.columns(2)
             with col_save:
@@ -341,6 +396,19 @@ def toon_scenario_pagina() -> None:
                         else:
                             # Base scenario: update direct
                             edit_scenario.inflatie_pct = nieuwe_inflatie
+
+                        # Eigen woning opslaan
+                        edit_scenario.heeft_eigen_woning = heeft_ew
+                        if heeft_ew:
+                            edit_scenario.eigen_woning = EigenWoningData(
+                                woz_waarde=Decimal(str(woz)),
+                                betaalde_hypotheekrente=Decimal(str(rente)),
+                                overige_aftrekbare_kosten=Decimal(str(overig)),
+                                eigenwoningschuld_begin=Decimal(str(schuld_begin)),
+                                eigenwoningschuld_eind=Decimal(str(schuld_eind)),
+                            )
+                        else:
+                            edit_scenario.eigen_woning = EigenWoningData()
                         
                         # Replace in list
                         scenario_lijst = [s for s in scenario_lijst if s.naam != edit_naam]

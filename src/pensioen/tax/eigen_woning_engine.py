@@ -200,12 +200,13 @@ def bereken_eigen_woning(
 
     saldo_na_hillen = _rond_af(saldo - hillen_correctie)
 
-    # 5. Tariefsaanpassing (alleen bij negatief saldo = aftrekpost)
+    # 5. Tariefsaanpassing (op de TOTALE AFTREKBARE KOSTEN, niet op het netto saldo)
+    # Art. 3.123a Wet IB 2001: aftrekposten zijn begrensd tot schijf-2-tarief.
+    # Grondslag = renteaftrek + overige kosten (vóór netting met forfait).
     tariefsaanpassing = nul
-    if saldo < nul:
-        aftrek_bedrag = abs(saldo)
+    if totaal_aftrek > nul:
         tariefsaanpassing, aanpassing_toelichting = _bereken_tariefsaanpassing(
-            aftrek_bedrag, invoer.bruto_inkomen_box1, config
+            totaal_aftrek, invoer.bruto_inkomen_box1, config
         )
         if aanpassing_toelichting:
             toelichting.append(aanpassing_toelichting)

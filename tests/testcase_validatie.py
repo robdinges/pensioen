@@ -61,58 +61,22 @@ def bereken_belasting_testcase(testcase: TestCase) -> dict:
 
 def extract_totaal_verschuldigd(resultaat: dict, config, heeft_partner: bool) -> Decimal:
     """Extract totaal verschuldigd uit berekeningsresultaat.
-    
+
+    Gebruikt de al-correcte waarden uit _bereken_jaar_detail (die rekening houden
+    met eigen woning grondslag-correctie, tariefsaanpassing en premies op gecorrigeerde grondslag).
+
     Args:
         resultaat: Dict van _bereken_jaar_detail
-        config: BelastingConfig voor het jaar
-        heeft_partner: Of huishouden een partner heeft
-        
+        config: BelastingConfig voor het jaar (niet meer gebruikt, behouden voor backward-compat)
+        heeft_partner: Of huishouden een partner heeft (niet meer gebruikt)
+
     Returns:
-        Totaal verschuldigd bedrag (Box 1 IB + premies - kortingen + Box 3)
+        Totaal verschuldigd bedrag
     """
-    # Box 1 IB (inkomstenbelasting alleen, zonder premies)
-    box1_ib_p1 = resultaat.get("bel_voor_korting_p1", Decimal("0"))
-    box1_ib_p2 = resultaat.get("bel_voor_korting_p2", Decimal("0"))
-    
-    # Bruto inkomens voor premieberekening
-    bruto_p1 = resultaat.get("bruto_p1", Decimal("0"))
-    bruto_p2 = resultaat.get("bruto_p2", Decimal("0"))
-    
-    # AOW status
-    is_aow_p1 = resultaat.get("is_aow_p1", False)
-    is_aow_p2 = resultaat.get("is_aow_p2", False)
-    
-    # Bereken premies volksverzekeringen
-    premie_aow_p1, premie_anw_p1, premie_wlz_p1, totaal_premies_p1 = (
-        belasting_engine.bereken_premies_volksverzekeringen(bruto_p1, config, is_aow_p1)
-    )
-    premie_aow_p2, premie_anw_p2, premie_wlz_p2, totaal_premies_p2 = (
-        belasting_engine.bereken_premies_volksverzekeringen(bruto_p2, config, is_aow_p2)
-    )
-    
-    # Heffingskortingen (AHK, arbeidskorting, ouderenkorting)
-    totale_hk_p1 = resultaat.get("totale_hk_p1", Decimal("0"))
-    totale_hk_p2 = resultaat.get("totale_hk_p2", Decimal("0"))
-    
-    # Alleenstaandeouderenkorting (aparte korting voor alleenstaande 65+)
-    alleenstaandeouderenkorting = heffingskorting.bereken_alleenstaandeouderenkorting(
-        bruto_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
-    )
-    
-    # Box 3
+    netto_bel_p1 = resultaat.get("netto_bel_p1", Decimal("0"))
+    netto_bel_p2 = resultaat.get("netto_bel_p2", Decimal("0"))
     box3_heffing = resultaat.get("box3_heffing", Decimal("0"))
-    
-    # Totaal verschuldigd = IB + premies - kortingen + Box 3
-    totaal_ib_en_premies = (
-        box1_ib_p1 + totaal_premies_p1 +
-        box1_ib_p2 + totaal_premies_p2
-    )
-    
-    totaal_kortingen = totale_hk_p1 + totale_hk_p2 + alleenstaandeouderenkorting
-    
-    totaal_verschuldigd = totaal_ib_en_premies - totaal_kortingen + box3_heffing
-    
-    return totaal_verschuldigd
+    return netto_bel_p1 + netto_bel_p2 + box3_heffing
 
 
 def valideer_testcase(testcase: TestCase, tolerantie: Decimal = Decimal("5")) -> dict:

@@ -16,7 +16,7 @@ from pensioen.models.component import (
     Frequentie,
 )
 from pensioen.models.persoon import Persoon
-from pensioen.models.scenario import Scenario
+from pensioen.models.scenario import EigenWoningData, Scenario
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from tests.models.testcase import TestCase, TestPersoon
 
@@ -213,6 +213,20 @@ def genereer_scenario(
         beleggingen_start=beleggingen_bedrag,
         jaarlijkse_inleg=Decimal("0"),
         box3_spaargeld_fractie=testcase.vermogen.spaargeld_fractie,
+
+        # Eigen woning (box 1)
+        heeft_eigen_woning=(testcase.heeft_eigen_huis and testcase.eigen_woning is not None),
+        eigen_woning=(
+            EigenWoningData(
+                woz_waarde=testcase.eigen_woning.woz_waarde,
+                betaalde_hypotheekrente=testcase.eigen_woning.betaalde_hypotheekrente,
+                overige_aftrekbare_kosten=testcase.eigen_woning.overige_aftrekbare_kosten,
+                eigenwoningschuld_begin=testcase.eigen_woning.eigenwoningschuld_begin,
+                eigenwoningschuld_eind=testcase.eigen_woning.eigenwoningschuld_eind,
+            )
+            if testcase.heeft_eigen_huis and testcase.eigen_woning is not None
+            else EigenWoningData()
+        ),
     )
     
     return scenario
