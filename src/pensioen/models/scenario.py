@@ -20,6 +20,16 @@ class IncidenteelItem(BaseModel):
     omschrijving: str
 
 
+class EigenWoningData(BaseModel):
+    """Eigen woning gegevens per scenario (jaarlijkse bedragen)."""
+
+    woz_waarde: Decimal = Decimal("0")
+    betaalde_hypotheekrente: Decimal = Decimal("0")
+    overige_aftrekbare_kosten: Decimal = Decimal("0")
+    eigenwoningschuld_begin: Decimal = Decimal("0")
+    eigenwoningschuld_eind: Decimal = Decimal("0")
+
+
 class TariefPeriodeItem(BaseModel):
     """Periode-override voor één tariefsleutel."""
 
@@ -75,6 +85,10 @@ class Scenario(BaseModel):
 
     # Periodegebaseerde tariefoverrides
     tarief_periodes: list[TariefPeriodeItem] = []
+
+    # Eigen woning (box 1)
+    heeft_eigen_woning: bool = False
+    eigen_woning: EigenWoningData = Field(default_factory=EigenWoningData)
 
     @model_validator(mode="after")
     def valideer_bedragen(self) -> Scenario:

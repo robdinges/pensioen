@@ -80,6 +80,23 @@ class PremiesConfig:
 
 
 @dataclass
+class EigenWoningForfaitSchijf:
+    """Eén schijf van het eigenwoningforfait."""
+
+    tot: Decimal | None  # None = geen bovengrens (laatste schijf)
+    percentage: Decimal
+
+
+@dataclass
+class EigenWoningConfig:
+    """Parameters voor eigen woning (box 1): forfait, tariefsaanpassing, Wet Hillen."""
+
+    forfait_schijven: list[EigenWoningForfaitSchijf]
+    tariefsaanpassing_pct: Decimal  # extra belasting over aftrekpost in schijf 3
+    wet_hillen_pct: Decimal         # verminderingspercentage bij positief saldo
+
+
+@dataclass
 class BelastingConfig:
     """Volledige belastingconfiguratie voor één belastingjaar."""
 
@@ -93,6 +110,7 @@ class BelastingConfig:
     box3: Box3Config
     aow_bedrag: AOWBedragConfig
     premies: PremiesConfig | None  # Nieuw: gescheiden premies (vanaf 2025)
+    eigen_woning: EigenWoningConfig | None = None  # Eigen woning forfait en aftrek
 
 
 @dataclass
@@ -213,6 +231,21 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
                 wlz_tarief=_d(data["premies_volksverzekeringen"]["wlz"]["tarief"]),
             )
             if "premies_volksverzekeringen" in data
+            else None
+        ),
+        eigen_woning=(
+            EigenWoningConfig(
+                forfait_schijven=[
+                    EigenWoningForfaitSchijf(
+                        tot=_d(s["tot"]) if s["tot"] is not None else None,
+                        percentage=_d(s["percentage"]),
+                    )
+                    for s in data["eigen_woning"]["forfait_schijven"]
+                ],
+                tariefsaanpassing_pct=_d(data["eigen_woning"]["tariefsaanpassing_pct"]),
+                wet_hillen_pct=_d(data["eigen_woning"]["wet_hillen_pct"]),
+            )
+            if "eigen_woning" in data
             else None
         ),
     )

@@ -85,5 +85,19 @@
     "_toelichting": "Bruto AOW per maand (per 1 januari 2025). Wordt halfjaarlijks aangepast. Controleer op https://www.svb.nl/nl/aow/hoogte-aow/",
     "alleenstaande_per_maand": 1396,
     "gehuwd_of_samenwonend_per_maand": 964
+  },
+
+  "eigen_woning": {
+    "_toelichting": "Eigenwoningforfait, tariefsaanpassing en Wet Hillen 2025. Bron: Belastingdienst 2025.",
+    "_bron": "Belastingdienst / Ministerie van Financien 2025",
+    "forfait_schijven": [
+      {"tot": 75000,   "percentage": 0.0000, "_omschrijving": "WOZ t/m \u20ac75.000: geen forfait (geen or geringe EWS valt onder Wet Hillen)"},
+      {"tot": 1200000, "percentage": 0.0035, "_omschrijving": "WOZ \u20ac75.000 - \u20ac1.200.000: 0,35%"},
+      {"tot": null,    "percentage": 0.0235, "_omschrijving": "WOZ boven \u20ac1.200.000: 2,35% over het meerdere"}
+    ],
+    "tariefsaanpassing_pct": 0.1202,
+    "_toelichting_tariefsaanpassing": "Aftrekposten eigen woning zijn begrensd tot schijf-2-tarief (37,48%). Correctie = (49,50% - 37,48%) = 12,02% over de aftrekpost die effectief in schijf 3 valt.",
+    "wet_hillen_pct": 0.80,
+    "_toelichting_hillen": "Wet Hillen 2025: 80% vermindering van positief saldo eigen woning. Afbouw 3,33%/jaar vanaf 100% in 2019; volledig afgebouwd per 2031."
   }
 }

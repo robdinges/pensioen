@@ -11,6 +11,7 @@ from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.models.component import BedragType, CategorieComponent
 from pensioen.tax import aow_engine, belasting_engine, heffingskorting
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
+from pensioen.tax.eigen_woning_engine import EigenWoningInvoer, EigenWoningResultaat, bereken_eigen_woning
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 
@@ -191,27 +192,70 @@ def _bereken_jaar_detail(
     bruto_p1 = jaar_arbeid_p1 + jaar_overig_p1 + jaar_aow_p1 + jaar_pen_p1
     bruto_p2 = jaar_arbeid_p2 + jaar_overig_p2 + jaar_aow_p2 + jaar_pen_p2
 
+    # Eigen woning berekening (box 1 correctie)
+    _nul_ew = EigenWoningResultaat(
+        eigenwoningforfait=Decimal("0"), aftrekbare_hypotheekrente=Decimal("0"),
+        overige_aftrekbare_kosten=Decimal("0"), totaal_aftrek=Decimal("0"),
+        saldo_eigen_woning=Decimal("0"), hillen_correctie=Decimal("0"),
+        box1_mutatie=Decimal("0"), tariefsaanpassing=Decimal("0"),
+        box3_bezittingen=Decimal("0"), box3_schulden=Decimal("0"),
+    )
+    ew_p1 = _nul_ew
+    ew_p2 = _nul_ew
+    if getattr(scenario, "heeft_eigen_woning", False):
+        ew_data = scenario.eigen_woning
+        factor_p1 = Decimal("0.5") if heeft_partner else Decimal("1")
+        ew_p1 = bereken_eigen_woning(
+            EigenWoningInvoer(
+                woz_waarde=ew_data.woz_waarde * factor_p1,
+                betaalde_hypotheekrente=ew_data.betaalde_hypotheekrente * factor_p1,
+                overige_aftrekbare_kosten=ew_data.overige_aftrekbare_kosten * factor_p1,
+                eigenwoningschuld_begin=ew_data.eigenwoningschuld_begin * factor_p1,
+                eigenwoningschuld_eind=ew_data.eigenwoningschuld_eind * factor_p1,
+                bruto_inkomen_box1=bruto_p1,
+            ),
+            config,
+        )
+        if heeft_partner:
+            factor_p2 = Decimal("0.5")
+            ew_p2 = bereken_eigen_woning(
+                EigenWoningInvoer(
+                    woz_waarde=ew_data.woz_waarde * factor_p2,
+                    betaalde_hypotheekrente=ew_data.betaalde_hypotheekrente * factor_p2,
+                    overige_aftrekbare_kosten=ew_data.overige_aftrekbare_kosten * factor_p2,
+                    eigenwoningschuld_begin=ew_data.eigenwoningschuld_begin * factor_p2,
+                    eigenwoningschuld_eind=ew_data.eigenwoningschuld_eind * factor_p2,
+                    bruto_inkomen_box1=bruto_p2,
+                ),
+                config,
+            )
+
+    # Box 1 grondslag na eigen woning correctie
+    box1_grondslag_p1 = max(Decimal("0"), bruto_p1 + ew_p1.box1_mutatie)
+    box1_grondslag_p2 = max(Decimal("0"), bruto_p2 + ew_p2.box1_mutatie)
+
     # Belasting persoon 1 — detailberekening
     aow_breuk_p1 = aow_engine.aow_breuk_jaar(persoon1.geboortedatum, jaar)
-    is_aow_p1 = aow_breuk_p1 > Decimal("0")
-    bel_voor_korting_p1 = belasting_engine.bereken_box1_belasting(bruto_p1, config, aow_breuk_p1)
+    is_aow_p1 = aow_breuk_p1 > Decimal("0")  # Voor kortingen: deels of heel jaar
+    is_aow_heel_jaar_p1 = aow_breuk_p1 >= Decimal("1")  # Voor premies: heel jaar AOW?
+    bel_voor_korting_p1 = belasting_engine.bereken_box1_belasting(box1_grondslag_p1, config, aow_breuk_p1)
     
     # Premies volksverzekeringen persoon 1
     premie_aow_p1, premie_anw_p1, premie_wlz_p1, totaal_premies_p1 = (
-        belasting_engine.bereken_premies_volksverzekeringen(bruto_p1, config, is_aow_p1)
+        belasting_engine.bereken_premies_volksverzekeringen(box1_grondslag_p1, config, is_aow_heel_jaar_p1)
     )
     
     # Heffingskortingen persoon 1
-    ahk_p1 = heffingskorting.bereken_ahk(bruto_p1, config)
+    ahk_p1 = heffingskorting.bereken_ahk(box1_grondslag_p1, config)
     ak_p1 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, config)
-    ok_p1 = heffingskorting.bereken_ouderenkorting(bruto_p1, config, is_aow_p1)
+    ok_p1 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, config, is_aow_p1)
     aok_p1 = heffingskorting.bereken_alleenstaandeouderenkorting(
-        bruto_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
+        box1_grondslag_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
     )
     totale_hk_p1 = ahk_p1 + ak_p1 + ok_p1 + aok_p1
     
-    # Totaal verschuldigd persoon 1
-    totaal_ib_en_premies_p1 = bel_voor_korting_p1 + totaal_premies_p1
+    # Totaal verschuldigd persoon 1 (incl. tariefsaanpassing eigen woning)
+    totaal_ib_en_premies_p1 = bel_voor_korting_p1 + totaal_premies_p1 + ew_p1.tariefsaanpassing
     netto_bel_p1 = max(Decimal("0"), totaal_ib_en_premies_p1 - totale_hk_p1)
     netto_p1 = bruto_p1 - netto_bel_p1
 
@@ -222,26 +266,28 @@ def _bereken_jaar_detail(
     totaal_ib_en_premies_p2 = netto_bel_p2 = Decimal("0")
     aow_breuk_p2 = Decimal("0")
     is_aow_p2 = False
+    is_aow_heel_jaar_p2 = False
     netto_p2 = Decimal("0")
     if persoon2:
         aow_breuk_p2 = aow_engine.aow_breuk_jaar(persoon2.geboortedatum, jaar)
-        is_aow_p2 = aow_breuk_p2 > Decimal("0")
-        bel_voor_korting_p2 = belasting_engine.bereken_box1_belasting(bruto_p2, config, aow_breuk_p2)
+        is_aow_p2 = aow_breuk_p2 > Decimal("0")  # Voor kortingen: deels of heel jaar
+        is_aow_heel_jaar_p2 = aow_breuk_p2 >= Decimal("1")  # Voor premies: heel jaar AOW?
+        bel_voor_korting_p2 = belasting_engine.bereken_box1_belasting(box1_grondslag_p2, config, aow_breuk_p2)
         
         # Premies volksverzekeringen persoon 2
         premie_aow_p2, premie_anw_p2, premie_wlz_p2, totaal_premies_p2 = (
-            belasting_engine.bereken_premies_volksverzekeringen(bruto_p2, config, is_aow_p2)
+            belasting_engine.bereken_premies_volksverzekeringen(box1_grondslag_p2, config, is_aow_heel_jaar_p2)
         )
         
         # Heffingskortingen persoon 2
-        ahk_p2 = heffingskorting.bereken_ahk(bruto_p2, config)
+        ahk_p2 = heffingskorting.bereken_ahk(box1_grondslag_p2, config)
         ak_p2 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, config)
-        ok_p2 = heffingskorting.bereken_ouderenkorting(bruto_p2, config, is_aow_p2)
+        ok_p2 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p2, config, is_aow_p2)
         aok_p2 = Decimal("0")  # Alleenstaandeouderenkorting alleen voor alleenstaanden
         totale_hk_p2 = ahk_p2 + ak_p2 + ok_p2 + aok_p2
         
-        # Totaal verschuldigd persoon 2
-        totaal_ib_en_premies_p2 = bel_voor_korting_p2 + totaal_premies_p2
+        # Totaal verschuldigd persoon 2 (incl. tariefsaanpassing eigen woning)
+        totaal_ib_en_premies_p2 = bel_voor_korting_p2 + totaal_premies_p2 + ew_p2.tariefsaanpassing
         netto_bel_p2 = max(Decimal("0"), totaal_ib_en_premies_p2 - totale_hk_p2)
         netto_p2 = bruto_p2 - netto_bel_p2
 
@@ -334,6 +380,10 @@ def _bereken_jaar_detail(
         "jaar_pen_p2": Decimal(str(jaar_pen_p2)),
         "bruto_p1": Decimal(str(bruto_p1)),
         "bruto_p2": Decimal(str(bruto_p2)),
+        "box1_grondslag_p1": box1_grondslag_p1,
+        "box1_grondslag_p2": box1_grondslag_p2,
+        "ew_p1": ew_p1,
+        "ew_p2": ew_p2,
         "aow_breuk_p1": aow_breuk_p1,
         "aow_breuk_p2": aow_breuk_p2,
         "is_aow_p1": is_aow_p1,
@@ -415,6 +465,56 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
     ]
     st.table(_maak_tabel(cols, rijen))
 
+    # B.0 Eigen woning (optioneel)
+    ew1: EigenWoningResultaat = d.get("ew_p1")
+    ew2: EigenWoningResultaat = d.get("ew_p2")
+    heeft_ew = ew1 is not None and (ew1.saldo_eigen_woning != Decimal("0") or ew1.eigenwoningforfait != Decimal("0"))
+    if heeft_ew:
+        st.markdown("#### A.1 Eigen woning (saldo box 1)")
+        rijen_ew = [
+            ["Eigenwoningforfait",
+             _fmt(ew1.eigenwoningforfait),
+             *([_fmt(ew2.eigenwoningforfait)] if heeft_p2 and ew2 else []),
+             _fmt((ew1.eigenwoningforfait) + (ew2.eigenwoningforfait if heeft_p2 and ew2 else Decimal("0")))],
+            ["Aftrekbare hypotheekrente",
+             _fmt(-ew1.aftrekbare_hypotheekrente),
+             *([_fmt(-ew2.aftrekbare_hypotheekrente)] if heeft_p2 and ew2 else []),
+             _fmt(-(ew1.aftrekbare_hypotheekrente + (ew2.aftrekbare_hypotheekrente if heeft_p2 and ew2 else Decimal("0"))))],
+            ["Overige aftrekbare kosten",
+             _fmt(-ew1.overige_aftrekbare_kosten),
+             *([_fmt(-ew2.overige_aftrekbare_kosten)] if heeft_p2 and ew2 else []),
+             _fmt(-(ew1.overige_aftrekbare_kosten + (ew2.overige_aftrekbare_kosten if heeft_p2 and ew2 else Decimal("0"))))],
+            ["Saldo eigen woning",
+             _fmt(ew1.saldo_eigen_woning),
+             *([_fmt(ew2.saldo_eigen_woning)] if heeft_p2 and ew2 else []),
+             _fmt(ew1.saldo_eigen_woning + (ew2.saldo_eigen_woning if heeft_p2 and ew2 else Decimal("0")))],
+            ["Wet Hillen-vermindering",
+             _fmt(-ew1.hillen_correctie),
+             *([_fmt(-ew2.hillen_correctie)] if heeft_p2 and ew2 else []),
+             _fmt(-(ew1.hillen_correctie + (ew2.hillen_correctie if heeft_p2 and ew2 else Decimal("0"))))],
+            ["**Box 1-correctie (mutatie grondslag)**",
+             f"**{_fmt(ew1.box1_mutatie)}**",
+             *([f"**{_fmt(ew2.box1_mutatie)}**"] if heeft_p2 and ew2 else []),
+             f"**{_fmt(ew1.box1_mutatie + (ew2.box1_mutatie if heeft_p2 and ew2 else Decimal('0')))}**"],
+            ["Tariefsaanpassing aftrekposten",
+             _fmt(ew1.tariefsaanpassing),
+             *([_fmt(ew2.tariefsaanpassing)] if heeft_p2 and ew2 else []),
+             _fmt(ew1.tariefsaanpassing + (ew2.tariefsaanpassing if heeft_p2 and ew2 else Decimal("0")))],
+            ["**Belastbaar inkomen box 1**",
+             f"**{_fmt(d['box1_grondslag_p1'])}**",
+             *([f"**{_fmt(d['box1_grondslag_p2'])}**"] if heeft_p2 else []),
+             f"**{_fmt(d['box1_grondslag_p1'] + d['box1_grondslag_p2'])}**"],
+        ]
+        st.table(_maak_tabel(cols, rijen_ew))
+        if ew1.toelichting:
+            with st.expander("Toelichting eigen woning berekening"):
+                for regel in ew1.toelichting:
+                    st.caption(regel)
+                if heeft_p2 and ew2 and ew2.toelichting:
+                    st.caption("--- partner ---")
+                    for regel in ew2.toelichting:
+                        st.caption(regel)
+
     st.markdown("#### B. Box 1 inkomstenbelasting (IB)")
     if d["aow_breuk_p1"] > Decimal("0") and d["aow_breuk_p1"] < Decimal("1"):
         st.caption(
@@ -430,10 +530,10 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
             "Gewogen tarief toegepast."
         )
     rijen_b = [
-        ["Belastbaar inkomen",
-         _fmt(d["bruto_p1"]),
-         *([_fmt(d["bruto_p2"])] if heeft_p2 else []),
-         _fmt(d["bruto_p1"] + d["bruto_p2"])],
+        ["Belastbaar inkomen box 1",
+         _fmt(d["box1_grondslag_p1"]),
+         *([_fmt(d["box1_grondslag_p2"])] if heeft_p2 else []),
+         _fmt(d["box1_grondslag_p1"] + d["box1_grondslag_p2"])],
         ["Inkomstenbelasting (IB) schijventarief *",
          _fmt(d["bel_voor_korting_p1"]),
          *([_fmt(d["bel_voor_korting_p2"])] if heeft_p2 else []),
@@ -542,6 +642,11 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
          _fmt(d["totaal_premies_p1"]),
          *([_fmt(d["totaal_premies_p2"])] if heeft_p2 else []),
          _fmt(d["totaal_premies_p1"] + d["totaal_premies_p2"])],
+        ["Tariefsaanpassing eigen woning",
+         _fmt(d["ew_p1"].tariefsaanpassing if d.get("ew_p1") else Decimal("0")),
+         *([_fmt(d["ew_p2"].tariefsaanpassing if d.get("ew_p2") else Decimal("0"))] if heeft_p2 else []),
+         _fmt((d["ew_p1"].tariefsaanpassing if d.get("ew_p1") else Decimal("0"))
+              + (d["ew_p2"].tariefsaanpassing if heeft_p2 and d.get("ew_p2") else Decimal("0")))],
         ["**= Totaal IB + premies**",
          f"**{_fmt(d['totaal_ib_en_premies_p1'])}**",
          *([f"**{_fmt(d['totaal_ib_en_premies_p2'])}**"] if heeft_p2 else []),

@@ -4,21 +4,40 @@
   "jaar": 2026,
 
   "box1_niet_aow": {
-    "_toelichting": "Schijven voor personen onder de AOW-leeftijd",
+    "_toelichting": "Schijven voor personen onder de AOW-leeftijd. PURE INKOMSTENBELASTING (zonder premies).",
     "schijven": [
-      {"tot": 38883, "tarief": 0.3575, "_omschrijving": "Schijf 1 inclusief AOW-premie"},
+      {"tot": 38883, "tarief": 0.081, "_omschrijving": "Schijf 1: pure IB 8,1% (premies worden apart berekend)"},
       {"tot": 78426, "tarief": 0.3756, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
   },
 
   "box1_aow": {
-    "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). Schijf 1: 17,85% (inkomstenbelasting zonder AOW-premie). Geboortejaar <1946: eerste schijf iets gunstiger, hier niet apart gemodelleerd.",
+    "_toelichting": "Schijven voor AOW-gerechtigden. PURE INKOMSTENBELASTING (zonder premies).",
     "schijven": [
-      {"tot": 38883, "tarief": 0.1785, "_omschrijving": "Schijf 1 zonder AOW-premie (17,85%)"},
+      {"tot": 38883, "tarief": 0.081, "_omschrijving": "Schijf 1: pure IB 8,1% (gelijk aan niet-AOW)"},
       {"tot": 78426, "tarief": 0.3756, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
+  },
+
+  "premies_volksverzekeringen": {
+    "_toelichting": "Premies volksverzekeringen worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).",
+    "_bron": "Belastingdienst 2026",
+    "premiegrens": 38883,
+    "aow": {
+      "_toelichting": "AOW-premie alleen voor niet-AOW-gerechtigden. Circa 17,75%",
+      "tarief_niet_aow": 0.1775,
+      "tarief_aow": 0.0000
+    },
+    "anw": {
+      "_toelichting": "Nabestaandenwet premie 2026",
+      "tarief": 0.001
+    },
+    "wlz": {
+      "_toelichting": "Wet langdurige zorg premie 2026",
+      "tarief": 0.0964
+    }
   },
 
   "algemene_heffingskorting": {
@@ -45,6 +64,14 @@
     "minimum": 0
   },
 
+  "alleenstaandeouderenkorting": {
+    "_toelichting": "Alleen voor alleenstaande AOW-gerechtigden. 2026 indicatief.",
+    "max": 545,
+    "afbouw_inkomen_van": 40888,
+    "afbouw_pct": 0.15,
+    "minimum": 0
+  },
+
   "box3": {
     "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken. Belasting = 36% over fictief rendement (spaargeld × forfait_spaargeld + overig × forfait_overig). Spaargeld-fractie stelbaar in scenario.",
     "_disclaimer": "Box 3 tarieven zijn onder voorbehoud van rechterlijke uitspraken en lopende wetgeving (Wet werkelijk rendement box 3). Gebruik met grote voorzichtigheid.",
@@ -58,5 +85,19 @@
     "_toelichting": "Bruto AOW per maand 2026 (bevestigd). Controleer actueel bedrag op https://www.svb.nl/nl/aow/hoogte-aow/",
     "alleenstaande_per_maand": 1417,
     "gehuwd_of_samenwonend_per_maand": 978
+  },
+
+  "eigen_woning": {
+    "_toelichting": "Eigenwoningforfait, tariefsaanpassing en Wet Hillen 2026. Indicatief; controleer bij definitieve publicatie.",
+    "_bron": "Belastingdienst / Ministerie van Financien 2026 (indicatief)",
+    "forfait_schijven": [
+      {"tot": 75000,   "percentage": 0.0000, "_omschrijving": "WOZ t/m \u20ac75.000: geen forfait"},
+      {"tot": 1200000, "percentage": 0.0035, "_omschrijving": "WOZ \u20ac75.000 - \u20ac1.200.000: 0,35%"},
+      {"tot": null,    "percentage": 0.0235, "_omschrijving": "WOZ boven \u20ac1.200.000: 2,35% over het meerdere"}
+    ],
+    "tariefsaanpassing_pct": 0.1202,
+    "_toelichting_tariefsaanpassing": "Indicatief 2026. Aftrekposten eigen woning begrensd tot schijf-2-tarief. Verschil top/schijf2 circa 12,02%.",
+    "wet_hillen_pct": 0.7667,
+    "_toelichting_hillen": "Wet Hillen 2026: 76,67% vermindering (afbouw 3,33%/jaar; 2019=100%, 2026=76,67%)."
   }
 }
