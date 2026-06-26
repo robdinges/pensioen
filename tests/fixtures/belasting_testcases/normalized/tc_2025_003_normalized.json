@@ -28,7 +28,7 @@
     "beleggingen": 200000
   },
   "verwachte_belasting": {
-    "totaal_verschuldigd": 0
+    "totaal_verschuldigd": 41550
   },
   "metadata": {
     "uitgangspunten": [
@@ -39,9 +39,9 @@
       "Vermogen: €100.000 sparen + €200.000 beleggen",
       "Pensioenopbouw doel vanaf 68 jaar: €65.000 per jaar"
     ],
-    "opmerkingen": "Verwachte belastingcomponenten nog invullen op basis van exacte simulatoruitkomst Belastingdienst 2025.",
-    "data_kwaliteit": "minimaal",
+    "opmerkingen": "Uitkomst gevalideerd met Belastingdienst aangiftesimulator 2025: totaal te betalen €41.550.",
+    "data_kwaliteit": "gedeeltelijk",
     "bron": "Handmatig persona-ontwerp gebruiker (26-06-2026)",
-    "_incomplete": true
+    "_incomplete": false
   }
 }

@@ -49,9 +49,9 @@
   },
 
   "arbeidskorting": {
-    "_toelichting": "Korting op arbeidsinkomen. Vereenvoudigd: gebruik max bij arbeidsinkomen > 0, corrigeer voor afbouw. Voor gepensioneerden: 0.",
-    "max": 5532,
-    "afbouw_drempel": 39898,
+    "_toelichting": "Korting op arbeidsinkomen. Vereenvoudigd: gebruik max bij arbeidsinkomen > 0, corrigeer voor afbouw. Voor gepensioneerden: 0. Parameters geijkt op Belastingdienst simulator 2025.",
+    "max": 5599,
+    "afbouw_drempel": 43071,
     "afbouw_pct": 0.0651,
     "minimum": 0
   },
@@ -73,12 +73,12 @@
   },
 
   "box3": {
-    "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken over rechtsherstel box 3. Belasting = 36% over fictief rendement.",
+    "_toelichting": "INDICATIEF. Wetgeving in beweging vanwege rechterlijke uitspraken over rechtsherstel box 3. Belasting = 36% over fictief rendement. Forfaitaire percentages geijkt op Belastingdienst simulator 2025.",
     "_disclaimer": "Box 3 tarieven zijn onder voorbehoud van rechterlijke uitspraken en lopende wetgeving (Wet werkelijk rendement box 3). Gebruik met grote voorzichtigheid.",
     "vrijstelling_per_persoon": 57684,
     "tarief": 0.36,
     "forfaitair_spaargeld": 0.015,
-    "forfaitair_overig": 0.06
+    "forfaitair_overig": 0.0593
   },
 
   "aow_bedrag": {
