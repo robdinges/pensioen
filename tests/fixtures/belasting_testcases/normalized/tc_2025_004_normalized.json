@@ -37,23 +37,34 @@
     "beleggingen": 100000
   },
   "verwachte_belasting": {
-    "totaal_verschuldigd": 0
+    "totaal_verschuldigd": 50922,
+    "p1_totaal": 38320,
+    "p1_ib_box1": 28306,
+    "p1_ib_box3": 1279,
+    "p1_premies": 10628,
+    "p1_heffingskortingen": 1893,
+    "p2_totaal": 12602,
+    "p2_ib_box1": 3094,
+    "p2_ib_box3": 1279,
+    "p2_premies": 10472,
+    "p2_heffingskortingen": 2243
   },
   "metadata": {
     "uitgangspunten": [
-      "Persona draft voor ijkjaar 2025 validatie via Belastingdienst-simulator",
+      "Uitkomst gevalideerd met Belastingdienst aangiftesimulator 2025 (casus 269)",
       "Echtpaar, geen minderjarige of inwonende kinderen, leeftijden 50 en 55 in 2025",
-      "Persoon 1 werkinkomen: €100.000",
-      "Persoon 2 uitkering: €40.000",
-      "Eigen woning WOZ: €500.000",
-      "Hypotheekschuld: €150.000",
-      "Betaalde hypotheekrente: €6.000",
-      "Vermogen box 3 input: €300.000 sparen + €100.000 beleggen",
-      "Pensioenopbouw doel op 68 jaar: persoon 1 €60.000, persoon 2 €25.000"
+      "Persoon 1 (Johan Van Dijk) werkinkomen: €100.000",
+      "Persoon 2 (Tilly van Dijk) pensioen/uitkering: €40.000",
+      "Eigen woning WOZ: €500.000 — eigenwoningforfait €1.750 (0,35%), rente €6.000 (50/50 per persoon)",
+      "Netto eigen woning per persoon: €875 forfait - €3.000 rente = -€2.125 (als gegeven meegenomen; berekening volgt)",
+      "Tariefsaanpassing aftrekposten persoon 1: 12,02% over €3.000 hypotheekrenteaftrek = €360 extra belasting",
+      "Vermogen box 3: €300.000 sparen + €100.000 beleggen (50/50 verdeeld; bezittingen gelijk)",
+      "Box 3 grondslag per persoon: €142.316 (€200.000 - vrijstelling €57.684)",
+      "Box 3 voordeel per persoon: €3.553; heffing per persoon: €1.279"
     ],
-    "opmerkingen": "Eigenwoningforfait en hypotheekrenteaftrek moeten in model nog volledig worden ondersteund voor exacte fiscale match.",
-    "data_kwaliteit": "minimaal",
-    "bron": "Handmatig persona-ontwerp gebruiker (26-06-2026)",
-    "_incomplete": true
+    "opmerkingen": "Eigen woning netto aftrek (-€2.125 per persoon) als gegeven uit simulator overgenomen. Volgende stap: berekening op basis van WOZ-waarde en betaalde rente. Tariefsaanpassing aftrekposten (€360 persoon 1) en eigenwoningforfait nog niet gemodelleerd in de app.",
+    "data_kwaliteit": "gedeeltelijk",
+    "bron": "Belastingdienst aangiftesimulator 2025 (26-06-2026)",
+    "_incomplete": false
   }
 }

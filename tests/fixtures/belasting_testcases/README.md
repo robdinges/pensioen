@@ -95,16 +95,18 @@ Voor elke testcase:
 ## Huidige Status (2026-06-26)
 
 - 5 testcases aanwezig in `raw/` en genormaliseerd in `normalized/`.
-- Nieuwe 2025 persona-drafts: `tc_2025_003`, `tc_2025_004`, `tc_2025_005`.
-- Voor deze 3 persona-drafts zijn `verwachte_belasting`-uitkomsten nog placeholder en nog niet afkomstig uit de Belastingdienst-simulator.
-- Laatste validatie-run (pipeline) gaf momenteel 5x `FAIL`:
+- `tc_2025_003`: **gevalideerd** op Belastingdienst simulator 2025 — pipeline geeft PASS (€41.550).
+- `tc_2025_004`: simulatorwaarden ingevuld (totaal €50.922); pipeline FAIL met restafwijking **€1.370** door ontbrekende eigenwoningmodellering.
+- `tc_2025_005`: simulatorwaarden nog invullen.
+- Laatste validatie-run resultaten:
 	- `tc_2025_001`: afwijking -€380
 	- `tc_2025_002`: afwijking +€353
-	- `tc_2025_003`: placeholder verwacht 0, berekend €41.863
-	- `tc_2025_004`: placeholder verwacht 0, berekend €52.583
-	- `tc_2025_005`: placeholder verwacht 0, berekend €33.289
-- Belangrijke beperking voor exacte fiscale match in 2025:
-	- Eigen woning, hypotheekrente en eigenwoningforfait zijn nog niet volledig end-to-end opgenomen in deze testcase-validatieflow.
+	- `tc_2025_003`: ✅ PASS (€0 verschil)
+	- `tc_2025_004`: ❌ FAIL, restafwijking €1.370 (eigenwoningforfait/renteaftrek en tariefsaanpassing ontbreken)
+	- `tc_2025_005`: placeholder verwacht 0, nog invullen
+- Bekende beperkingen 2025:
+	- **Eigenwoningforfait en hypotheekrenteaftrek** niet gemodelleerd → case 004 en 005 zullen blijven afwijken totdat dit is geïmplementeerd.
+	- **Tariefsaanpassing aftrekposten** (12,02% over renteaftrek bij hoog inkomen) ontbreekt → kleine impact, andere richting.
 
 ---
 
@@ -114,9 +116,9 @@ Voor elke testcase:
 |----|------|------|------|--------|-----------|
 | tc_2025_001 | Alleenstaand AOW-ontvanger 2025 | 2025 | ALLEENSTAAND | ❌ Failed | Referentiecase met kleine structurele afwijking |
 | tc_2025_002 | Gehuwd paar - 1 AOW + 1 werkend 2025 | 2025 | GEHUWD | ❌ Failed | Referentiecase met kleine structurele afwijking |
-| tc_2025_003 | Plain vanilla alleenstaande werkend 2025 | 2025 | ALLEENSTAAND | ⚠️ Partial | Persona-draft, fiscale uitkomst nog invullen |
-| tc_2025_004 | Echtpaar met woning en hypotheek 2025 | 2025 | GEHUWD | ⚠️ Partial | Persona-draft + woning/hypotheek deels nog niet gemodelleerd |
-| tc_2025_005 | Gepensioneerde alleenstaande met woning 2025 | 2025 | ALLEENSTAAND | ⚠️ Partial | Persona-draft, AOW/simulatordetail nog invullen |
+| tc_2025_003 | Plain vanilla alleenstaande werkend 2025 | 2025 | ALLEENSTAAND | ✅ Passed | Gevalideerd op simulator (€41.550), PASS binnen tolerantie |
+| tc_2025_004 | Echtpaar met woning en hypotheek 2025 | 2025 | GEHUWD | ❌ Failed | Simulator €50.922 ingevuld; app €1.370 te hoog door ontbrekende eigenwoningmodellering |
+| tc_2025_005 | Gepensioneerde alleenstaande met woning 2025 | 2025 | ALLEENSTAAND | ⚠️ Partial | Simulatoruitkomst nog invullen |
 
 **Status**:
 - 📥 Raw: Ruwe JSON aanwezig
