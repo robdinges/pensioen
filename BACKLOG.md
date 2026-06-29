@@ -603,6 +603,78 @@
 
 ---
 
+#### #205: Dubbeltelling eigen woning in accountantsoverzicht 🔴 HIGH
+**Beschrijving**: Eigen woninggegevens (WOZ en hypotheek) worden op huishoudniveau ingevoerd,
+maar in het accountantsoverzicht bij zowel P1 als partner meegerekend.
+
+**Impact**: Dubbeltelling in box 1/eigen-woningcomponenten en onjuiste netto-uitkomst in detailoverzicht.
+
+**Fix**: Splits eigen woninginvoer exact 50/50 tussen partners (of volgens expliciete toewijzingsregel)
+en valideer dat de huishoudsom gelijk blijft aan de broninvoer.
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #206: Dubbeltelling AOW in accountantsoverzicht 🔴 HIGH
+**Beschrijving**: AOW wordt in de accountantspagina toegevoegd via de automatische AOW-berekening,
+terwijl AOW ook als financieel component kan zijn ingevoerd.
+
+**Impact**: Dubbeltelling van AOW in bruto inkomen en daardoor onjuiste belasting- en netto-uitkomst.
+
+**Fix**: Introduceer één bronregel voor AOW in accountantsoverzicht (of automatische AOW, of component-AOW)
+met expliciete validatie/waarschuwing als beide tegelijk aanwezig zijn.
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #207: Accountantspagina toont verouderde/verkeerde vermogensversie 🔴 HIGH
+**Beschrijving**: In de accountantspagina wordt nog een oude of inconsistente versie van vermogen getoond,
+die niet overeenkomt met de actuele vermogensitems/rekensituatie.
+
+**Impact**: Onjuiste controle-informatie voor accountant en mogelijke verkeerde conclusies over vermogen en cashflow.
+
+**Fix**: Laat accountantspagina uitsluitend renderen vanuit dezelfde actuele vermogensbron als de rekenengine
+(single source of truth) en voeg regressietest toe op weergaveconsistentie.
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #208: Accountantspagina pakt niet altijd juiste box 3 forfaitversie 🔴 HIGH
+**Beschrijving**: In de accountantspagina wordt bij box 3 niet altijd gerekend met het actuele forfait voor
+sparen en beleggen, ondanks bijgewerkte config/instellingen.
+
+**Impact**: Verkeerde box 3 heffing in detailoverzicht en afwijking tussen verwachting en accountantspagina.
+
+**Waarschijnlijke oorzaak**: Jaar-fallback in tariefloader (ontbrekend jaar gebruikt laatste beschikbare jaar)
+of mismatch tussen actieve scenario-instellingen (tariefperiodes) en getoonde scenario-context.
+
+**Fix**: Toon expliciet bron voor box3_forfait_spaargeld en box3_forfait_overig per jaar in accountantsoverzicht,
+blokkeer stille fallback voor accountantmodus of markeer hard warning, en voeg regressietest toe.
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #209: Instellingenwijzigingen worden niet automatisch naar belasting_JSON opgeslagen 🔴 HIGH
+**Beschrijving**: Wijzigingen in jaarinstellingen/tarieven worden in de UI gegenereerd als download,
+maar niet direct teruggeschreven naar `config/belasting_YYYY.json`.
+
+**Impact**: Gebruiker verwacht opgeslagen wijzigingen, maar app blijft rekenen met oude of fallback-config
+totdat bestand handmatig is geplaatst en app is herstart.
+
+**Waarschijnlijke oorzaak**: Instellingenpagina gebruikt `st.download_button` voor JSON-export en bevat
+geen schrijfpad naar de config-map.
+
+**Fix**: Voeg expliciete "Opslaan naar config"-actie toe (met padvalidatie, backup en bevestiging),
+en toon na opslaan een melding dat herstart nodig is.
+
+**Status**: 📝 PLANNED
+
+---
+
 ## 📚 DOCUMENTATIE
 
 #### #301: API documentatie 🟡 MEDIUM
