@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -264,6 +265,34 @@ def beschikbare_jaren() -> set[int]:
 def laad_tarieven_bereik(jaar_van: int, jaar_tot: int) -> dict[int, tuple[BelastingConfig, str]]:
     """Laad belastingconfiguraties voor een reeks jaren (jaar_van t/m jaar_tot inclusief)."""
     return {jaar: laad_tarieven(jaar) for jaar in range(jaar_van, jaar_tot + 1)}
+
+
+def schrijf_belastingconfig_json(
+    jaar: int,
+    tarieven_data: dict[str, Any],
+    maak_backup: bool = True,
+    config_dir: Path | None = None,
+) -> tuple[Path, Path | None]:
+    """Schrijf een belastingconfiguratie weg naar `belasting_YYYY.json`.
+
+    Retourneert het pad van het geschreven bestand en optioneel het backup-pad.
+    """
+
+    doel_map = config_dir or _CONFIG_DIR
+    doel_map.mkdir(parents=True, exist_ok=True)
+    config_pad = doel_map / f"belasting_{jaar}.json"
+
+    backup_pad = None
+    if maak_backup and config_pad.exists():
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_pad = doel_map / f"belasting_{jaar}.{timestamp}.bak.json"
+        backup_pad.write_text(config_pad.read_text(encoding="utf-8"), encoding="utf-8")
+
+    config_pad.write_text(
+        json.dumps(tarieven_data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return config_pad, backup_pad
 
 
 def config_naar_tariefwaarden(config: BelastingConfig) -> dict[str, Decimal]:

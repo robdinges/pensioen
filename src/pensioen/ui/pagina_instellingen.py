@@ -15,6 +15,7 @@ from pensioen.tax.belasting_loader import (
     config_naar_tariefwaarden,
     laad_tarieven,
     resolve_tariefwaarden_voor_jaar,
+    schrijf_belastingconfig_json,
 )
 from pensioen.ui.scenario_context import get_actief_scenario, SCENARIO_DEFAULT_KEY, set_actief_scenario_naam
 from pensioen.ui.sessie_persistentie import sla_sessie_op
@@ -226,8 +227,8 @@ def toon_instellingen_pagina() -> None:
     st.divider()
     st.subheader("Nieuw tariefbestand genereren")
     st.caption(
-        "Vul hieronder de tarieven in voor een nieuw jaar en download het gegenereerde JSON-bestand. "
-        "Sla het op als `config/belasting_YYYY.json` en herstart de applicatie om het te activeren."
+        "Vul hieronder de tarieven in voor een nieuw jaar en download of sla het gegenereerde JSON-bestand "
+        "direct op in `config/belasting_YYYY.json`."
     )
 
     jaar_opties_gen = sorted(beschikbaar) if beschikbaar else [2025, 2026]
@@ -363,9 +364,21 @@ def toon_instellingen_pagina() -> None:
             mime="application/json",
             key="tariefgen_download",
         )
+        if st.button(f"💾 Opslaan naar config/{bestandsnaam}", key=f"tariefgen_save_{bestandsnaam}"):
+            try:
+                config_pad, backup_pad = schrijf_belastingconfig_json(
+                    jaar=int(doeljaar_gen),
+                    tarieven_data=tarieven_data,
+                )
+                boodschap = f"Tariefbestand opgeslagen naar {config_pad}. Herbereken bestaande resultaten om de nieuwe waarden te gebruiken."
+                if backup_pad is not None:
+                    boodschap += f" Backup gemaakt: {backup_pad}."
+                st.success(boodschap)
+                st.rerun()
+            except OSError as exc:
+                st.error(f"Opslaan naar config is mislukt: {exc}")
         st.caption(
-            f"Sla `{bestandsnaam}` op in de map `config/` van het project "
-            "en herstart de applicatie om de nieuwe tarieven te activeren."
+            f"Download blijft beschikbaar als fallback. Direct opslaan werkt alleen als de app schrijfrechten heeft op `config/{bestandsnaam}`."
         )
     
     # ─── Scenario management ─────────────────────────────────────────────────

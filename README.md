@@ -22,6 +22,10 @@ cashflowprognose voor een huishouden.
   - box 3 heffing op fictief rendement
   - rendement op vermogen
   - inleg en opname (incl. incidentele ontvangsten/uitgaven)
+  - gebruikt de actuele vermogens- en eigen-woningbron in plaats van verouderde legacy-weergave
+  - toont bij een eenpersoonshuishouden nooit P2-kolommen of P2-bedragen
+  - waarschuwt bij handmatig ingevoerde AOW-componenten en filtert deze uit de inkomenssom om dubbeltelling te voorkomen
+  - toont de gebruikte bron voor box 3 tarief en forfaiten voor sparen/beleggen
 - Gestructureerde scenario-invoer met meerdere regels per component:
   - extra bruto loon/uitkering
   - inhoudingen (loonbelasting etc.)
@@ -73,6 +77,11 @@ streamlit run app.py
 
 6. Controleer de componenttabel Netto cashflow opgebouwd uit losse
   componenten in het accountantsoverzicht.
+
+7. Beheer belastingtarieven in het scherm Instellingen:
+  - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
+  - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
+  - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren
 
 ## Testing
 

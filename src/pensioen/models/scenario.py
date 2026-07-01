@@ -397,6 +397,82 @@ class Scenario(BaseModel):
         )
         return self.eigen_woning
 
+    def verzamel_fiscale_eigen_woning_invoer(
+        self,
+        jaar: int | None = None,
+        heeft_partner: bool = False,
+    ) -> dict[str, Any]:
+        """Verzamel fiscale eigen-woninginvoer voor huishouden en per persoon.
+
+        Vermogensitems zijn de primaire bron. Alleen als daar geen relevante
+        invoer aanwezig is, valt deze helper terug op de legacy scenario-invoer.
+        Huishoudinvoer wordt bij partners altijd 50/50 verdeeld.
+        """
+
+        invoer = self.verzamel_eigen_woning_invoer_uit_vermogensitems(jaar)
+        heeft_vermogensinvoer = bool(invoer["heeft_invoer"])
+
+        if heeft_vermogensinvoer:
+            huishouden = EigenWoningData(
+                woz_waarde=invoer["woz_waarde"],
+                betaalde_hypotheekrente=invoer["betaalde_hypotheekrente"],
+                overige_aftrekbare_kosten=self.eigen_woning.overige_aftrekbare_kosten,
+                eigenwoningschuld_begin=invoer["eigenwoningschuld_begin"],
+                eigenwoningschuld_eind=invoer["eigenwoningschuld_eind"],
+            )
+            bron = "vermogensitems"
+        else:
+            heeft_legacy_invoer = self.heeft_eigen_woning or any(
+                waarde != Decimal("0")
+                for waarde in (
+                    self.eigen_woning.woz_waarde,
+                    self.eigen_woning.betaalde_hypotheekrente,
+                    self.eigen_woning.overige_aftrekbare_kosten,
+                    self.eigen_woning.eigenwoningschuld_begin,
+                    self.eigen_woning.eigenwoningschuld_eind,
+                )
+            )
+            if not heeft_legacy_invoer:
+                return {
+                    "heeft_invoer": False,
+                    "bron": "geen",
+                    "huishouden": EigenWoningData(),
+                    "p1": EigenWoningData(),
+                    "p2": None,
+                    "woning_items": [],
+                    "hypotheek_items": [],
+                }
+            huishouden = self.eigen_woning.model_copy(deep=True)
+            bron = "scenario"
+
+        factor = Decimal("0.5") if heeft_partner else Decimal("1")
+        p1 = EigenWoningData(
+            woz_waarde=huishouden.woz_waarde * factor,
+            betaalde_hypotheekrente=huishouden.betaalde_hypotheekrente * factor,
+            overige_aftrekbare_kosten=huishouden.overige_aftrekbare_kosten * factor,
+            eigenwoningschuld_begin=huishouden.eigenwoningschuld_begin * factor,
+            eigenwoningschuld_eind=huishouden.eigenwoningschuld_eind * factor,
+        )
+        p2 = None
+        if heeft_partner:
+            p2 = EigenWoningData(
+                woz_waarde=huishouden.woz_waarde * factor,
+                betaalde_hypotheekrente=huishouden.betaalde_hypotheekrente * factor,
+                overige_aftrekbare_kosten=huishouden.overige_aftrekbare_kosten * factor,
+                eigenwoningschuld_begin=huishouden.eigenwoningschuld_begin * factor,
+                eigenwoningschuld_eind=huishouden.eigenwoningschuld_eind * factor,
+            )
+
+        return {
+            "heeft_invoer": True,
+            "bron": bron,
+            "huishouden": huishouden,
+            "p1": p1,
+            "p2": p2,
+            "woning_items": invoer["woning_items"] if heeft_vermogensinvoer else [],
+            "hypotheek_items": invoer["hypotheek_items"] if heeft_vermogensinvoer else [],
+        }
+
     # --- Inheritance helpers ---
     
     def is_base_scenario(self) -> bool:

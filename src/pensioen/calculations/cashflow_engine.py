@@ -9,7 +9,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.calculations.inheritance_engine import resolve_scenario
 from pensioen.models.cashflow import HuishoudCashflow, JaarResultaat, MaandResultaat
-from pensioen.models.component import BedragType, CategorieComponent
+from pensioen.models.component import BedragType, CategorieComponent, is_handmatige_aow_component
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
@@ -47,11 +47,14 @@ def _component_som_maand(
     jaar: int,
     maand: int,
     bedrag_type: BedragType | None = None,
+    negeer_handmatige_aow: bool = False,
 ) -> Decimal:
     """Som van alle component-maandbedragen voor een categorie en optioneel persoon."""
     totaal = Decimal("0")
     for c in scenario.componenten:
         if c.categorie != categorie:
+            continue
+        if negeer_handmatige_aow and is_handmatige_aow_component(c):
             continue
         if persoon is not None and c.persoon != persoon:
             continue
@@ -59,6 +62,12 @@ def _component_som_maand(
             continue
         totaal += c.bedrag_per_maand_actief(jaar, maand)
     return totaal
+
+
+def _heeft_handmatige_aow_componenten(scenario: Scenario) -> bool:
+    """Bepaal of het scenario handmatig ingevoerde AOW-componenten bevat."""
+
+    return any(is_handmatige_aow_component(component) for component in scenario.componenten)
 
 
 def _bereken_jaar(
@@ -104,6 +113,7 @@ def _bereken_jaar(
     # --- Stap 1: Maandelijkse bruto berekening ---
     maandresultaten: list[MaandResultaat] = []
     saldo = saldo_begin_jaar
+    handmatige_aow_gevonden = _heeft_handmatige_aow_componenten(scenario)
 
     # Accumuleer jaarlijkse totalen voor belastingberekening
     jaar_arbeid_p1 = Decimal("0")
@@ -140,20 +150,44 @@ def _bereken_jaar(
 
         # Overig inkomen (alleen OVERIG_INKOMEN componenten, PENSIOEN_INKOMEN wordt apart geteld)
         overig_bruto_p1 = _component_som_maand(
-            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
+            scenario,
+            CategorieComponent.OVERIG_INKOMEN,
+            "P1",
+            jaar,
+            maand,
+            BedragType.BRUTO,
+            negeer_handmatige_aow=True,
         )
         overig_bruto_p2 = Decimal("0")
         if persoon2:
             overig_bruto_p2 = _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
+                scenario,
+                CategorieComponent.OVERIG_INKOMEN,
+                "P2",
+                jaar,
+                maand,
+                BedragType.BRUTO,
+                negeer_handmatige_aow=True,
             )
         overig_netto_p1 = _component_som_maand(
-            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
+            scenario,
+            CategorieComponent.OVERIG_INKOMEN,
+            "P1",
+            jaar,
+            maand,
+            BedragType.NETTO,
+            negeer_handmatige_aow=True,
         )
         overig_netto_p2 = Decimal("0")
         if persoon2:
             overig_netto_p2 = _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
+                scenario,
+                CategorieComponent.OVERIG_INKOMEN,
+                "P2",
+                jaar,
+                maand,
+                BedragType.NETTO,
+                negeer_handmatige_aow=True,
             )
 
         # AOW
@@ -276,6 +310,10 @@ def _bereken_jaar(
         aannames.append(aanname_melding)
     if box3_disclaimer and scenario.box3_meenemen:
         aannames.append(box3_disclaimer)
+    if handmatige_aow_gevonden and (jaar_aow_p1 > Decimal("0") or jaar_aow_p2 > Decimal("0")):
+        aannames.append(
+            "Handmatige AOW-component gedetecteerd: automatische AOW blijft leidend en handmatige AOW is uit inkomenssommen gefilterd."
+        )
 
     for mb in maand_bruto:
         maand = mb["maand"]

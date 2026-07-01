@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +15,11 @@ from pensioen.tax.belasting_engine import (
     bereken_box3_heffing,
     netto_uit_bruto,
 )
-from pensioen.tax.belasting_loader import laad_tarieven, resolve_tariefwaarden_voor_jaar
+from pensioen.tax.belasting_loader import (
+    laad_tarieven,
+    resolve_tariefwaarden_voor_jaar,
+    schrijf_belastingconfig_json,
+)
 
 
 class TestBerekenBox1:
@@ -226,3 +232,49 @@ class TestBox3:
         
         # Beleggen heeft hoger fictief rendement → hogere heffing
         assert heffing_sparen < heffing_mix < heffing_beleggen
+
+
+class TestBelastingConfigOpslag:
+    """Tests voor directe opslag van belastingconfiguraties."""
+
+    def test_schrijf_belastingconfig_json_maakt_backup_bij_overschrijven(self, tmp_path: Path) -> None:
+        data_eerste = {
+            "jaar": 2030,
+            "box1_niet_aow": {"schijven": [{"tot": 10000, "tarief": 0.1}]},
+            "box1_aow": {"schijven": [{"tot": 10000, "tarief": 0.1}]},
+            "algemene_heffingskorting": {"max": 1, "afbouw_inkomen_van": 1, "afbouw_pct": 0.1, "minimum": 0},
+            "arbeidskorting": {"max": 1, "afbouw_drempel": 1, "afbouw_pct": 0.1, "minimum": 0},
+            "ouderenkorting": {"max": 1, "afbouw_inkomen_van": 1, "afbouw_pct": 0.1, "minimum": 0},
+            "box3": {"vrijstelling_per_persoon": 1, "tarief": 0.36, "forfaitair_spaargeld": 0.01, "forfaitair_overig": 0.05, "_disclaimer": "test"},
+            "aow_bedrag": {"alleenstaande_per_maand": 1, "gehuwd_of_samenwonend_per_maand": 1},
+        }
+        data_tweede = dict(data_eerste)
+        data_tweede["box3"] = dict(data_eerste["box3"])
+        data_tweede["box3"]["forfaitair_spaargeld"] = 0.02
+
+        eerste_pad, eerste_backup = schrijf_belastingconfig_json(2030, data_eerste, config_dir=tmp_path)
+        tweede_pad, tweede_backup = schrijf_belastingconfig_json(2030, data_tweede, config_dir=tmp_path)
+
+        assert eerste_pad == tweede_pad
+        assert eerste_backup is None
+        assert tweede_backup is not None
+        assert tweede_backup.exists()
+        backup_data = json.loads(tweede_backup.read_text(encoding="utf-8"))
+        assert backup_data["box3"]["forfaitair_spaargeld"] == 0.01
+
+    def test_schrijf_belastingconfig_json_is_direct_herlaadbaar(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        bron_pad = Path(__file__).resolve().parents[1] / "config" / "belasting_2026.json"
+        data = json.loads(bron_pad.read_text(encoding="utf-8"))
+        data["jaar"] = 2031
+        data["box3"]["forfaitair_spaargeld"] = 0.01234
+        data["box3"]["forfaitair_overig"] = 0.06789
+
+        schrijf_belastingconfig_json(2031, data, config_dir=tmp_path)
+        monkeypatch.setattr("pensioen.tax.belasting_loader._CONFIG_DIR", tmp_path)
+
+        config, melding = laad_tarieven(2031)
+
+        assert melding == ""
+        assert config.jaar == 2031
+        assert config.box3.forfaitair_spaargeld == Decimal("0.01234")
+        assert config.box3.forfaitair_overig == Decimal("0.06789")

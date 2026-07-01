@@ -322,3 +322,126 @@ def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
     assert detail["ew_p1"].aftrekbare_hypotheekrente == Decimal("3000.00")
     assert detail["ew_p2"].eigenwoningforfait == Decimal("875.00")
     assert detail["ew_p2"].aftrekbare_hypotheekrente == Decimal("3000.00")
+
+
+def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> None:
+    """Handmatige AOW-component telt niet dubbel mee naast automatische AOW."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    scenario = Scenario(
+        naam="AOW dubbel",
+        componenten=[
+            FinancieelComponent(
+                omschrijving="AOW",
+                categorie=CategorieComponent.OVERIG_INKOMEN,
+                persoon="P1",
+                bedrag=Decimal("12000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            )
+        ],
+    )
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1950, 1, 1), heeft_partner=False)
+    config, aanname = laad_tarieven(2026)
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=persoon1,
+        persoon2=None,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("0"),
+    )
+
+    assert detail["jaar_overig_p1"] == Decimal("0")
+    assert detail["jaar_aow_p1"] > Decimal("0")
+    assert detail["aow_waarschuwingen"] == ["AOW"]
+
+
+def test_accountant_toont_nooit_p2_bij_eenpersoonshuishouden() -> None:
+    """Bij een eenpersoonshuishouden blijven P2-velden leeg en niet meegerekend."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    scenario = Scenario(
+        naam="Alleenstaand",
+        vermogensitems=[
+            VermogensItem(
+                omschrijving="Woning",
+                type=VermogensType.EIGEN_WONING,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("300000"),
+                woz_waarde=Decimal("300000"),
+                box3_belast=False,
+            )
+        ],
+    )
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False)
+    config, aanname = laad_tarieven(2026)
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=persoon1,
+        persoon2=None,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("0"),
+    )
+
+    assert detail["bruto_p2"] == Decimal("0")
+    assert detail["box1_grondslag_p2"] == Decimal("0")
+    assert detail["ew_p2"] is None
+    assert detail["ew_p1"].eigenwoningforfait == Decimal("1050.00")
+
+
+def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
+    """Accountantdetail moet de resolved box-3 forfaitwaarden gebruiken."""
+    from pensioen.models.scenario import TariefPeriodeItem
+    from pensioen.tax.belasting_loader import laad_tarieven, resolve_tariefwaarden_voor_jaar
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    scenario = Scenario(naam="Forfait override", spaargeld_start=Decimal("200000"))
+    config_basis, aanname = laad_tarieven(2026)
+    config, bronnen = resolve_tariefwaarden_voor_jaar(
+        config_basis,
+        2026,
+        [
+            TariefPeriodeItem(
+                sleutel="box3_forfait_spaargeld",
+                startjaar=2026,
+                eindjaar=2026,
+                waarde=Decimal("0.0123"),
+            ),
+            TariefPeriodeItem(
+                sleutel="box3_forfait_overig",
+                startjaar=2026,
+                eindjaar=2026,
+                waarde=Decimal("0.0678"),
+            ),
+        ],
+    )
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False),
+        persoon2=None,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("200000"),
+        tarief_bronnen=bronnen,
+    )
+
+    assert detail["box3_forfait_spaargeld"] == Decimal("0.0123")
+    assert detail["box3_forfait_overig"] == Decimal("0.0678")
+    assert detail["box3_bron_forfait_spaargeld"].startswith("periode-match")
+    assert detail["box3_bron_forfait_overig"].startswith("periode-match")

@@ -8,7 +8,7 @@ from decimal import Decimal
 import streamlit as st
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
-from pensioen.models.component import BedragType, CategorieComponent
+from pensioen.models.component import BedragType, CategorieComponent, is_handmatige_aow_component
 from pensioen.tax import aow_engine, belasting_engine, heffingskorting
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
 from pensioen.tax.eigen_woning_engine import EigenWoningInvoer, EigenWoningResultaat, bereken_eigen_woning
@@ -63,32 +63,40 @@ def _bereken_eigen_woning_voor_weergave(
     config: BelastingConfig,
 ) -> tuple[EigenWoningResultaat, EigenWoningResultaat | None]:
     """Bereken eigen-woningregels direct uit de bronwaarden voor de accountantstabel."""
-    factor_p1 = Decimal("0.5") if heeft_partner else Decimal("1")
-    ew_p1 = bereken_eigen_woning(
-        EigenWoningInvoer(
+    ew_invoer_p1 = d.get("ew_invoer_p1")
+    ew_invoer_p2 = d.get("ew_invoer_p2")
+    if ew_invoer_p1 is None:
+        factor_p1 = Decimal("0.5") if heeft_partner else Decimal("1")
+        ew_invoer_p1 = EigenWoningInvoer(
             woz_waarde=d.get("ew_woz_waarde", Decimal("0")) * factor_p1,
             betaalde_hypotheekrente=d.get("ew_betaalde_hypotheekrente", Decimal("0")) * factor_p1,
             overige_aftrekbare_kosten=Decimal("0") * factor_p1,
             eigenwoningschuld_begin=d.get("ew_schuld_begin", Decimal("0")) * factor_p1,
             eigenwoningschuld_eind=d.get("ew_schuld_begin", Decimal("0")) * factor_p1,
             bruto_inkomen_box1=d.get("bruto_p1", Decimal("0")),
-        ),
+        )
+
+    ew_p1 = bereken_eigen_woning(
+        ew_invoer_p1,
         config,
     )
 
     if not heeft_partner:
         return ew_p1, None
 
-    factor_p2 = Decimal("0.5")
-    ew_p2 = bereken_eigen_woning(
-        EigenWoningInvoer(
+    if ew_invoer_p2 is None:
+        factor_p2 = Decimal("0.5")
+        ew_invoer_p2 = EigenWoningInvoer(
             woz_waarde=d.get("ew_woz_waarde", Decimal("0")) * factor_p2,
             betaalde_hypotheekrente=d.get("ew_betaalde_hypotheekrente", Decimal("0")) * factor_p2,
             overige_aftrekbare_kosten=Decimal("0") * factor_p2,
             eigenwoningschuld_begin=d.get("ew_schuld_begin", Decimal("0")) * factor_p2,
             eigenwoningschuld_eind=d.get("ew_schuld_begin", Decimal("0")) * factor_p2,
             bruto_inkomen_box1=d.get("bruto_p2", Decimal("0")),
-        ),
+        )
+
+    ew_p2 = bereken_eigen_woning(
+        ew_invoer_p2,
         config,
     )
     return ew_p1, ew_p2
@@ -99,10 +107,23 @@ def _component_som_maand(scenario, categorie, persoon, jaar: int, maand: int, be
     return sum(
         (c.bedrag_per_maand_actief(jaar, maand) for c in scenario.componenten
          if c.categorie == categorie
+         and not is_handmatige_aow_component(c)
          and (persoon is None or c.persoon == persoon)
          and (bedrag_type is None or c.bedrag_type == bedrag_type)),
         Decimal("0"),
     )
+
+
+def _handmatige_aow_componenten(scenario, jaar: int) -> list[str]:
+    """Geef actieve handmatige AOW-componenten terug voor een belastingjaar."""
+
+    gevonden: list[str] = []
+    for component in scenario.componenten:
+        if not is_handmatige_aow_component(component):
+            continue
+        if any(component.is_actief(jaar, maand) for maand in range(1, 13)):
+            gevonden.append(component.omschrijving)
+    return gevonden
 
 
 def _bereken_jaar_detail(
@@ -122,11 +143,16 @@ def _bereken_jaar_detail(
     Retourneert een dict met alle berekeningen voor weergave.
     """
     heeft_partner = persoon2 is not None
+    handmatige_aow_componenten = _handmatige_aow_componenten(scenario, jaar)
 
     # Synchroniseer fiscale eigen-woninggegevens met de nieuwe vermogensinvoer.
     # De accountant rekent nog steeds met Scenario.eigen_woning als fiscale bron.
-    eigen_woning_invoer = scenario.verzamel_eigen_woning_invoer_uit_vermogensitems(jaar)
-    scenario.sync_eigen_woning_uit_vermogensitems(jaar)
+    eigen_woning_invoer = scenario.verzamel_fiscale_eigen_woning_invoer(
+        jaar=jaar,
+        heeft_partner=heeft_partner,
+    )
+    if eigen_woning_invoer["bron"] == "vermogensitems":
+        scenario.sync_eigen_woning_uit_vermogensitems(jaar)
     heeft_eigen_woning_invoer = bool(eigen_woning_invoer["heeft_invoer"])
 
     # AOW-datums en bedragen
@@ -263,46 +289,30 @@ def _bereken_jaar_detail(
         box3_bezittingen=Decimal("0"), box3_schulden=Decimal("0"),
     )
     ew_p1 = _nul_ew
-    ew_p2 = _nul_ew
-    if heeft_eigen_woning_invoer or getattr(scenario, "heeft_eigen_woning", False):
-        woz_waarde = eigen_woning_invoer["woz_waarde"] if heeft_eigen_woning_invoer else scenario.eigen_woning.woz_waarde
-        betaalde_hypotheekrente = (
-            eigen_woning_invoer["betaalde_hypotheekrente"]
-            if heeft_eigen_woning_invoer
-            else scenario.eigen_woning.betaalde_hypotheekrente
-        )
-        overige_aftrekbare_kosten = scenario.eigen_woning.overige_aftrekbare_kosten
-        eigenwoningschuld_begin = (
-            eigen_woning_invoer["eigenwoningschuld_begin"]
-            if heeft_eigen_woning_invoer
-            else scenario.eigen_woning.eigenwoningschuld_begin
-        )
-        eigenwoningschuld_eind = (
-            eigen_woning_invoer["eigenwoningschuld_eind"]
-            if heeft_eigen_woning_invoer
-            else scenario.eigen_woning.eigenwoningschuld_eind
-        )
-        factor_p1 = Decimal("0.5") if heeft_partner else Decimal("1")
+    ew_p2 = None
+    if heeft_eigen_woning_invoer:
+        huishouden_invoer = eigen_woning_invoer["huishouden"]
+        p1_invoer = eigen_woning_invoer["p1"]
+        p2_invoer = eigen_woning_invoer["p2"]
         ew_p1 = bereken_eigen_woning(
             EigenWoningInvoer(
-                woz_waarde=woz_waarde * factor_p1,
-                betaalde_hypotheekrente=betaalde_hypotheekrente * factor_p1,
-                overige_aftrekbare_kosten=overige_aftrekbare_kosten * factor_p1,
-                eigenwoningschuld_begin=eigenwoningschuld_begin * factor_p1,
-                eigenwoningschuld_eind=eigenwoningschuld_eind * factor_p1,
+                woz_waarde=p1_invoer.woz_waarde,
+                betaalde_hypotheekrente=p1_invoer.betaalde_hypotheekrente,
+                overige_aftrekbare_kosten=p1_invoer.overige_aftrekbare_kosten,
+                eigenwoningschuld_begin=p1_invoer.eigenwoningschuld_begin,
+                eigenwoningschuld_eind=p1_invoer.eigenwoningschuld_eind,
                 bruto_inkomen_box1=bruto_p1,
             ),
             config,
         )
-        if heeft_partner:
-            factor_p2 = Decimal("0.5")
+        if heeft_partner and p2_invoer is not None:
             ew_p2 = bereken_eigen_woning(
                 EigenWoningInvoer(
-                    woz_waarde=woz_waarde * factor_p2,
-                    betaalde_hypotheekrente=betaalde_hypotheekrente * factor_p2,
-                    overige_aftrekbare_kosten=overige_aftrekbare_kosten * factor_p2,
-                    eigenwoningschuld_begin=eigenwoningschuld_begin * factor_p2,
-                    eigenwoningschuld_eind=eigenwoningschuld_eind * factor_p2,
+                    woz_waarde=p2_invoer.woz_waarde,
+                    betaalde_hypotheekrente=p2_invoer.betaalde_hypotheekrente,
+                    overige_aftrekbare_kosten=p2_invoer.overige_aftrekbare_kosten,
+                    eigenwoningschuld_begin=p2_invoer.eigenwoningschuld_begin,
+                    eigenwoningschuld_eind=p2_invoer.eigenwoningschuld_eind,
                     bruto_inkomen_box1=bruto_p2,
                 ),
                 config,
@@ -310,7 +320,10 @@ def _bereken_jaar_detail(
 
     # Box 1 grondslag na eigen woning correctie
     box1_grondslag_p1 = max(Decimal("0"), bruto_p1 + ew_p1.box1_mutatie)
-    box1_grondslag_p2 = max(Decimal("0"), bruto_p2 + ew_p2.box1_mutatie)
+    box1_grondslag_p2 = max(
+        Decimal("0"),
+        bruto_p2 + (ew_p2.box1_mutatie if ew_p2 is not None else Decimal("0")),
+    )
 
     # Belasting persoon 1 — detailberekening
     aow_breuk_p1 = aow_engine.aow_breuk_jaar(persoon1.geboortedatum, jaar)
@@ -365,7 +378,9 @@ def _bereken_jaar_detail(
         totale_hk_p2 = ahk_p2 + ak_p2 + ok_p2 + aok_p2
         
         # Totaal verschuldigd persoon 2 (incl. tariefsaanpassing eigen woning)
-        totaal_ib_en_premies_p2 = bel_voor_korting_p2 + totaal_premies_p2 + ew_p2.tariefsaanpassing
+        totaal_ib_en_premies_p2 = bel_voor_korting_p2 + totaal_premies_p2 + (
+            ew_p2.tariefsaanpassing if ew_p2 is not None else Decimal("0")
+        )
         netto_bel_p2 = max(Decimal("0"), totaal_ib_en_premies_p2 - totale_hk_p2)
         netto_p2 = bruto_p2 - netto_bel_p2
 
@@ -390,7 +405,7 @@ def _bereken_jaar_detail(
     # Rendement en inleg (legacy fallbacks)
     rendement_pct_gebruikt = scenario.rendement_pct if scenario.rendement_pct is not None else Decimal("0")
     maandrendement = vermogen_engine.maandrendement(rendement_pct_gebruikt) if rendement_pct_gebruikt > Decimal("0") else Decimal("0")
-    inleg_per_maand = (scenario.jaarlijkse_inleg / Decimal("12")).quantize(Decimal("0.01"))
+    inleg_per_maand = (scenario.totaal_jaarlijkse_inleg() / Decimal("12")).quantize(Decimal("0.01"))
     box3_per_maand = (box3_heffing / Decimal("12")).quantize(Decimal("0.01"))
     maand_bel_p1 = (bel_voor_korting_p1 / Decimal("12")).quantize(Decimal("0.01"))
     maand_hk_p1 = (totale_hk_p1 / Decimal("12")).quantize(Decimal("0.01"))
@@ -463,11 +478,35 @@ def _bereken_jaar_detail(
         "ew_p1": ew_p1,
         "ew_p2": ew_p2,
         "ew_invoer_gevonden": heeft_eigen_woning_invoer,
+        "ew_bron": eigen_woning_invoer["bron"],
+        "ew_huishouden": eigen_woning_invoer["huishouden"],
+        "ew_invoer_p1": (
+            EigenWoningInvoer(
+                woz_waarde=eigen_woning_invoer["p1"].woz_waarde,
+                betaalde_hypotheekrente=eigen_woning_invoer["p1"].betaalde_hypotheekrente,
+                overige_aftrekbare_kosten=eigen_woning_invoer["p1"].overige_aftrekbare_kosten,
+                eigenwoningschuld_begin=eigen_woning_invoer["p1"].eigenwoningschuld_begin,
+                eigenwoningschuld_eind=eigen_woning_invoer["p1"].eigenwoningschuld_eind,
+                bruto_inkomen_box1=bruto_p1,
+            )
+            if heeft_eigen_woning_invoer else None
+        ),
+        "ew_invoer_p2": (
+            EigenWoningInvoer(
+                woz_waarde=eigen_woning_invoer["p2"].woz_waarde,
+                betaalde_hypotheekrente=eigen_woning_invoer["p2"].betaalde_hypotheekrente,
+                overige_aftrekbare_kosten=eigen_woning_invoer["p2"].overige_aftrekbare_kosten,
+                eigenwoningschuld_begin=eigen_woning_invoer["p2"].eigenwoningschuld_begin,
+                eigenwoningschuld_eind=eigen_woning_invoer["p2"].eigenwoningschuld_eind,
+                bruto_inkomen_box1=bruto_p2,
+            )
+            if heeft_eigen_woning_invoer and heeft_partner and eigen_woning_invoer["p2"] is not None else None
+        ),
         "ew_woning_items": eigen_woning_invoer["woning_items"],
         "ew_hypotheek_items": eigen_woning_invoer["hypotheek_items"],
-        "ew_woz_waarde": eigen_woning_invoer["woz_waarde"],
-        "ew_betaalde_hypotheekrente": eigen_woning_invoer["betaalde_hypotheekrente"],
-        "ew_schuld_begin": eigen_woning_invoer["eigenwoningschuld_begin"],
+        "ew_woz_waarde": eigen_woning_invoer["huishouden"].woz_waarde,
+        "ew_betaalde_hypotheekrente": eigen_woning_invoer["huishouden"].betaalde_hypotheekrente,
+        "ew_schuld_begin": eigen_woning_invoer["huishouden"].eigenwoningschuld_begin,
         "aow_breuk_p1": aow_breuk_p1,
         "aow_breuk_p2": aow_breuk_p2,
         "is_aow_p1": is_aow_p1,
@@ -504,13 +543,17 @@ def _bereken_jaar_detail(
         "box3_forfait_spaargeld": config.box3.forfaitair_spaargeld,
         "box3_forfait_overig": config.box3.forfaitair_overig,
         "box3_tarief": config.box3.tarief,
+        "box3_bron_tarief": (tarief_bronnen or {}).get("box3_tarief", "basisconfig"),
+        "box3_bron_forfait_spaargeld": (tarief_bronnen or {}).get("box3_forfait_spaargeld", "basisconfig"),
+        "box3_bron_forfait_overig": (tarief_bronnen or {}).get("box3_forfait_overig", "basisconfig"),
         "box3_heffing": box3_heffing,
         "ouderenkorting_max": config.ouderenkorting.max_bedrag,
         "ouderenkorting_afbouw_van": config.ouderenkorting.afbouw_inkomen_van,
         "box3_info": box3_info,
+        "aow_waarschuwingen": handmatige_aow_componenten,
         "saldo_begin_jaar": saldo_begin_jaar,
         "maandrendement": maandrendement,
-        "inleg_per_jaar": scenario.jaarlijkse_inleg,
+        "inleg_per_jaar": scenario.totaal_jaarlijkse_inleg(),
         "saldo_einde_jaar": saldo_einde_jaar,
         "jaar_rendement": sum(r["rente"] for r in vermogen_rijen),
         "jaar_netto_cashflow": sum(r["netto_cashflow"] for r in vermogen_rijen),
@@ -522,6 +565,13 @@ def _bereken_jaar_detail(
 def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: BelastingConfig) -> None:
     """Toon de bruto → netto berekening als genummerde stappen."""
     heeft_p2 = naam_p2 is not None and d["bruto_p2"] > Decimal("0")
+
+    if d.get("aow_waarschuwingen"):
+        st.warning(
+            "Handmatige AOW-component(en) gedetecteerd: "
+            + ", ".join(d["aow_waarschuwingen"])
+            + ". Automatische AOW blijft leidend; deze componenten zijn uit de inkomenssommen gefilterd om dubbeltelling te voorkomen."
+        )
 
     st.markdown("#### A. Bruto inkomsten")
     cols = ["Post", naam_p1] + ([naam_p2] if heeft_p2 else []) + ["Huishouden"]
@@ -817,6 +867,12 @@ def _toon_vermogen_detail(d: dict) -> None:
         ["**= Box 3 heffing (jaar)**", f"**{_fmt(d['box3_heffing'])}**", ""],
     ]
     st.table(_maak_tabel(["Post", "Bedrag", "Toelichting"], rijen_e))
+    st.caption(
+        "Bronnen box 3: "
+        f"tarief = {d['box3_bron_tarief']}; "
+        f"forfait spaargeld = {d['box3_bron_forfait_spaargeld']}; "
+        f"forfait overig = {d['box3_bron_forfait_overig']}."
+    )
     if d["box3_info"]:
         st.caption(f"⚠️ {d['box3_info']}")
 
@@ -940,7 +996,7 @@ def toon_accountant_pagina() -> None:
         return
 
     st.caption("Overzicht wordt automatisch herberekend bij wijzigingen in personen of scenario.")
-    saldo = scenario.totaal_vermogen_start()
+    saldo = scenario.totaal_vermogen_op_datum(date(int(jaar_van), 1, 1))
 
     for jaar in range(int(jaar_van), int(jaar_tot) + 1):
         config_basis, aanname = laad_tarieven(jaar)
@@ -978,7 +1034,9 @@ def toon_accountant_pagina() -> None:
                     "Tariefbronnen dit jaar: "
                     f"box1 niet-AOW schijf 1 tarief = {d['tarief_bronnen'].get('box1_niet_aow_s1_tarief', 'basisconfig')}; "
                     f"box1 AOW schijf 1 tarief = {d['tarief_bronnen'].get('box1_aow_s1_tarief', 'basisconfig')}; "
-                    f"box3 tarief = {d['tarief_bronnen'].get('box3_tarief', 'basisconfig')}."
+                    f"box3 tarief = {d['tarief_bronnen'].get('box3_tarief', 'basisconfig')}; "
+                    f"box3 forfait spaargeld = {d['tarief_bronnen'].get('box3_forfait_spaargeld', 'basisconfig')}; "
+                    f"box3 forfait overig = {d['tarief_bronnen'].get('box3_forfait_overig', 'basisconfig')}."
                 )
 
             st.markdown(

@@ -181,6 +181,20 @@ class FinancieelComponent(BaseModel):
         ]
 
 
+def is_handmatige_aow_component(component: FinancieelComponent) -> bool:
+    """True als een component zeer waarschijnlijk een handmatig ingevoerde AOW is."""
+
+    if component.categorie not in {
+        CategorieComponent.PENSIOEN_INKOMEN,
+        CategorieComponent.OVERIG_INKOMEN,
+    }:
+        return False
+
+    omschrijving = component.omschrijving.strip().lower().replace("_", " ")
+    omschrijving = " ".join(omschrijving.replace("-", " ").split())
+    return omschrijving in {"aow", "aow uitkering", "aow uitkering p1", "aow uitkering p2"}
+
+
 # ---------------------------------------------------------------------------
 # Component-sjablonen
 # ---------------------------------------------------------------------------
