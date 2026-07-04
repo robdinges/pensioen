@@ -220,6 +220,28 @@ def normalize_metadata(data: dict, report: NormalizationReport, testcase_id: str
     return result
 
 
+def normalize_eigen_woning(data: dict, report: NormalizationReport, testcase_id: str) -> dict | None:
+    """Normaliseer eigen_woning-veld als aanwezig."""
+    eigen_woning = data.get("eigen_woning")
+    if not isinstance(eigen_woning, dict):
+        if data.get("huishouden", {}).get("eigen_huis"):
+            report.add_warning(NormalizationWarning(
+                testcase_id,
+                "huishouden.eigen_huis is true maar geen eigen_woning details gevonden",
+                "eigen_woning"
+            ))
+        return None
+
+    result = {
+        "woz_waarde": eigen_woning.get("woz_waarde", 0),
+        "betaalde_hypotheekrente": eigen_woning.get("betaalde_hypotheekrente", 0),
+        "overige_aftrekbare_kosten": eigen_woning.get("overige_aftrekbare_kosten", 0),
+        "eigenwoningschuld_begin": eigen_woning.get("eigenwoningschuld_begin", 0),
+        "eigenwoningschuld_eind": eigen_woning.get("eigenwoningschuld_eind", 0),
+    }
+    return result
+
+
 def normalize_testcase(filepath: Path, report: NormalizationReport) -> dict | None:
     """Normaliseer één testcase JSON."""
     try:
@@ -249,6 +271,9 @@ def normalize_testcase(filepath: Path, report: NormalizationReport) -> dict | No
         ]
         normalized["vermogen"] = normalize_vermogen(data, report, testcase_id)
         normalized["verwachte_belasting"] = normalize_verwachte_belasting(data, report, testcase_id)
+        eigen_woning = normalize_eigen_woning(data, report, testcase_id)
+        if eigen_woning is not None:
+            normalized["eigen_woning"] = eigen_woning
         normalized["metadata"] = normalize_metadata(data, report, testcase_id)
         
         report.add_success(testcase_id)

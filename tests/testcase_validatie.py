@@ -6,6 +6,7 @@ te berekenen en te vergelijken met de verwachte belasting uit de testcase.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -16,6 +17,42 @@ from tests.scenario_generator import genereer_personen, genereer_testcase_scenar
 
 # Import accountant helper (internal function)
 from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+
+def _pas_aow_bedrag_aan_voor_testcase(testcase: TestCase, config):
+    """Gebruik testcase-specifieke AOW-bedragen i.p.v. generieke jaarconfig.
+
+    Voor validatiecases uit de Belastingdienst simulator kunnen de AOW-bedragen
+    afwijken van de standaardwaarden in `config/belasting_YYYY.json`.
+    Deze helper overschrijft daarom tijdelijk de relevante maandbedragen.
+    """
+    aow_bedragen = [
+        Decimal(p.bruto_aow)
+        for p in testcase.personen
+        if Decimal(p.bruto_aow) > Decimal("0")
+    ]
+
+    if not aow_bedragen:
+        return config
+
+    if testcase.is_paar:
+        # Voor partnerhuishoudens gebruikt de engine het partner-AOW maandbedrag.
+        # Neem het gemiddelde van de opgegeven jaarlijkse AOW-bedragen voor stabiliteit.
+        jaarbedrag = sum(aow_bedragen) / Decimal(str(len(aow_bedragen)))
+        maandbedrag = jaarbedrag / Decimal("12")
+        nieuwe_aow_bedragen = replace(
+            config.aow_bedrag,
+            gehuwd_of_samenwonend_per_maand=maandbedrag,
+        )
+    else:
+        jaarbedrag = aow_bedragen[0]
+        maandbedrag = jaarbedrag / Decimal("12")
+        nieuwe_aow_bedragen = replace(
+            config.aow_bedrag,
+            alleenstaande_per_maand=maandbedrag,
+        )
+
+    return replace(config, aow_bedrag=nieuwe_aow_bedragen)
 
 
 def bereken_belasting_testcase(testcase: TestCase) -> dict:
@@ -35,6 +72,7 @@ def bereken_belasting_testcase(testcase: TestCase) -> dict:
     
     # Laad belastingtarieven
     config, aanname = laad_tarieven(testcase.jaar)
+    config = _pas_aow_bedrag_aan_voor_testcase(testcase, config)
     
     # Geen pensioenrecords (allemaal via componenten)
     records1 = []

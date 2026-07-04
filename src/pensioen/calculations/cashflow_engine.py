@@ -288,9 +288,8 @@ def _bereken_jaar(
     box3_maand = Decimal("0")
     box3_disclaimer = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
-        # Bereken dynamische split op basis van actieve componenten aan het begin van het jaar
-        peildatum_box3 = date(jaar, 1, 1)
-        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_op_datum(peildatum_box3)
+        # Box 3 peildatum gebruikt startverdeling (1 januari), niet maandcomponenten.
+        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_startvermogen()
         
         box3_jaar, box3_disclaimer = belasting_engine.bereken_box3_heffing(
             saldo_begin_jaar, belasting_config, heeft_partner,

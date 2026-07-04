@@ -1,0 +1,74 @@
+{
+  "testcase_id": "tc_2025_008",
+  "naam": "IB2025 TC3 - Alleenstaand gepensioneerd met eigen woning",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-07-04",
+  "bron_formaat": "belastingdienst_simulator_2025_screentranscript",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "is_gehuwd": false,
+    "eigen_huis": true
+  },
+  "personen": [
+    {
+      "naam": "Persoon A",
+      "geboortedatum": "1940-01-01",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 40000,
+      "bruto_aow": 20400,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": true
+    }
+  ],
+  "vermogen": {
+    "totaal": 500000,
+    "spaargeld_fractie": 0.4,
+    "spaargeld": 200000,
+    "beleggingen": 300000
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 12113,
+    "totaal_verschuldigd_p1": 12113,
+    "bruto_p1": 39200,
+    "box1_ib_p1": 3202,
+    "box1_schijf1_p1": 3140.63,
+    "box1_schijf2_p1": 284.47,
+    "premie_aow_p1": 0,
+    "premie_anw_p1": 38.44,
+    "premie_wlz_p1": 3709.56,
+    "totaal_premies_p1": 3748,
+    "ahk_p1": 1192.97,
+    "ouderenkorting_p1": 1884,
+    "alleenstaandeouderenkorting": 531,
+    "totaal_kortingen_p1": 1401,
+    "box3_vrijstelling": 57684,
+    "box3_grondslag": 442316,
+    "box3_fictief_rendement": 18028,
+    "box3_heffing": 6490,
+    "box3_heffing_p1": 6490,
+    "eigen_woning_bijtelling_aftrek_p1": -21200,
+    "totaal_ib_en_premies": 12113,
+    "totaal_ib_en_premies_p1": 12113
+  },
+  "eigen_woning": {
+    "woz_waarde": 800000,
+    "betaalde_hypotheekrente": 24000,
+    "overige_aftrekbare_kosten": 0,
+    "eigenwoningschuld_begin": 800000,
+    "eigenwoningschuld_eind": 800000
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Belastingjaar 2025",
+      "Alleenstaand gepensioneerd met AOW",
+      "Pensioen 40.000 euro en AOW 20.400 euro",
+      "WOZ 800.000 euro, hypotheek 800.000 euro, rente 24.000 euro",
+      "Vermogen 200.000 sparen en 300.000 beleggen"
+    ],
+    "opmerkingen": "Totaal heffingskortingen bestaat uit AHK, ouderenkorting en alleenstaandeouderenkorting.",
+    "data_kwaliteit": "volledig",
+    "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
+    "_incomplete": false
+  }
+}

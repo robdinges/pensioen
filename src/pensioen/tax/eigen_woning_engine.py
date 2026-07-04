@@ -91,7 +91,7 @@ def _bereken_eigenwoningforfait(
 
 def _bereken_tariefsaanpassing(
     aftrek: Decimal,
-    bruto_inkomen: Decimal,
+    inkomen_voor_aftrek: Decimal,
     config: BelastingConfig,
 ) -> tuple[Decimal, str]:
     """
@@ -114,10 +114,10 @@ def _bereken_tariefsaanpassing(
             schijf3_grens = schijf.tot
             break
 
-    if bruto_inkomen <= schijf3_grens:
+    if inkomen_voor_aftrek <= schijf3_grens:
         return Decimal("0"), ""
 
-    aftrek_in_schijf3 = min(aftrek, bruto_inkomen - schijf3_grens)
+    aftrek_in_schijf3 = min(aftrek, inkomen_voor_aftrek - schijf3_grens)
     aanpassing = _rond_af(aftrek_in_schijf3 * config.eigen_woning.tariefsaanpassing_pct)
 
     if aanpassing > Decimal("0"):
@@ -203,10 +203,15 @@ def bereken_eigen_woning(
     # 5. Tariefsaanpassing (op de TOTALE AFTREKBARE KOSTEN, niet op het netto saldo)
     # Art. 3.123a Wet IB 2001: aftrekposten zijn begrensd tot schijf-2-tarief.
     # Grondslag = renteaftrek + overige kosten (vóór netting met forfait).
+    # Voor schijf-3-bepaling telt het eigenwoningforfait als positief box-1-inkomen
+    # vóór toepassing van de aftrek.
     tariefsaanpassing = nul
     if totaal_aftrek > nul:
+        inkomen_voor_aftrek = invoer.bruto_inkomen_box1 + forfait
         tariefsaanpassing, aanpassing_toelichting = _bereken_tariefsaanpassing(
-            totaal_aftrek, invoer.bruto_inkomen_box1, config
+            totaal_aftrek,
+            inkomen_voor_aftrek,
+            config,
         )
         if aanpassing_toelichting:
             toelichting.append(aanpassing_toelichting)

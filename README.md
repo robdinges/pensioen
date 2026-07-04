@@ -6,6 +6,7 @@ cashflowprognose voor een huishouden.
 ## Features
 
 - Bruto-naar-netto berekening voor loon, AOW en pensioen per persoon.
+  - afbouw van de algemene heffingskorting volgt bruto jaarinkomen als toetsingsbasis
 - Box 3 berekening via forfaitair rendement:
   - spaargelddeel met `forfaitair_spaargeld`
   - overig/beleggingendeel met `forfaitair_overig`
@@ -26,6 +27,10 @@ cashflowprognose voor een huishouden.
   - toont bij een eenpersoonshuishouden nooit P2-kolommen of P2-bedragen
   - waarschuwt bij handmatig ingevoerde AOW-componenten en filtert deze uit de inkomenssom om dubbeltelling te voorkomen
   - toont de gebruikte bron voor box 3 tarief en forfaiten voor sparen/beleggen
+- Scriptmatige accountant-detail export voor validatie:
+  - exporteert dezelfde jaar-detailberekening als de accountantspagina naar JSON en Markdown
+  - ondersteunt batch-export van IB 2025 cases (`tc_2025_006` t/m `tc_2025_011`) en losse testcase-ID's
+  - schrijft een batchsamenvatting met PASS/WARN/FAIL drempels
 - Gestructureerde scenario-invoer met meerdere regels per component:
   - extra bruto loon/uitkering
   - inhoudingen (loonbelasting etc.)
@@ -41,6 +46,14 @@ cashflowprognose voor een huishouden.
   - eerste kolom toont welk scenario actief is
   - direct bewerken, selecteren en verwijderen vanuit dezelfde rij
   - standaardscenario kiezen via radioknop (geen ster-icoonactie)
+- API-first laag (Epic 1 MVP):
+  - FastAPI-endpoints voor healthcheck, berekening, scenariovergelijking en Excel-rapportage
+  - automatische OpenAPI/Swagger documentatie
+  - inheritance-validatie op scenario-lijsten (cycles, orphans, self-parenting)
+- Simpele API-gedreven UI:
+  - minimale Streamlit client (`app_api_client.py`) die via HTTP de API aanroept
+  - expliciete Berekenen-knop
+  - melding wanneer invoer gewijzigd is sinds de laatste berekening
 
 ## Usage
 
@@ -50,18 +63,38 @@ cashflowprognose voor een huishouden.
 python3 -m pip install -e ".[dev]"
 ```
 
+Gebruik Python 3.12+ (vereist door dit project).
+
 2. Start de app:
 
 ```bash
 streamlit run app.py
 ```
 
-3. Beheer scenario's in het scherm Scenario:
+3. Start de API (Epic 1 MVP):
+
+```bash
+python -m uvicorn --app-dir src pensioen.api.main:app --reload
+```
+
+4. Open de Swagger/OpenAPI documentatie:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+5. Start de simpele API-client UI:
+
+```bash
+streamlit run app_api_client.py
+```
+
+6. Beheer scenario's in het scherm Scenario:
   - kies het standaardscenario via de radioknoppen
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
 
-4. Vul in het scherm Financiële Planning alle componenten in:
+7. Vul in het scherm Financiële Planning alle componenten in:
   - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen
   - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, hypotheek, auto's, kunst, etc.
     * Kies bij het type **Eigen woning** voor de woningvelden zoals WOZ-waarde en jaarlijkse waardestijging
@@ -72,13 +105,28 @@ streamlit run app.py
     * Voor andere bezittingen is dit waardestijging of afschrijving
   - **Eenmalige Posten**: Eenmalige ontvangsten en uitgaven op specifieke data
 
-5. Open in de app het tabblad Accountantsoverzicht en klik op
+8. Open in de app het tabblad Accountantsoverzicht en klik op
   Berekening uitvoeren.
 
-6. Controleer de componenttabel Netto cashflow opgebouwd uit losse
+9. Controleer de componenttabel Netto cashflow opgebouwd uit losse
   componenten in het accountantsoverzicht.
 
-7. Beheer belastingtarieven in het scherm Instellingen:
+10. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
+
+```bash
+PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py
+```
+
+Voor een specifieke testcase:
+
+```bash
+PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py tc_2025_007
+```
+
+Output staat standaard in
+`tests/fixtures/belasting_testcases/accountant_exports/`.
+
+11. Beheer belastingtarieven in het scherm Instellingen:
   - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
   - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
   - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren
@@ -88,3 +136,16 @@ streamlit run app.py
 ```bash
 python3 -m pytest tests/ -q
 ```
+
+Gerichte API-tests:
+
+```bash
+PYTHONPATH=src python3 -m pytest tests/test_api_main.py -q
+```
+
+Troubleshooting:
+
+- Fout `ModuleNotFoundError: No module named 'pensioen'`:
+  start de API met `--app-dir src` zoals hierboven.
+- Fout met `dataclass(..., slots=True)` of andere syntax/import issues:
+  controleer je interpreter met `python --version` en gebruik Python 3.12+.

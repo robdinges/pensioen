@@ -1,0 +1,103 @@
+{
+  "testcase_id": "tc_2025_010",
+  "naam": "IB2025 TC5 - Paar werkend en gepensioneerd met eigen woning",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-07-04",
+  "bron_formaat": "belastingdienst_simulator_2025_screentranscript",
+  "huishouden": {
+    "type": "PAAR",
+    "aantal_personen": 2,
+    "is_gehuwd": true,
+    "eigen_huis": true
+  },
+  "personen": [
+    {
+      "naam": "Eva Noord",
+      "geboortedatum": "1970-01-01",
+      "bruto_arbeid": 80000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    },
+    {
+      "naam": "Freek Sprank",
+      "geboortedatum": "1940-01-01",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 40000,
+      "bruto_aow": 20400,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": true
+    }
+  ],
+  "vermogen": {
+    "totaal": 500000,
+    "spaargeld": 200000,
+    "beleggingen": 300000,
+    "spaargeld_fractie": 0.4,
+    "verdeling_personen": {
+      "p1": 0.5,
+      "p2": 0.5
+    }
+  },
+  "eigen_woning": {
+    "woz_waarde": 800000,
+    "betaalde_hypotheekrente": 24000,
+    "overige_aftrekbare_kosten": 0,
+    "eigenwoningschuld_begin": 800000,
+    "eigenwoningschuld_eind": 800000
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 38314,
+    "totaal_verschuldigd_p1": 25549.96,
+    "totaal_verschuldigd_p2": 12226.81,
+    "bruto_p1": 69400,
+    "bruto_p2": 49800,
+    "box1_ib_p1": 15294.94,
+    "box1_ib_p2": 6793,
+    "box1_schijf1_p1": 3140,
+    "box1_schijf2_p1": 11603,
+    "box1_schijf1_p2": 3309,
+    "box1_schijf2_p2": 3484,
+    "premie_aow_p1": 6880,
+    "premie_anw_p1": 38,
+    "premie_wlz_p1": 3709,
+    "totaal_premies_p1": 10628,
+    "premie_aow_p2": 0,
+    "premie_anw_p2": 38.44,
+    "premie_wlz_p2": 3709.56,
+    "totaal_premies_p2": 3748,
+    "ahk_p1": 0,
+    "arbeidskorting_p1": 3195,
+    "totaal_kortingen_p1": 3195,
+    "ahk_p2": 1192.97,
+    "ouderenkorting_p2": 547.2,
+    "totaal_kortingen_p2": 795,
+    "box3_vrijstelling": 115368,
+    "box3_grondslag": 384632,
+    "box3_grondslag_p1": 192316,
+    "box3_grondslag_p2": 192316,
+    "box3_fictief_rendement": 15676,
+    "box3_heffing": 5643.94,
+    "box3_heffing_p1": 2821.97,
+    "box3_heffing_p2": 2821.97,
+    "eigen_woning_bijtelling_aftrek_p1": -10600,
+    "eigen_woning_bijtelling_aftrek_p2": -10600,
+    "tariefsaanpassing_aftrekposten_p1": 550.88,
+    "totaal_ib_en_premies": 38314,
+    "totaal_ib_en_premies_p1": 25549.96,
+    "totaal_ib_en_premies_p2": 12226.81
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Belastingjaar 2025",
+      "Fiscaal partners, persoon 1 werkend en persoon 2 gepensioneerd met AOW",
+      "Eigen woning van 800.000 euro met hypotheek 800.000 euro en rente 24.000 euro",
+      "Vermogen 500.000 euro met 50/50 verdeling tussen partners"
+    ],
+    "opmerkingen": "Persoon 2 heeft AOW-status heel jaar. Alleen voor persoon 1 is arbeidskorting van toepassing.",
+    "data_kwaliteit": "volledig",
+    "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
+    "_incomplete": false
+  }
+}

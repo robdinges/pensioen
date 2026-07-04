@@ -142,6 +142,28 @@ class Scenario(BaseModel):
     def totaal_vermogen_start(self) -> Decimal:
         """Totaal startvermogen (spaargeld + beleggingen)."""
         return self.spaargeld_start + self.beleggingen_start
+
+    def bereken_spaargeld_fractie_startvermogen(self) -> Decimal:
+        """Bereken spaargeldfractie op basis van expliciet startvermogen.
+
+        Dit is de juiste peildatum-verdeling voor box 3 op 1 januari:
+        spaargeld_start / (spaargeld_start + beleggingen_start).
+        """
+        totaal_start = self.totaal_vermogen_start()
+        if totaal_start > Decimal("0"):
+            return max(
+                Decimal("0"),
+                min(Decimal("1"), self.spaargeld_start / totaal_start),
+            )
+
+        # Fallback op legacy veld indien aanwezig
+        if self.box3_spaargeld_fractie is not None:
+            return max(
+                Decimal("0"),
+                min(Decimal("1"), self.box3_spaargeld_fractie),
+            )
+
+        return Decimal("0.5")
     
     def totaal_jaarlijkse_inleg(self) -> Decimal:
         """Retourneer totale jaarlijkse inleg (sparen + beleggen)."""

@@ -337,7 +337,9 @@ def _bereken_jaar_detail(
     )
     
     # Heffingskortingen persoon 1
-    ahk_p1 = heffingskorting.bereken_ahk(box1_grondslag_p1, config)
+    # AHK-afbouw volgt het toetsingsinkomen; voor deze detailberekening
+    # gebruiken we bruto jaarinkomen (vóór eigen-woningmutatie) voor consistentie.
+    ahk_p1 = heffingskorting.bereken_ahk(bruto_p1, config)
     ak_p1 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, config)
     ok_p1 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, config, is_aow_p1)
     aok_p1 = heffingskorting.bereken_alleenstaandeouderenkorting(
@@ -371,7 +373,7 @@ def _bereken_jaar_detail(
         )
         
         # Heffingskortingen persoon 2
-        ahk_p2 = heffingskorting.bereken_ahk(box1_grondslag_p2, config)
+        ahk_p2 = heffingskorting.bereken_ahk(bruto_p2, config)
         ak_p2 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, config)
         ok_p2 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p2, config, is_aow_p2)
         aok_p2 = Decimal("0")  # Alleenstaandeouderenkorting alleen voor alleenstaanden
@@ -391,10 +393,8 @@ def _bereken_jaar_detail(
     box3_info = ""
     spaargeld_fractie_box3 = scenario.box3_spaargeld_fractie  # default waarde
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
-        # Bereken dynamische split op basis van actieve componenten aan het begin van het jaar
-        # (consistent met cashflow_engine.py)
-        peildatum_box3 = date(jaar, 1, 1)
-        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_op_datum(peildatum_box3)
+        # Box 3 peildatum gebruikt startverdeling (1 januari), niet maandcomponenten.
+        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_startvermogen()
         
         box3_heffing, box3_info = belasting_engine.bereken_box3_heffing(
             saldo_begin_jaar, config, heeft_partner,

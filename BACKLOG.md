@@ -49,6 +49,133 @@
 
 ## 🔮 TOEKOMSTIGE FEATURES
 
+## 🚀 STRATEGISCHE EPICS (juli 2026)
+
+#### #401: Epic 1 - API-laag + simpele API-UI 🔴 HIGH
+**Beschrijving**: Stateless API-first MVP bovenop de bestaande rekenengine.
+
+**In scope (MVP)**:
+- FastAPI API met OpenAPI/Swagger
+- Endpoints voor health, berekening, scenariovergelijking en Excel-rapportage
+- Inheritance-validatie op API-input (cycles/orphans/self-parent)
+- Simpele Streamlit API-client met expliciete Berekenen-knop
+- Verouderd-status in UI bij invoerwijziging sinds laatste berekening
+
+**Opgeleverd in deze iteratie**:
+- `src/pensioen/api/main.py`
+- `src/pensioen/api/schemas.py`
+- `src/pensioen/api/serialisatie.py`
+- `app_api_client.py`
+- `tests/test_api_main.py`
+
+**Status**: 🚧 IN PROGRESS
+
+---
+
+#### #402: Epic 2 - Referentie- en parametertabellen 🔴 HIGH
+**Beschrijving**: Vaste codes + lookup-tabellen voor domeinwaarden.
+
+**Details**:
+- Codes voor inkomenssoorten, vermogenssoorten, frequenties, categorieen, datumtypes en belastingsoorten
+- Lookup-tabellen voor labels en meertaligheid
+- Validatie op codes, onafhankelijk van hoofdletters/spaties
+
+**Afhankelijkheden**: #401
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #403: Epic 3 - API-validatie en regressietestframework 🔴 HIGH
+**Beschrijving**: Uitgebreide testset voor businesslogica via API.
+
+**Details**:
+- API-contracttests
+- Regressietests met vaste referentiesets
+- Validatiesets en scenariovergelijkingen
+- Startpunt voor automatische acceptatietests
+
+**Afhankelijkheden**: #401
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #404: Epic 4 - Audit trail 🟡 MEDIUM
+**Beschrijving**: Volledige mutatiegeschiedenis van scenario-invoer.
+
+**Details**:
+- Wie wijzigde wat
+- Oude en nieuwe waarde
+- Datum/tijd
+- Optionele reden van wijziging
+
+**Afhankelijkheden**: #401, #403
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #405: Epic 5 - Rekenmodel uitbreidingen 🔴 HIGH
+**Beschrijving**: Nauwkeuriger modelleren van praktijkwijzigingen.
+
+**Details**:
+- Werkelijke vermogensstand als correctiemechanisme
+- Componenten per afgeleid scenario deactiveren (enabled-flag)
+- Jaarconfiguratie belasting met geldigheidsperiodes en zonder terugwerkende kracht
+- Uitgebreide validatie op modelconsistentie
+
+**Afhankelijkheden**: #401, #402
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #406: Epic 6 - UX-flow en berekenstatus 🟡 MEDIUM
+**Beschrijving**: Betere gebruikersflow met expliciete herberekening.
+
+**Details**:
+- Wizard/progress-bar benadering
+- Duidelijke Berekenen-knop
+- Status "gegevens gewijzigd sinds laatste berekening"
+- Resultaatweergave met verouderd/actueel indicatie
+
+**Afhankelijkheden**: #401
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #407: Epic 7 - Privacy-by-design + authenticatie 🔴 HIGH
+**Beschrijving**: Client/server-architectuur met minimale serverdata.
+
+**Details**:
+- Geen serveropslag van persoonsgegevens
+- Lokale opslag persoonsgegevens aan clientzijde
+- Authenticatie en sessiemanagement (hashes, tokens, timeout)
+- Alleen noodzakelijke data tijdelijk verwerken op server
+
+**Afhankelijkheden**: #401, #403
+
+**Status**: 📝 PLANNED
+
+---
+
+#### #408: Epic 8 - Monte Carlo module 🟡 MEDIUM
+**Beschrijving**: Onzekerheidsanalyse bovenop scenario's.
+
+**Details**:
+- Selecteerbare onzekerheidsvariabelen
+- Kansverdelingen en bandbreedtes
+- Percentielrapportage (bijv. P5/P50/P95)
+- Outlier-beperking in visualisatie
+
+**Afhankelijkheden**: #401, #402, #403
+
+**Status**: 📝 PLANNED
+
+---
+
 ### High Priority - Vermogenstypen & Box 3
 
 #### #001: Eigen woning 🔴 HIGH
@@ -724,6 +851,7 @@ en toon na opslaan een melding dat herstart nodig is.
 - #002: Overige bezittingen (auto, kunst)
 
 ### Q3 2026 (juli - september 2026)
+- #401: Epic 1 API-laag + simpele API-UI (gestart)
 - #004: Hypotheeklasten
 - #106: Geavanceerde validatie
 - #107: Import uitbreiden (PDF)
@@ -782,5 +910,5 @@ Voor het oppakken van items uit deze backlog:
 
 ---
 
-*Laatste update: 22 mei 2026*
-*Versie: 1.1 - Vermogensitems geïmplementeerd (#114, #002)*
+*Laatste update: 1 juli 2026*
+*Versie: 1.2 - Start Epic 1 API-first en strategische epics #401-#408 toegevoegd*

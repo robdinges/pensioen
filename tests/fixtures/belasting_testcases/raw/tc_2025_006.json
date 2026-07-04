@@ -1,0 +1,65 @@
+{
+  "testcase_id": "tc_2025_006",
+  "naam": "IB2025 TC1 - Alleenstaand werkend zonder eigen woning",
+  "jaar": 2025,
+  "datum_aangeleverd": "2026-07-04",
+  "bron_formaat": "belastingdienst_simulator_2025_screentranscript",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "is_gehuwd": false,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Persoon A",
+      "geboortedatum": "1970-01-01",
+      "bruto_arbeid": 80000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  "vermogen": {
+    "totaal": 500000,
+    "spaargeld": 200000,
+    "beleggingen": 300000,
+    "spaargeld_fractie": 0.4
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 33021,
+    "totaal_verschuldigd_p1": 33021,
+    "bruto_p1": 80000,
+    "box1_ib_p1": 19098,
+    "box1_schijf1_p1": 3140,
+    "box1_schijf2_p1": 14383,
+    "box1_schijf3_p1": 1575,
+    "premie_aow_p1": 6880,
+    "premie_anw_p1": 38,
+    "premie_wlz_p1": 3709,
+    "totaal_premies_p1": 10628,
+    "ahk_p1": 0,
+    "arbeidskorting_p1": 3195,
+    "totaal_kortingen_p1": 3195,
+    "box3_vrijstelling": 57684,
+    "box3_grondslag": 442316,
+    "box3_fictief_rendement": 18028,
+    "box3_heffing": 6490,
+    "box3_heffing_p1": 6490,
+    "totaal_ib_en_premies": 33021,
+    "totaal_ib_en_premies_p1": 33021
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Belastingjaar 2025",
+      "Alleenstaand, geen eigen woning",
+      "Werkinkomen 80.000 euro",
+      "Vermogen 200.000 sparen en 300.000 beleggen"
+    ],
+    "opmerkingen": "Referentie uit Belastingdienst simulator 2025. Bedragen overgenomen uit detailweergave.",
+    "data_kwaliteit": "volledig",
+    "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
+    "_incomplete": false
+  }
+}
