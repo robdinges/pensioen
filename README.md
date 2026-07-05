@@ -58,12 +58,22 @@ cashflowprognose voor een huishouden.
   - sidebar met live API-status en handmatige referentie-refresh
   - uitgebreid jaarresultaten-dashboard met KPI's, jaartabel en trendgrafieken
   - aparte tab voor ruwe API JSON-output
-- Nieuwe React UI (experimenteel, aparte branch `feature/react-ui-cards`):
+- Nieuwe React UI (experimenteel, aparte branch `feature/react-frontend-redesign-wizard`):
   - sectie **Inkomsten / Uitgaven** met tegel-cards voor loon, uitkering, pensioen en eenmalige posten
   - periodieke **Uitgave**-card in dezelfde sectie; wordt als negatieve cashflow verwerkt (buiten box 1/box 3)
   - sectie **Vermogen** met tegel-cards voor sparen, beleggen, eigen woning, overige bezittingen en hypotheek
   - type-afhankelijke invoervelden per card (o.a. begin/einddatum, bedrag, frequentie, groei/inflatie/rente)
   - berekenknop via API (`/api/v1/berekeningen`) met jaarresultaten in tabel/KPI's
+  - wizard-shell met persistente stapnavigatie, statusindicatoren en centrale contextbalk
+  - automatische local session save/restore in de frontend (zonder handmatige opslagknop)
+  - huishouden-stap met toevoegen, hernoemen, verwijderen en wisselen tussen meerdere huishoudens
+  - scenario-stap met toevoegen, hernoemen, verwijderen en kiezen van actief scenario per huishouden
+  - scenario-stap met dupliceren van actief scenario en aparte invoersnapshots per scenario
+  - personen-stap met optionele partner (P2), inclusief validatie en correcte payload naar de API
+  - periode-stap met jaarvalidatie; berekenen is geblokkeerd tot invoer geldig is
+  - rapport-stap met directe Excel-download via API (`/api/v1/rapportages/excel`) op basis van actieve invoer
+  - import-stap met MPO-bestandsimport naar pensioen-componenten (CSV, Excel en JSON in React; PDF volgt)
+  - import-validatie in React met preview, duplicate-waarschuwingen en telling van overgeslagen regels
 
 ## Usage
 
@@ -119,7 +129,7 @@ Om te berekenen in de React UI:
 1. Start eerst de API (`uvicorn ... pensioen.api.main:app`).
 2. Start daarna de React UI (`npm run dev` in `frontend-react`).
 3. Vul cards in voor inkomsten/uitgaven en vermogen.
-4. Klik op `Bereken via API`.
+4. Klik op `Berekenen` in de contextbalk bovenin.
 5. Bekijk resultaten in de sectie `Resultaten op Jaarbasis`.
 
 7. Beheer scenario's in het scherm Scenario:

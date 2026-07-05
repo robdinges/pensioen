@@ -24,10 +24,89 @@ body {
     var(--bg);
 }
 
+.layout {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.4rem 1rem 2.6rem;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+}
+
+.sidebar {
+  background: #122219;
+  border-radius: 18px;
+  padding: 1rem;
+  color: #deebdd;
+  position: sticky;
+  top: 1rem;
+  height: fit-content;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.sidebar-sub {
+  margin: 0.7rem 0 0.4rem;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: #8cae99;
+}
+
+.step-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.step-item {
+  background: transparent;
+  border: 0;
+  color: #c5dbca;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  padding: 0.42rem;
+  border-left: 2px solid transparent;
+}
+
+.step-item.is-current {
+  border-left-color: #8ecf9c;
+  background: rgba(142, 207, 156, 0.13);
+  color: #eaf9ee;
+}
+
+.step-item.is-completed {
+  color: #a2c3ac;
+}
+
+.step-item.is-upcoming {
+  color: #6b8671;
+}
+
+.step-num {
+  min-width: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  opacity: 0.9;
+}
+
+.step-symbol {
+  min-width: 1.2rem;
+  display: inline-block;
+}
+
+.calc-btn {
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
 .page {
   max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem 1rem 3rem;
 }
 
 .hero {
@@ -36,6 +115,87 @@ body {
   border-radius: 18px;
   padding: 1.5rem;
   margin-bottom: 1.2rem;
+}
+
+.hero.compact {
+  margin-top: 0.2rem;
+}
+
+.context-topbar {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 14px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.context-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.context-meta div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.context-meta span {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.context-meta strong {
+  font-size: 0.95rem;
+}
+
+.context-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.context-footnote {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.status-chip.idle {
+  background: #edf2e2;
+  color: #46614f;
+}
+
+.status-chip.stale {
+  background: #fff1dc;
+  color: #8f5a1f;
+}
+
+.status-chip.fresh {
+  background: #dff5e6;
+  color: #1f6e43;
+}
+
+.status-chip.calculating {
+  background: #ddeefe;
+  color: #1f558f;
 }
 
 .eyebrow {
@@ -77,6 +237,15 @@ body {
   margin-top: 0.5rem;
   color: #395042;
   font-size: 0.88rem;
+}
+
+.notice.warning {
+  color: #8f5a1f;
+  font-weight: 600;
+}
+
+.sidebar .notice {
+  color: #8cae99;
 }
 
 .section {
@@ -168,6 +337,35 @@ body {
   color: #4f6255;
 }
 
+.inline-field {
+  max-width: 460px;
+}
+
+.inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.inline-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+.household-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 0.8rem;
+}
+
+.validation-list {
+  margin: 0.85rem 0 0;
+  padding-left: 1.2rem;
+  color: #8f5a1f;
+}
+
 input,
 select,
 button,
@@ -235,6 +433,10 @@ pre {
   overflow-x: auto;
 }
 
+.import-preview {
+  margin-top: 0.8rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -254,12 +456,27 @@ th {
   background: #f2f8e8;
 }
 
+.flow-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
 @media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 0.8rem 0.6rem 2rem;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
 
   .page {
-    padding: 1rem 0.7rem 2.2rem;
+    padding: 0;
   }
 }
