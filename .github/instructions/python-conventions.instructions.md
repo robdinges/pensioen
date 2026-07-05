@@ -18,9 +18,20 @@ BELASTINGSCHIJF_1 = 0.3693
 ```
 
 ## Berekeningen
-- Gebruik `round(waarde, 2)` voor geldbedragen (€)
+- Gebruik `Decimal` en rond af met `quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)`
 - Documenteer eenheden in de docstring: `"""Geeft jaarlijks pensioen terug in euro's."""`
 - Valideer invoer aan de grenzen: `assert 18 <= leeftijd <= 100`
+
+## Afrondingsregels Belastingdienst (IB 2025)
+- Voer interne berekeningen uit met volledige precisie; geen tussentijdse afronding in formules
+- Rond pas af op logische eindniveaus per belastingplichtige (niet op huishoudniveau)
+- Rond componenten per persoon af nadat de volledige formule klaar is:
+  - box 1 belasting vóór kortingen
+  - premies volksverzekeringen
+  - heffingskortingen (AHK, ouderenkorting, overige kortingen)
+- Tel daarna pas de afgeronde componenten per persoon op tot eindbelasting
+- Rond nooit af op inkomens- of grondslagniveau
+- Box 3: bereken grondslag en fictief rendement volledig door; rond alleen de eindheffing af
 
 ## pandas / numpy
 - Geef kolommen Nederlandse namen: `df["bruto_salaris"]`, `df["opbouwjaren"]`

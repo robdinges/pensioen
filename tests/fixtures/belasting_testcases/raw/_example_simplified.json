@@ -1,8 +1,8 @@
 {
-  "_comment": "VEREENVOUDIGDE VERSIE van tc_2025_002 - alleen huishouden-totalen",
+  "_comment": "VEREENVOUDIGDE VOORBEELDCASE - alleen huishouden-totalen",
   "_purpose": "Voorbeeld voor pensioenplanning: per-persoon detail niet nodig",
   
-  "testcase_id": "tc_2025_002_simplified",
+  "testcase_id": "tc_2025_example_simplified",
   "naam": "Gehuwd paar - vereenvoudigd (huishouden-totaal)",
   "jaar": 2025,
   "datum_aangeleverd": "2026-06-05",
@@ -58,7 +58,7 @@
     ],
     "data_kwaliteit": "minimaal",
     "validatie_doel": "Pensioenplanning cashflow - huishouden-totaal voldoende",
-    "bron": "Afgeleide van tc_2025_002 (volledig)",
+    "bron": "Afgeleide van een volledige testcase",
     "_incomplete": false
   }
 }

@@ -111,6 +111,7 @@ class BelastingConfig:
     box3: Box3Config
     aow_bedrag: AOWBedragConfig
     premies: PremiesConfig | None  # Nieuw: gescheiden premies (vanaf 2025)
+    ahk_aow_factor: Decimal = Decimal("1")
     eigen_woning: EigenWoningConfig | None = None  # Eigen woning forfait en aftrek
 
 
@@ -188,6 +189,7 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             afbouw_pct=_d(data["algemene_heffingskorting"]["afbouw_pct"]),
             minimum=_d(data["algemene_heffingskorting"].get("minimum", 0)),
         ),
+        ahk_aow_factor=_d(data["algemene_heffingskorting"].get("aow_factor", 1)),
         arbeidskorting=ArbeidskortingConfig(
             max_bedrag=_d(data["arbeidskorting"]["max"]),
             afbouw_drempel=_d(data["arbeidskorting"]["afbouw_drempel"]),

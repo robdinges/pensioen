@@ -29,7 +29,7 @@ cashflowprognose voor een huishouden.
   - toont de gebruikte bron voor box 3 tarief en forfaiten voor sparen/beleggen
 - Scriptmatige accountant-detail export voor validatie:
   - exporteert dezelfde jaar-detailberekening als de accountantspagina naar JSON en Markdown
-  - ondersteunt batch-export van IB 2025 cases (`tc_2025_006` t/m `tc_2025_011`) en losse testcase-ID's
+  - ondersteunt batch-export van alle beschikbare genormaliseerde cases en losse testcase-ID's
   - schrijft een batchsamenvatting met PASS/WARN/FAIL drempels
 - Gestructureerde scenario-invoer met meerdere regels per component:
   - extra bruto loon/uitkering
@@ -126,7 +126,25 @@ PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py tc_2025_
 Output staat standaard in
 `tests/fixtures/belasting_testcases/accountant_exports/`.
 
-11. Beheer belastingtarieven in het scherm Instellingen:
+11. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
+
+```bash
+PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py
+```
+
+Voor een enkele testcase zonder het volledige rapport te overschrijven:
+
+```bash
+PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_010
+```
+
+Alleen als je expliciet een single-case rapport wilt schrijven:
+
+```bash
+PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_010 --schrijf-rapport
+```
+
+12. Beheer belastingtarieven in het scherm Instellingen:
   - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
   - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
   - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren

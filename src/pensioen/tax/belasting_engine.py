@@ -195,6 +195,7 @@ def netto_uit_bruto(
         arbeidsinkomen=arbeidsinkomen,
         config=config,
         is_aow=is_aow_deels,
+        aow_breuk=aow_breuk,
         is_alleenstaand=is_alleenstaand,
     )
 
@@ -216,7 +217,7 @@ def netto_uit_bruto(
         "premie_anw": float(premie_anw),
         "premie_wlz": float(premie_wlz),
         "totaal_premies": float(totaal_premies),
-        "ahk": float(heffingskorting.bereken_ahk(bruto, config)),
+        "ahk": float(heffingskorting.bereken_ahk_met_aow(bruto, config, aow_breuk)),
         "arbeidskorting": float(heffingskorting.bereken_arbeidskorting(arbeidsinkomen, config)),
         "ouderenkorting": float(
             heffingskorting.bereken_ouderenkorting(bruto, config, is_aow_deels)
@@ -286,6 +287,7 @@ def bereken_box3_heffing(
         spaargeld_fractie * config.box3.forfaitair_spaargeld
         + overig_fractie * config.box3.forfaitair_overig
     )
-    fictief_rendement = rond_af(belastbaar * gewogen_forfait)
+    # Geen tussentijdse afronding: eerst volledig fictief rendement, dan eindheffing afronden.
+    fictief_rendement = belastbaar * gewogen_forfait
     heffing = rond_af(fictief_rendement * config.box3.tarief)
     return heffing, config.box3.disclaimer

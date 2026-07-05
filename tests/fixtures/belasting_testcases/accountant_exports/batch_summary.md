@@ -1,10 +1,14 @@
-## Batch accountant export
+## Batch validatierapporten
 
-| testcase | verwacht | berekend | verschil | status |
-|---|---:|---:|---:|---|
-| tc_2025_006 | 33021 | 33023.92790000000000000000000 | 2.92790000000000000000000 | PASS |
-| tc_2025_007 | 25412 | 25414.72790000000000000000000 | 2.72790000000000000000000 | PASS |
-| tc_2025_008 | 12113 | 10055.49765000000000000000000 | -2057.50235000000000000000000 | FAIL |
-| tc_2025_009 | 51094 | 51101.85580000000000000000000 | 7.85580000000000000000000 | WARN |
-| tc_2025_010 | 38314 | 37778.70554999999999999999999 | -535.29445000000000000000001 | FAIL |
-| tc_2025_011 | 34522 | 33495.71530000000000000000000 | -1026.28470000000000000000000 | FAIL |
+- Input directory: tests/fixtures/belasting_testcases/normalized
+- Output directory: tests/fixtures/belasting_testcases/accountant_exports
+- Aantal testcases: 6
+
+| testcase | verwacht | berekend | verschil | status | markdown | json |
+|---|---:|---:|---:|---|---|---|
+| tc_2025_006 | 33021.00 | 33023.93 | 2.93 | PASS | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_006_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_006_accountant_detail.json |
+| tc_2025_007 | 25412.00 | 25414.73 | 2.73 | PASS | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_007_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_007_accountant_detail.json |
+| tc_2025_008 | 10055.50 | 10055.50 | 0.00 | PASS | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_008_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_008_accountant_detail.json |
+| tc_2025_009 | 51094.00 | 51101.86 | 7.86 | WARN | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_009_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_009_accountant_detail.json |
+| tc_2025_010 | 38313.71 | 38313.71 | 0.00 | PASS | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_010_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_010_accountant_detail.json |
+| tc_2025_011 | 35857.86 | 35857.86 | 0.00 | PASS | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_011_accountant_detail.md | tests/fixtures/belasting_testcases/accountant_exports/tc_2025_011_accountant_detail.json |

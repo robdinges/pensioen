@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.tax.belasting_loader import ArbeidskortingConfig, BelastingConfig, HeffingskortingConfig
+
+CENT = Decimal("0.01")
+
+
+def _rond_af_cent(bedrag: Decimal) -> Decimal:
+    """Rond af op eurocenten met de standaard Decimal quantize-regel."""
+    return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
 def _afbouw_korting(
@@ -21,13 +28,65 @@ def _afbouw_korting(
     return max(config.minimum, korting)
 
 
+def _afbouw_korting_met_maximum(
+    inkomen: Decimal,
+    minimum: Decimal,
+    maximum: Decimal,
+    afbouw_inkomen_van: Decimal,
+    afbouw_pct: Decimal,
+) -> Decimal:
+    """Variant van lineaire afbouw met expliciet maximum."""
+    afbouw = max(Decimal("0"), inkomen - afbouw_inkomen_van) * afbouw_pct
+    korting = maximum - afbouw
+    return max(minimum, korting)
+
+
 def bereken_ahk(inkomen: Decimal, config: BelastingConfig) -> Decimal:
     """
     Bereken de Algemene Heffingskorting (AHK).
 
     De AHK bouwt af boven een inkomensdrempel.
+
+    Voor AOW-gerechtigden kan een AOW-factor gelden. Bij een gedeeltelijk
+    AOW-jaar passen we een tijdsevenredige weging toe op die factor.
     """
     return _afbouw_korting(inkomen, config.ahk)
+
+
+def bereken_ahk_met_aow(
+    inkomen: Decimal,
+    config: BelastingConfig,
+    aow_breuk: Decimal,
+) -> Decimal:
+    """
+    Bereken AHK inclusief AOW-factor en tijdsevenredige berekening.
+
+    Belastingdienst-systematiek:
+    - AOW-factor werkt op het AHK-maximum (niet op de al afgebouwde uitkomst)
+    - Daarna volgt lineaire afbouw over het inkomen
+
+    Bij een gedeeltelijk AOW-jaar wordt het maximum tijdsevenredig gewogen.
+    """
+    aow_breuk = max(Decimal("0"), min(Decimal("1"), aow_breuk))
+    ahk_config = config.ahk
+
+    if aow_breuk == Decimal("0"):
+        return _afbouw_korting(inkomen, ahk_config)
+
+    factor = config.ahk_aow_factor
+    if aow_breuk == Decimal("1"):
+        aangepast_maximum = ahk_config.max_bedrag * factor
+    else:
+        gewogen_factor = ((Decimal("1") - aow_breuk) * Decimal("1")) + (aow_breuk * factor)
+        aangepast_maximum = ahk_config.max_bedrag * gewogen_factor
+
+    return _afbouw_korting_met_maximum(
+        inkomen=inkomen,
+        minimum=ahk_config.minimum,
+        maximum=aangepast_maximum,
+        afbouw_inkomen_van=ahk_config.afbouw_inkomen_van,
+        afbouw_pct=ahk_config.afbouw_pct,
+    )
 
 
 def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> Decimal:
@@ -95,6 +154,7 @@ def bereken_totale_heffingskortingen(
     arbeidsinkomen: Decimal,
     config: BelastingConfig,
     is_aow: bool,
+    aow_breuk: Decimal = Decimal("0"),
     is_alleenstaand: bool = True,
 ) -> Decimal:
     """
@@ -110,8 +170,11 @@ def bereken_totale_heffingskortingen(
     Returns:
         Totale heffingskorting in euro's.
     """
-    ahk = bereken_ahk(bruto_inkomen, config)
-    ak = bereken_arbeidskorting(arbeidsinkomen, config)
-    ok = bereken_ouderenkorting(bruto_inkomen, config, is_aow)
-    aok = bereken_alleenstaandeouderenkorting(bruto_inkomen, config, is_aow, is_alleenstaand)
+    # Afrondingsregel: eerst volledige formule per component, daarna afronden op centen.
+    ahk = _rond_af_cent(bereken_ahk_met_aow(bruto_inkomen, config, aow_breuk))
+    ak = _rond_af_cent(bereken_arbeidskorting(arbeidsinkomen, config))
+    ok = _rond_af_cent(bereken_ouderenkorting(bruto_inkomen, config, is_aow))
+    aok = _rond_af_cent(
+        bereken_alleenstaandeouderenkorting(bruto_inkomen, config, is_aow, is_alleenstaand)
+    )
     return ahk + ak + ok + aok

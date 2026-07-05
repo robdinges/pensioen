@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""
-Test de testcase validatie pipeline.
+"""Test de testcase-validatiepipeline en genereer optioneel een IB-rapport.
 
 Dit script test de volledige flow:
 1. Laad genormaliseerde JSON -> TestCase (Pydantic validatie)
 2. Converteer TestCase -> Persoon + Scenario
-3. Bereken cashflow voor 2025
-4. Vergelijk met verwachte belasting
+3. Bereken cashflow en vergelijk met verwachte belasting
+4. Schrijf een samenvattend validatierapport voor alle IB 2025-cases
 
-Gebruik: python tools/test_validatie_pipeline.py
+Gebruik:
+    - Alle cases + rapport: python tools/test_validatie_pipeline.py
+    - Enkele case zonder rapport: python tools/test_validatie_pipeline.py tc_2025_010
+    - Enkele case met rapport: python tools/test_validatie_pipeline.py tc_2025_010 --schrijf-rapport
 """
 
 from __future__ import annotations
@@ -266,6 +268,11 @@ def _genereer_markdown_rapport(rapport_regels: list[dict]) -> None:
     RAPPORT_PATH.write_text("\n".join(lijnen), encoding="utf-8")
 
 
+def _is_ib2025_case(testcase_id: str) -> bool:
+    """Bepaal of testcase in de IB 2025-rapportset valt."""
+    return testcase_id.startswith("tc_2025_")
+
+
 def test_single_testcase(testcase_id: str) -> dict | None:
     """Test een testcase en geef rapportregel terug."""
     print("=" * 80)
@@ -290,6 +297,13 @@ def test_single_testcase(testcase_id: str) -> dict | None:
         print(f"      Berekend: {format_bedrag(resultaat['berekend'])}")
         print(f"      Verschil: {format_bedrag(resultaat['verschil'])} ({resultaat['verschil_pct']:.1f}%)")
         print(f"      Status:   {resultaat['status']}")
+        print(f"      Verwacht-bron: {resultaat.get('verwacht_bron', 'huishoudtotaal')}")
+
+        data_waarschuwingen = resultaat.get("data_waarschuwingen", [])
+        if data_waarschuwingen:
+            print("\n   DATAWAARSCHUWINGEN:")
+            for waarschuwing in data_waarschuwingen:
+                print(f"      - {waarschuwing}")
 
         details = resultaat["details"]
         print("\n   DETAILS:")
@@ -333,7 +347,7 @@ def test_alle_testcases() -> None:
     rapport_regels = []
     for tc_id in sorted(testcases.keys()):
         rapport_regel = test_single_testcase(tc_id)
-        if rapport_regel and "tc_2025_006" <= rapport_regel["testcase_id"] <= "tc_2025_011":
+        if rapport_regel and _is_ib2025_case(rapport_regel["testcase_id"]):
             rapport_regels.append(rapport_regel)
 
     if rapport_regels:
@@ -345,12 +359,18 @@ def main() -> None:
     """Hoofdfunctie."""
     import sys
 
-    if len(sys.argv) > 1:
-        testcase_id = sys.argv[1]
+    args = sys.argv[1:]
+    schrijf_rapport = "--schrijf-rapport" in args
+    args = [arg for arg in args if arg != "--schrijf-rapport"]
+
+    if args:
+        testcase_id = args[0]
         rapport_regel = test_single_testcase(testcase_id)
-        if rapport_regel and "tc_2025_006" <= testcase_id <= "tc_2025_011":
+        if schrijf_rapport and rapport_regel and _is_ib2025_case(testcase_id):
             _genereer_markdown_rapport([rapport_regel])
             print(f"Markdown rapport opgeslagen: {RAPPORT_PATH}")
+        elif schrijf_rapport:
+            print("Geen IB 2025-case; rapport niet geschreven.")
     else:
         test_alle_testcases()
 

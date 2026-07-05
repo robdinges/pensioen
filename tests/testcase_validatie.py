@@ -19,6 +19,67 @@ from tests.scenario_generator import genereer_personen, genereer_testcase_scenar
 from pensioen.ui.pagina_accountant import _bereken_jaar_detail
 
 
+def _controleer_consistentie_verwachte_belasting(testcase: TestCase) -> list[str]:
+    """Controleer interne consistentie van verwachte_belasting-velden."""
+    waarschuwingen: list[str] = []
+    verwacht = testcase.verwachte_belasting
+
+    # Huishoudtotaal versus per-persoon totalen.
+    if testcase.is_paar and verwacht.totaal_verschuldigd_p1 is not None and verwacht.totaal_verschuldigd_p2 is not None:
+        som_persoon = verwacht.totaal_verschuldigd_p1 + verwacht.totaal_verschuldigd_p2
+        if abs(verwacht.totaal_verschuldigd - som_persoon) > Decimal("5"):
+            waarschuwingen.append(
+                (
+                    "verwachte_belasting.totaal_verschuldigd wijkt af van "
+                    "totaal_verschuldigd_p1 + totaal_verschuldigd_p2"
+                )
+            )
+
+    # Controle kortingen P1/P2 versus componenten.
+    for suffix in ("p1", "p2"):
+        totaal = getattr(verwacht, f"totaal_kortingen_{suffix}", None)
+        if totaal is None:
+            continue
+
+        componenten = [
+            getattr(verwacht, f"ahk_{suffix}", None),
+            getattr(verwacht, f"arbeidskorting_{suffix}", None),
+            getattr(verwacht, f"ouderenkorting_{suffix}", None),
+        ]
+
+        # Historisch veld zonder suffix blijft ondersteund voor P1.
+        if suffix == "p1":
+            componenten.append(getattr(verwacht, "alleenstaandeouderenkorting", None))
+
+        componenten = [c for c in componenten if c is not None]
+        if not componenten:
+            continue
+
+        som_componenten = sum(componenten, Decimal("0"))
+        if abs(totaal - som_componenten) > Decimal("0.01"):
+            waarschuwingen.append(
+                f"verwachte_belasting.totaal_kortingen_{suffix} is niet gelijk aan som kortingen"
+            )
+
+    return waarschuwingen
+
+
+def _bepaal_vergelijkingsverwachting(testcase: TestCase) -> tuple[Decimal, str, list[str]]:
+    """Bepaal welk verwacht totaal voor validatie gebruikt wordt."""
+    verwacht = testcase.verwachte_belasting
+    waarschuwingen = _controleer_consistentie_verwachte_belasting(testcase)
+
+    if testcase.is_paar and verwacht.totaal_verschuldigd_p1 is not None and verwacht.totaal_verschuldigd_p2 is not None:
+        som_persoon = verwacht.totaal_verschuldigd_p1 + verwacht.totaal_verschuldigd_p2
+        if abs(verwacht.totaal_verschuldigd - som_persoon) > Decimal("5"):
+            waarschuwingen.append(
+                "huishoudtotaal is intern inconsistent; validatie vergelijkt op som per persoon"
+            )
+            return som_persoon, "som_per_persoon", waarschuwingen
+
+    return verwacht.totaal_verschuldigd, "huishoudtotaal", waarschuwingen
+
+
 def _pas_aow_bedrag_aan_voor_testcase(testcase: TestCase, config):
     """Gebruik testcase-specifieke AOW-bedragen i.p.v. generieke jaarconfig.
 
@@ -147,8 +208,8 @@ def valideer_testcase(testcase: TestCase, tolerantie: Decimal = Decimal("5")) ->
     details = bereken_belasting_testcase(testcase)
     berekend = extract_totaal_verschuldigd(details, config, heeft_partner)
     
-    # Verwacht
-    verwacht = testcase.verwachte_belasting.totaal_verschuldigd
+    # Verwacht (met interne-consistentie fallback)
+    verwacht, verwacht_bron, data_waarschuwingen = _bepaal_vergelijkingsverwachting(testcase)
     
     # Verschil
     verschil = berekend - verwacht
@@ -176,5 +237,7 @@ def valideer_testcase(testcase: TestCase, tolerantie: Decimal = Decimal("5")) ->
         "verschil_pct": verschil_pct,
         "pass": is_pass,
         "status": status,
+        "verwacht_bron": verwacht_bron,
+        "data_waarschuwingen": data_waarschuwingen,
         "details": details,
     }

@@ -20,11 +20,11 @@ Vergelijking gebeurt op drie niveaus:
 ```text
 belasting_testcases/
 |- raw/
-|  |- tc_2025_001.json
+|  |- tc_2025_006.json
 |  |- ...
 |  |- tc_2025_011.json
 |- normalized/
-|  |- tc_2025_001_normalized.json
+|  |- tc_2025_006_normalized.json
 |  |- ...
 |  |- tc_2025_011_normalized.json
 |- schema.md
@@ -81,7 +81,7 @@ Output:
 
 ### 4) Uitgebreide accountant-export
 
-Batch (default: `tc_2025_006` t/m `tc_2025_011`):
+Batch (default: alle cases uit `normalized/`):
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py

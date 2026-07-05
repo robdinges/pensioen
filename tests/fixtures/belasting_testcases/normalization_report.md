@@ -1,21 +1,16 @@
 # Normalization Report
 
-**Datum**: 2026-07-04 21:27
+**Datum**: 2026-07-05 09:31
 
 ## Samenvatting
 
-- **Totaal testcases verwerkt**: 11
-- **✅ Succesvol genormaliseerd**: 11
+- **Totaal testcases verwerkt**: 6
+- **✅ Succesvol genormaliseerd**: 6
 - **❌ Errors**: 0
-- **⚠️  Warnings**: 2
+- **⚠️  Warnings**: 5
 
 ## Verwerkte Testcases
 
-- ✅ tc_2025_001
-- ✅ tc_2025_002
-- ✅ tc_2025_003
-- ✅ tc_2025_004
-- ✅ tc_2025_005
 - ✅ tc_2025_006
 - ✅ tc_2025_007
 - ✅ tc_2025_008
@@ -27,11 +22,23 @@
 
 Aannames gemaakt tijdens normalisatie:
 
-### tc_2025_005
+### tc_2025_006
 
-- Geen totaal_verschuldigd gevonden!
-- huishouden.eigen_huis is true maar geen eigen_woning details gevonden
+- box1_ib_p1 (19098) is niet gelijk aan box1_schijf1_p1+box1_schijf2_p1 (17523)
+
+### tc_2025_007
+
+- box1_ib_p1 (11489) is niet gelijk aan box1_schijf1_p1+box1_schijf2_p1 (10770)
+
+### tc_2025_008
+
+- totaal_kortingen_p1 (3607.97) is niet gelijk aan som kortingen (3076.97)
+
+### tc_2025_009
+
+- box1_ib_p1 (15293) is niet gelijk aan box1_schijf1_p1+box1_schijf2_p1 (14743)
+- box1_ib_p2 (15293) is niet gelijk aan box1_schijf1_p2+box1_schijf2_p2 (14743)
 
 ## Actie Vereist
 
-✅ **Alles OK**: Alle testcases succesvol genormaliseerd, klaar voor validatie.
+⚠️  **Review warnings**: Normalisatie is gelukt, maar controleer de waarschuwingen hierboven.

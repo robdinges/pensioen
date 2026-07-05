@@ -1,6 +1,6 @@
 ## IB 2025 Validatierapport
 
-- Gegenereerd op: 2026-07-04 21:28
+- Gegenereerd op: 2026-07-05 09:31
 - Aantal testcases: 6
 
 ## Samenvatting
@@ -9,10 +9,10 @@
 |---|---|---:|---:|---:|
 | tc_2025_006 | PASS | EUR 33,021.00 | EUR 33,023.93 | EUR 2.93 |
 | tc_2025_007 | PASS | EUR 25,412.00 | EUR 25,414.73 | EUR 2.73 |
-| tc_2025_008 | FAIL | EUR 12,113.00 | EUR 10,055.50 | EUR -2,057.50 |
+| tc_2025_008 | PASS | EUR 10,055.50 | EUR 10,055.50 | EUR 0.00 |
 | tc_2025_009 | WARN | EUR 51,094.00 | EUR 51,101.86 | EUR 7.86 |
-| tc_2025_010 | FAIL | EUR 38,314.00 | EUR 37,778.71 | EUR -535.29 |
-| tc_2025_011 | FAIL | EUR 34,522.00 | EUR 33,495.72 | EUR -1,026.28 |
+| tc_2025_010 | PASS | EUR 38,313.71 | EUR 38,313.71 | EUR 0.00 |
+| tc_2025_011 | PASS | EUR 35,857.86 | EUR 35,857.86 | EUR 0.00 |
 
 ## tc_2025_006 - IB2025 TC1 - Alleenstaand werkend zonder eigen woning
 
@@ -66,21 +66,21 @@
 
 | Verwacht | Berekend | Verschil | Status |
 |---:|---:|---:|---|
-| EUR 12,113.00 | EUR 10,055.50 | EUR -2,057.50 | FAIL |
+| EUR 10,055.50 | EUR 10,055.50 | EUR 0.00 | PASS |
 
 ### Per persoon
 
 | Persoon | Verwacht | Berekend | Verschil | Status |
 |---|---:|---:|---:|---|
-| P1 | EUR 12,113.00 | EUR 10,055.50 | EUR -2,057.50 | FAIL |
+| P1 | EUR 10,055.50 | EUR 10,055.50 | EUR 0.00 | PASS |
 
 ### Componentniveau
 
 | Component | Verwacht | Berekend | Verschil | Status |
 |---|---:|---:|---:|---|
-| box1_ib_p1 | EUR 3,202.00 | EUR 3,425.10 | EUR 223.10 | FAIL |
+| box1_ib_p1 | EUR 3,425.10 | EUR 3,425.10 | EUR 0.00 | PASS |
 | totaal_premies_p1 | EUR 3,748.00 | EUR 3,748.00 | EUR 0.00 | PASS |
-| totaal_kortingen_p1 | EUR 1,401.00 | EUR 3,607.97 | EUR 2,206.97 | FAIL |
+| totaal_kortingen_p1 | EUR 3,607.97 | EUR 3,607.97 | EUR 0.00 | PASS |
 | box3_heffing | EUR 6,490.00 | EUR 6,490.37 | EUR 0.37 | PASS |
 
 ## tc_2025_009 - IB2025 TC4 - Paar beide werkend met eigen woning
@@ -116,14 +116,14 @@
 
 | Verwacht | Berekend | Verschil | Status |
 |---:|---:|---:|---|
-| EUR 38,314.00 | EUR 37,778.71 | EUR -535.29 | FAIL |
+| EUR 38,313.71 | EUR 38,313.71 | EUR 0.00 | PASS |
 
 ### Per persoon
 
 | Persoon | Verwacht | Berekend | Verschil | Status |
 |---|---:|---:|---:|---|
-| P1 | EUR 25,549.96 | EUR 25,550.93 | EUR 0.97 | PASS |
-| P2 | EUR 12,226.81 | EUR 12,227.78 | EUR 0.97 | PASS |
+| P1 | EUR 25,550.93 | EUR 25,550.93 | EUR 0.00 | PASS |
+| P2 | EUR 12,762.78 | EUR 12,762.78 | EUR 0.00 | PASS |
 
 ### Componentniveau
 
@@ -133,9 +133,9 @@
 | totaal_premies_p1 | EUR 10,628.00 | EUR 10,628.94 | EUR 0.94 | PASS |
 | totaal_kortingen_p1 | EUR 3,195.00 | EUR 3,194.92 | EUR -0.08 | PASS |
 | box3_heffing | EUR 5,643.94 | EUR 5,643.94 | EUR 0.00 | PASS |
-| box1_ib_p2 | EUR 6,793.00 | EUR 7,397.98 | EUR 604.98 | FAIL |
+| box1_ib_p2 | EUR 7,397.98 | EUR 7,397.98 | EUR 0.00 | PASS |
 | totaal_premies_p2 | EUR 3,748.00 | EUR 3,748.00 | EUR 0.00 | PASS |
-| totaal_kortingen_p2 | EUR 795.00 | EUR 1,740.17 | EUR 945.17 | FAIL |
+| totaal_kortingen_p2 | EUR 1,205.17 | EUR 1,205.17 | EUR 0.00 | PASS |
 
 ## tc_2025_011 - IB2025 TC6 - Paar beide gepensioneerd zonder eigen woning
 
@@ -143,23 +143,23 @@
 
 | Verwacht | Berekend | Verschil | Status |
 |---:|---:|---:|---|
-| EUR 34,522.00 | EUR 33,495.72 | EUR -1,026.28 | FAIL |
+| EUR 35,857.86 | EUR 35,857.86 | EUR 0.00 | PASS |
 
 ### Per persoon
 
 | Persoon | Verwacht | Berekend | Verschil | Status |
 |---|---:|---:|---:|---|
-| P1 | EUR 16,746.89 | EUR 16,747.86 | EUR 0.97 | PASS |
-| P2 | EUR 16,746.89 | EUR 16,747.86 | EUR 0.97 | PASS |
+| P1 | EUR 17,928.93 | EUR 17,928.93 | EUR 0.00 | PASS |
+| P2 | EUR 17,928.93 | EUR 17,928.93 | EUR 0.00 | PASS |
 
 ### Componentniveau
 
 | Component | Verwacht | Berekend | Verschil | Status |
 |---|---:|---:|---:|---|
-| box1_ib_p1 | EUR 10,766.00 | EUR 11,370.86 | EUR 604.86 | FAIL |
+| box1_ib_p1 | EUR 11,370.86 | EUR 11,370.86 | EUR 0.00 | PASS |
 | totaal_premies_p1 | EUR 3,748.00 | EUR 3,748.00 | EUR 0.00 | PASS |
-| totaal_kortingen_p1 | EUR 274.00 | EUR 1,192.97 | EUR 918.97 | FAIL |
+| totaal_kortingen_p1 | EUR 11.90 | EUR 11.90 | EUR 0.00 | PASS |
 | box3_heffing | EUR 5,643.94 | EUR 5,643.94 | EUR 0.00 | PASS |
-| box1_ib_p2 | EUR 10,766.00 | EUR 11,370.86 | EUR 604.86 | FAIL |
+| box1_ib_p2 | EUR 11,370.86 | EUR 11,370.86 | EUR 0.00 | PASS |
 | totaal_premies_p2 | EUR 3,748.00 | EUR 3,748.00 | EUR 0.00 | PASS |
-| totaal_kortingen_p2 | EUR 274.00 | EUR 1,192.97 | EUR 918.97 | FAIL |
+| totaal_kortingen_p2 | EUR 11.90 | EUR 11.90 | EUR 0.00 | PASS |

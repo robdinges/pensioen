@@ -253,7 +253,7 @@ def genereer_testcase_scenario(
         
     Example:
         >>> from tests.testcase_loader import laad_testcase
-        >>> tc = laad_testcase(Path("tests/fixtures/belasting_testcases/normalized/tc_2025_001_normalized.json"))
+        >>> tc = laad_testcase(Path("tests/fixtures/belasting_testcases/normalized/tc_2025_006_normalized.json"))
         >>> personen, scenario = genereer_testcase_scenario(tc)
         >>> # Nu kunnen we cashflow berekenen
         >>> from pensioen.calculations.cashflow_engine import bereken_huishouden

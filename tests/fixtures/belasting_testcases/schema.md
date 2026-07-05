@@ -168,8 +168,8 @@ Vrije vorm voor context, uitgangspunten, opmerkingen.
 
 ```json
 {
-  "testcase_id": "tc_2025_001",
-  "naam": "Alleenstaand AOW-ontvanger 2025",
+  "testcase_id": "tc_2025_example",
+  "naam": "Alleenstaand voorbeeldcase 2025",
   "jaar": 2025,
   "datum_aangeleverd": "2026-06-05",
   "bron_formaat": "Excel",

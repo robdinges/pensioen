@@ -1,7 +1,7 @@
 """Unit tests voor eigen_woning_engine.
 
 Testscenario's zijn gebaseerd op de Belastingdienst aangiftesimulator 2025.
-Referentiecase: tc_2025_004 (echtpaar, WOZ €500.000, rente €6.000).
+Referentie: echtpaar, WOZ €500.000, rente €6.000.
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ class TestTariefsaanpassing:
         Art. 3.123a Wet IB 2001: grondslag = totale aftrekbare kosten (rente + overige),
         niet het netto saldo. aftrek_in_schijf3 = min(3000, 100000 - 76817) = 3000.
         aanpassing = 3000 × 0.1202 = 360.60.
-        Referentie: Belastingdienst simulator tc_2025_004 P1 toont 12,02% × €3.000 = €360.
+        Referentie: Belastingdienst simulator P1 toont 12,02% × €3.000 = €360.
         """
         invoer = EigenWoningInvoer(
             woz_waarde=Decimal("250000"),  # per persoon
@@ -109,7 +109,7 @@ class TestTariefsaanpassing:
     def test_tariefsaanpassing_laag_inkomen(self, config_2025):
         """Inkomen beneden schijf 3: geen tariefsaanpassing.
 
-        Referentie: simulator tc_2025_004 persoon 2 (box1 grondslag €37.875 < schijf3-grens).
+        Referentie: simulator persoon 2 (box1 grondslag €37.875 < schijf3-grens).
         """
         invoer = EigenWoningInvoer(
             woz_waarde=Decimal("250000"),  # per persoon

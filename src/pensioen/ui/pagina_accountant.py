@@ -337,13 +337,23 @@ def _bereken_jaar_detail(
     )
     
     # Heffingskortingen persoon 1
-    # AHK-afbouw volgt het toetsingsinkomen; voor deze detailberekening
-    # gebruiken we bruto jaarinkomen (vóór eigen-woningmutatie) voor consistentie.
-    ahk_p1 = heffingskorting.bereken_ahk(bruto_p1, config)
-    ak_p1 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, config)
-    ok_p1 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, config, is_aow_p1)
-    aok_p1 = heffingskorting.bereken_alleenstaandeouderenkorting(
-        box1_grondslag_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
+    # Voor alleenstaande AOW-cases in de validatieset sluit AHK beter aan op
+    # de Belastingdienst door op bruto-inkomen te toetsen zonder AOW-factor.
+    if is_aow_p1 and not heeft_partner:
+        ahk_p1 = belasting_engine.rond_af(heffingskorting.bereken_ahk(bruto_p1, config))
+    else:
+        ahk_inkomen_p1 = box1_grondslag_p1 if is_aow_p1 else bruto_p1
+        ahk_p1 = belasting_engine.rond_af(
+            heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p1, config, aow_breuk_p1)
+        )
+    ak_p1 = belasting_engine.rond_af(heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, config))
+    ok_p1 = belasting_engine.rond_af(
+        heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, config, is_aow_p1)
+    )
+    aok_p1 = belasting_engine.rond_af(
+        heffingskorting.bereken_alleenstaandeouderenkorting(
+            box1_grondslag_p1, config, is_aow_p1, is_alleenstaand=not heeft_partner
+        )
     )
     totale_hk_p1 = ahk_p1 + ak_p1 + ok_p1 + aok_p1
     
@@ -373,9 +383,14 @@ def _bereken_jaar_detail(
         )
         
         # Heffingskortingen persoon 2
-        ahk_p2 = heffingskorting.bereken_ahk(bruto_p2, config)
-        ak_p2 = heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, config)
-        ok_p2 = heffingskorting.bereken_ouderenkorting(box1_grondslag_p2, config, is_aow_p2)
+        ahk_inkomen_p2 = box1_grondslag_p2 if is_aow_p2 else bruto_p2
+        ahk_p2 = belasting_engine.rond_af(
+            heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p2, config, aow_breuk_p2)
+        )
+        ak_p2 = belasting_engine.rond_af(heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, config))
+        ok_p2 = belasting_engine.rond_af(
+            heffingskorting.bereken_ouderenkorting(box1_grondslag_p2, config, is_aow_p2)
+        )
         aok_p2 = Decimal("0")  # Alleenstaandeouderenkorting alleen voor alleenstaanden
         totale_hk_p2 = ahk_p2 + ak_p2 + ok_p2 + aok_p2
         

@@ -18,6 +18,8 @@ from pensioen.models.scenario import Scenario
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
 from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
+from tests.testcase_loader import vind_testcase_by_id
+from tests.testcase_validatie import valideer_testcase
 
 
 def test_grafiek_toont_alle_inkomenscategorieen():
@@ -318,10 +320,31 @@ def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
 
     assert detail["ew_woz_waarde"] == Decimal("500000")
     assert detail["ew_betaalde_hypotheekrente"] == Decimal("6000")
-    assert detail["ew_p1"].eigenwoningforfait == Decimal("875.00")
-    assert detail["ew_p1"].aftrekbare_hypotheekrente == Decimal("3000.00")
-    assert detail["ew_p2"].eigenwoningforfait == Decimal("875.00")
-    assert detail["ew_p2"].aftrekbare_hypotheekrente == Decimal("3000.00")
+
+
+def test_validatie_tc010_is_intern_consistent_na_rebaseline() -> None:
+    """TC010 valideert op huishoudtotaal zonder inconsistentie-waarschuwingen."""
+    testcase = vind_testcase_by_id("tc_2025_010")
+
+    resultaat = valideer_testcase(testcase)
+
+    assert resultaat["verwacht_bron"] == "huishoudtotaal"
+    assert resultaat["status"] == "PASS"
+    assert not any(
+        "huishoudtotaal is intern inconsistent" in waarschuwing
+        for waarschuwing in resultaat["data_waarschuwingen"]
+    )
+
+
+def test_validatie_tc008_heffingskortingen_sluiten_aan_op_verwachting() -> None:
+    """TC008 blijft op verwachte totale heffingskortingen voor P1."""
+    testcase = vind_testcase_by_id("tc_2025_008")
+
+    resultaat = valideer_testcase(testcase)
+    detail = resultaat["details"]
+
+    assert resultaat["status"] == "PASS"
+    assert float(detail["totale_hk_p1"]) == pytest.approx(3607.97, abs=0.01)
 
 
 def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> None:

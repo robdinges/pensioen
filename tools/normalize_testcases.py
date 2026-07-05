@@ -188,8 +188,73 @@ def normalize_verwachte_belasting(data: dict, report: NormalizationReport, testc
     # Zorg dat totaal_verschuldigd altijd aanwezig is
     if "totaal_verschuldigd" not in result:
         result["totaal_verschuldigd"] = totaal
+
+    _valideer_interne_consistentie_verwachte_belasting(result, report, testcase_id)
     
     return result
+
+
+def _decimal_uit_waarde(waarde: Any) -> Decimal | None:
+    """Converteer naar Decimal of None bij ongeldige waarden."""
+    if waarde is None:
+        return None
+    try:
+        return Decimal(str(waarde))
+    except Exception:
+        return None
+
+
+def _valideer_interne_consistentie_verwachte_belasting(
+    verwacht: dict,
+    report: NormalizationReport,
+    testcase_id: str,
+) -> None:
+    """Voeg warnings toe bij intern-inconsistente verwachtingsvelden."""
+    # Controle 1: totaal_kortingen per persoon = som van onderliggende kortingen.
+    for suffix in ["p1", "p2"]:
+        totaal = _decimal_uit_waarde(verwacht.get(f"totaal_kortingen_{suffix}"))
+        if totaal is None:
+            continue
+
+        componenten = [
+            _decimal_uit_waarde(verwacht.get(f"ahk_{suffix}")),
+            _decimal_uit_waarde(verwacht.get(f"arbeidskorting_{suffix}")),
+            _decimal_uit_waarde(verwacht.get(f"ouderenkorting_{suffix}")),
+            _decimal_uit_waarde(verwacht.get(f"alleenstaandeouderenkorting_{suffix}")),
+        ]
+        componenten = [c for c in componenten if c is not None]
+        if not componenten:
+            continue
+
+        som_componenten = sum(componenten, Decimal("0"))
+        if abs(totaal - som_componenten) > Decimal("0.01"):
+            report.add_warning(NormalizationWarning(
+                testcase_id,
+                (
+                    f"totaal_kortingen_{suffix} ({totaal}) is niet gelijk aan "
+                    f"som kortingen ({som_componenten})"
+                ),
+                f"verwachte_belasting.totaal_kortingen_{suffix}",
+            ))
+
+    # Controle 2: box1_ib per persoon moet optellen met schijven als beide aanwezig zijn.
+    for suffix in ["p1", "p2"]:
+        box1 = _decimal_uit_waarde(verwacht.get(f"box1_ib_{suffix}"))
+        schijf1 = _decimal_uit_waarde(verwacht.get(f"box1_schijf1_{suffix}"))
+        schijf2 = _decimal_uit_waarde(verwacht.get(f"box1_schijf2_{suffix}"))
+        if box1 is None or schijf1 is None or schijf2 is None:
+            continue
+
+        som_schijven = schijf1 + schijf2
+        if abs(box1 - som_schijven) > Decimal("0.01"):
+            report.add_warning(NormalizationWarning(
+                testcase_id,
+                (
+                    f"box1_ib_{suffix} ({box1}) is niet gelijk aan "
+                    f"box1_schijf1_{suffix}+box1_schijf2_{suffix} ({som_schijven})"
+                ),
+                f"verwachte_belasting.box1_ib_{suffix}",
+            ))
 
 
 def normalize_metadata(data: dict, report: NormalizationReport, testcase_id: str) -> dict:
@@ -353,8 +418,10 @@ def generate_report(report: NormalizationReport) -> str:
     if incomplete_warnings:
         lines.append("⚠️  **Incomplete testcases**: Handmatige review nodig voor complete validatie.")
     
-    if report.error_count == 0 and len(incomplete_warnings) == 0:
-        lines.append("✅ **Alles OK**: Alle testcases succesvol genormaliseerd, klaar voor validatie.")
+    if report.error_count == 0 and len(report.warnings) == 0:
+        lines.append("✅ **Alles OK**: Alle testcases succesvol genormaliseerd zonder warnings.")
+    elif report.error_count == 0:
+        lines.append("⚠️  **Review warnings**: Normalisatie is gelukt, maar controleer de waarschuwingen hierboven.")
     
     lines.append("")
     
