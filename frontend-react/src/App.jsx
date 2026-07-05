@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import AccountantSection from "./components/AccountantSection";
 import AppShell from "./components/layout/AppShell";
+import ComponentsSection from "./components/ComponentsSection";
 import ContextTopBar from "./components/layout/ContextTopBar";
+import ReportSection from "./components/ReportSection";
+import ResultsSection from "./components/ResultsSection";
+import ScenarioSection from "./components/ScenarioSection";
+import NewPostPicker from "./components/NewPostPicker";
+import PostCard from "./components/PostCard";
 import WizardSidebar from "./components/layout/WizardSidebar";
+import MpoImportSection from "./components/MpoImportSection";
 import { AppStateProvider, useAppState } from "./state/appState";
 
 const FLOW_STEPS = [
@@ -676,119 +684,6 @@ function SectionHeader({ title, description }) {
   );
 }
 
-function ImportPreviewTable({ title, rows }) {
-  if (!rows || rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="table-wrap import-preview">
-      <p className="notice">{title}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Uitvoerder</th>
-            <th>Regeling</th>
-            <th>Type</th>
-            <th>Ingangsdatum</th>
-            <th>Bruto/jaar</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={`${row.uitvoerder}-${row.regeling}-${idx}`}>
-              <td>{row.uitvoerder || "-"}</td>
-              <td>{row.regeling || "-"}</td>
-              <td>{row.type || "-"}</td>
-              <td>{row.ingangsdatum || "-"}</td>
-              <td>{row.bruto_per_jaar || "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function PostCard({ post, onChange, onDelete }) {
-  const config = TYPE_CONFIG[post.type];
-
-  return (
-    <article className="card">
-      <div className="card-top">
-        <div>
-          <h3>{config.label}</h3>
-          <p>{config.hint}</p>
-        </div>
-        <button className="ghost" onClick={() => onDelete(post.id)}>
-          Verwijder
-        </button>
-      </div>
-
-      <label className="field">
-        <span>Titel</span>
-        <input
-          type="text"
-          value={post.titel}
-          onChange={(e) => onChange(post.id, "titel", e.target.value, true)}
-        />
-      </label>
-
-      <div className="grid">
-        {config.fields.map((field) => {
-          const meta = FIELD_META[field];
-          const value = post.values[field] ?? "";
-
-          if (meta.type === "select") {
-            return (
-              <label key={field} className="field">
-                <span>{meta.label}</span>
-                <select value={value} onChange={(e) => onChange(post.id, field, e.target.value)}>
-                  {meta.options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            );
-          }
-
-          return (
-            <label key={field} className="field">
-              <span>{meta.label}</span>
-              <input
-                type={meta.type}
-                value={value}
-                step={meta.step}
-                onChange={(e) => onChange(post.id, field, e.target.value)}
-              />
-            </label>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-function NewPostPicker({ title, options, value, onValueChange, onAdd }) {
-  return (
-    <div className="add-row">
-      <h4>{title}</h4>
-      <div>
-        <select value={value} onChange={(e) => onValueChange(e.target.value)}>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {TYPE_CONFIG[option].label}
-            </option>
-          ))}
-        </select>
-        <button onClick={onAdd}>+ Post toevoegen</button>
-      </div>
-    </div>
-  );
-}
-
 function AppContent() {
   const { state, actions } = useAppState();
   const initialHouseholdId = useMemo(() => crypto.randomUUID(), []);
@@ -816,8 +711,9 @@ function AppContent() {
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [reportErrorMessage, setReportErrorMessage] = useState("");
-  const [importErrorMessage, setImportErrorMessage] = useState("");
-  const [importInfoMessage, setImportInfoMessage] = useState("");
+  const [importErrorMessages, setImportErrorMessages] = useState({ P1: "", P2: "" });
+  const [importInfoMessages, setImportInfoMessages] = useState({ P1: "", P2: "" });
+  const [isImporting, setIsImporting] = useState({ P1: false, P2: false });
   const [importBestandP1Naam, setImportBestandP1Naam] = useState("");
   const [importBestandP2Naam, setImportBestandP2Naam] = useState("");
   const [importPreviewP1, setImportPreviewP1] = useState([]);
@@ -928,6 +824,20 @@ function AppContent() {
       geboortedatum &&
       (!heeftPartner || (partnerNaam && partnerGeboortedatum)),
   );
+  const isImportingP1 = isImporting.P1;
+  const isImportingP2 = isImporting.P2;
+
+  const setImportErrorFor = (persoonCode, message) => {
+    setImportErrorMessages((prev) => ({ ...prev, [persoonCode]: message }));
+  };
+
+  const setImportInfoFor = (persoonCode, message) => {
+    setImportInfoMessages((prev) => ({ ...prev, [persoonCode]: message }));
+  };
+
+  const setImportingFor = (persoonCode, value) => {
+    setIsImporting((prev) => ({ ...prev, [persoonCode]: value }));
+  };
 
   const updatePost = (id, key, value, isRoot = false) => {
     setPosts((prev) =>
@@ -1339,18 +1249,22 @@ function AppContent() {
 
   const importMpoFileForPersoon = async (file, persoonCode) => {
     if (!file) {
-      setImportErrorMessage("Selecteer eerst een MPO-bestand.");
+      setImportErrorFor(persoonCode, "Selecteer eerst een MPO-bestand.");
+      setImportInfoFor(persoonCode, "");
       return;
     }
 
     const extension = file.name.toLowerCase().split(".").pop();
     if (extension !== "csv" && extension !== "json" && extension !== "xlsx" && extension !== "xls" && extension !== "pdf") {
-      setImportErrorMessage("Alleen CSV, Excel (.xlsx/.xls), JSON en PDF worden ondersteund in de React importstap.");
+      setImportErrorFor(persoonCode, "Alleen CSV, Excel (.xlsx/.xls), JSON en PDF worden ondersteund in de React importstap.");
+      setImportInfoFor(persoonCode, "");
       return;
     }
 
     try {
-      setImportErrorMessage("");
+      setImportingFor(persoonCode, true);
+      setImportErrorFor(persoonCode, "");
+      setImportInfoFor(persoonCode, `Importeren van ${file.name}...`);
       let rows = [];
       if (extension === "csv") {
         const content = await file.text();
@@ -1379,7 +1293,7 @@ function AppContent() {
           setImportStatsP2(analyse.stats);
           setImportPreviewP2(preview);
         }
-        setImportInfoMessage(`Geen bruikbare pensioenregels gevonden in ${file.name}.`);
+        setImportInfoFor(persoonCode, `Geen bruikbare pensioenregels gevonden in ${file.name}.`);
         return;
       }
 
@@ -1402,12 +1316,16 @@ function AppContent() {
         setImportStatsP2(analyse.stats);
       }
 
-      setImportInfoMessage(
+      setImportInfoFor(
+        persoonCode,
         `${importedPosts.length} pensioenregel(s) geïmporteerd voor ${persoonCode} (bronregels: ${analyse.stats.bronregels}).`,
       );
       setErrorMessage("");
     } catch (err) {
-      setImportErrorMessage(err instanceof Error ? err.message : "Onbekende fout bij import.");
+      setImportInfoFor(persoonCode, "");
+      setImportErrorFor(persoonCode, err instanceof Error ? err.message : "Onbekende fout bij import.");
+    } finally {
+      setImportingFor(persoonCode, false);
     }
   };
 
@@ -1874,34 +1792,7 @@ function AppContent() {
   };
 
   const renderResultaten = () => (
-    <section className="section">
-      <SectionHeader title="Resultaten op Jaarbasis" description="Uitkomst van de berekening gegroepeerd per jaar." />
-      {jaarRows.length === 0 ? (
-        <p>Voer een berekening uit om jaarresultaten te tonen.</p>
-      ) : (
-        <>
-          <div className="kpis">
-            <div className="kpi"><span>Periode</span><strong>{`${jaarRows[0].jaar} - ${jaarRows[jaarRows.length - 1].jaar}`}</strong></div>
-            <div className="kpi"><span>Gemiddeld netto per jaar</span><strong>{euro(jaarRows.reduce((sum, row) => sum + row.netto, 0) / jaarRows.length)}</strong></div>
-            <div className="kpi"><span>Eindvermogen</span><strong>{euro(jaarRows[jaarRows.length - 1].vermogenEinde)}</strong></div>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Jaar</th><th>Bruto</th><th>Belasting</th><th>Netto</th><th>Netto p/m</th><th>Vermogen einde jaar</th></tr>
-              </thead>
-              <tbody>
-                {jaarRows.map((row) => (
-                  <tr key={row.jaar}>
-                    <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.nettoPerMaand)}</td><td>{euro(row.vermogenEinde)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </section>
+    <ResultsSection SectionHeader={SectionHeader} jaarRows={jaarRows} euro={euro} />
   );
 
   const renderStepContent = () => {
@@ -2010,183 +1901,56 @@ function AppContent() {
 
     if (activeStep === "scenario") {
       return (
-        <section className="section">
-          <SectionHeader
-            title="Scenario's"
-            description="Beheer scenario's binnen het actieve huishouden en kies welk scenario berekend wordt."
-          />
-
-          <div className="household-controls">
-            <label className="field inline-field">
-              <span>Actief scenario</span>
-              <select
-                value={activeScenario?.id || ""}
-                onChange={(e) => switchScenario(e.target.value)}
-              >
-                {scenarios.map((scenario) => (
-                  <option key={scenario.id} value={scenario.id}>
-                    {scenario.naam || "Onbenoemd scenario"}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              className="ghost"
-              onClick={removeActiveScenario}
-              disabled={scenarios.length <= 1}
-            >
-              Verwijder actief scenario
-            </button>
-          </div>
-
-          <label className="field inline-field">
-            <span>Scenario naam</span>
-            <input
-              value={activeScenarioName}
-              onChange={(e) => renameActiveScenario(e.target.value)}
-            />
-          </label>
-
-          <div className="household-controls">
-            <label className="field inline-field">
-              <span>Nieuw scenario</span>
-              <input
-                value={newScenarioName}
-                placeholder="Bijv. Eerder stoppen met werken"
-                onChange={(e) => setNewScenarioName(e.target.value)}
-              />
-            </label>
-            <button type="button" onClick={addScenario}>
-              Scenario toevoegen
-            </button>
-            <button type="button" onClick={duplicateActiveScenario}>
-              Dupliceer actief scenario
-            </button>
-          </div>
-
-          <div className="household-controls">
-            <label className="field inline-field">
-              <span>Vergelijk met scenario</span>
-              <select
-                value={compareScenarioId}
-                onChange={(e) => setCompareScenarioId(e.target.value)}
-                disabled={scenarios.length <= 1}
-              >
-                {scenarios.filter((scenario) => scenario.id !== activeScenarioId).map((scenario) => (
-                  <option key={scenario.id} value={scenario.id}>
-                    {scenario.naam || "Onbenoemd scenario"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" onClick={runScenarioComparison} disabled={isComparing || scenarios.length <= 1}>
-              {isComparing ? "Vergelijken..." : "Vergelijk scenario's"}
-            </button>
-          </div>
-
-          {comparisonError ? <p className="error">{comparisonError}</p> : null}
-
-          {comparisonResult?.scenario_resultaten?.length ? (
-            <div className="table-wrap import-preview">
-              <p className="notice">
-                Vergelijking over {comparisonResult.jaar_van} - {comparisonResult.jaar_tot}
-                {comparisonResult.beste_scenario_netto?.scenario_naam
-                  ? ` | Beste mediaan netto: ${comparisonResult.beste_scenario_netto.scenario_naam}`
-                  : ""}
-              </p>
-              {comparisonSummary ? (
-                <div className="kpis comparison-kpis">
-                  <div className="kpi comparison-kpi">
-                    <span>Vergelijkd scenario</span>
-                    <strong>{compareScenarioName}</strong>
-                  </div>
-                  <div className="kpi comparison-kpi">
-                    <span>Delta netto p/m</span>
-                    <strong className={comparisonSummary.nettoDelta >= 0 ? "trend-positive" : "trend-negative"}>
-                      {signedEuro(comparisonSummary.nettoDelta)}
-                    </strong>
-                  </div>
-                  <div className="kpi comparison-kpi">
-                    <span>Delta vermogen op 80</span>
-                    <strong className={comparisonSummary.vermogen80Delta >= 0 ? "trend-positive" : "trend-negative"}>
-                      {signedEuro(comparisonSummary.vermogen80Delta)}
-                    </strong>
-                  </div>
-                  <div className="kpi comparison-kpi">
-                    <span>Delta belastingdruk</span>
-                    <strong className={comparisonSummary.belastingdrukDelta <= 0 ? "trend-positive" : "trend-negative"}>
-                      {signedPercentagePoints(comparisonSummary.belastingdrukDelta)}
-                    </strong>
-                  </div>
-                </div>
-              ) : null}
-              <table>
-                <thead>
-                  <tr>
-                    <th>Scenario</th>
-                    <th>Mediaan netto p/m</th>
-                    <th>Laagste jaar</th>
-                    <th>Vermogen op 70</th>
-                    <th>Vermogen op 80</th>
-                    <th>Belastingdruk</th>
-                    <th>Tekortjaren</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonResult.scenario_resultaten.map((item) => (
-                    <tr
-                      key={item.scenario_naam}
-                      className={[
-                        "comparison-row",
-                        item.scenario_naam === activeScenarioName ? "is-active" : "",
-                        item.scenario_naam === comparisonResult.beste_scenario_netto?.scenario_naam ? "is-best" : "",
-                      ].filter(Boolean).join(" ")}
-                    >
-                      <td>{item.scenario_naam}</td>
-                      <td>{euro(decimalLike(item.netto_per_maand_mediaan))}</td>
-                      <td>
-                        {item.laagste_inkomensjaar ? `${item.laagste_inkomensjaar}: ${euro(decimalLike(item.netto_laagste_jaar))}` : "-"}
-                      </td>
-                      <td>{euro(decimalLike(item.vermogen_op_70))}</td>
-                      <td>{euro(decimalLike(item.vermogen_op_80))}</td>
-                      <td>{`${decimalLike(item.gemiddelde_belastingdruk).toFixed(1)}%`}</td>
-                      <td>{item.aantal_tekortjaren ?? 0}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-
-          <p className="notice">
-            Het actieve scenario wordt gebruikt als naam in de berekenpayload.
-          </p>
-        </section>
+        <ScenarioSection
+          SectionHeader={SectionHeader}
+          activeScenario={activeScenario}
+          activeScenarioId={activeScenarioId}
+          activeScenarioName={activeScenarioName}
+          scenarios={scenarios}
+          newScenarioName={newScenarioName}
+          setNewScenarioName={setNewScenarioName}
+          switchScenario={switchScenario}
+          removeActiveScenario={removeActiveScenario}
+          renameActiveScenario={renameActiveScenario}
+          addScenario={addScenario}
+          duplicateActiveScenario={duplicateActiveScenario}
+          compareScenarioId={compareScenarioId}
+          setCompareScenarioId={setCompareScenarioId}
+          runScenarioComparison={runScenarioComparison}
+          isComparing={isComparing}
+          comparisonError={comparisonError}
+          comparisonResult={comparisonResult}
+          comparisonSummary={comparisonSummary}
+          compareScenarioName={compareScenarioName}
+          signedEuro={signedEuro}
+          signedPercentagePoints={signedPercentagePoints}
+          euro={euro}
+          decimalLike={decimalLike}
+        />
       );
     }
 
     if (activeStep === "componenten") {
       return (
-        <>
-          <section className="section">
-            <SectionHeader title="Inkomsten / Uitgaven" description="Loon, uitkering, pensioen en eenmalige inkomsten/uitgaven als losse tegels." />
-            <NewPostPicker title="Nieuwe post" options={inkomstenTypes} value={inkomenType} onValueChange={setInkomenType} onAdd={() => addPost(inkomenType)} />
-            <div className="tiles">{inkomstenPosts.map((post) => <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} />)}</div>
-          </section>
-
-          <section className="section">
-            <SectionHeader title="Vermogen" description="Sparen, beleggen, eigen woning, overige bezittingen en schulden (hypotheek)." />
-            <NewPostPicker title="Nieuwe post" options={vermogenTypes} value={vermogenType} onValueChange={setVermogenType} onAdd={() => addPost(vermogenType)} />
-            <div className="tiles">{vermogenPosts.map((post) => <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} />)}</div>
-          </section>
-
-          <section className="section">
-            <SectionHeader title="JSON Preview" description="Voor API-koppeling: actuele UI-invoer als JSON-structuur." />
-            <pre>{JSON.stringify(payloadPreview, null, 2)}</pre>
-          </section>
-        </>
+        <ComponentsSection
+          SectionHeader={SectionHeader}
+          NewPostPicker={NewPostPicker}
+          PostCard={PostCard}
+          typeConfig={TYPE_CONFIG}
+          fieldMeta={FIELD_META}
+          inkomstenTypes={inkomstenTypes}
+          inkomenType={inkomenType}
+          setInkomenType={setInkomenType}
+          addPost={addPost}
+          inkomstenPosts={inkomstenPosts}
+          updatePost={updatePost}
+          removePost={removePost}
+          vermogenTypes={vermogenTypes}
+          vermogenType={vermogenType}
+          setVermogenType={setVermogenType}
+          vermogenPosts={vermogenPosts}
+          payloadPreview={payloadPreview}
+        />
       );
     }
 
@@ -2196,121 +1960,41 @@ function AppContent() {
 
     if (activeStep === "accountant") {
       return (
-        <>
-          <section className="section">
-            <SectionHeader title="Accountant" description="Deze stap wordt in volgende implementatiefase uitgebreid met detailniveau zoals de Streamlit pagina." />
-            <p>Huidige basis toont jaarresultaten als startpunt.</p>
-          </section>
-          {renderResultaten()}
-        </>
+        <AccountantSection SectionHeader={SectionHeader} resultsSection={renderResultaten()} />
       );
     }
 
     if (activeStep === "rapport") {
       return (
-        <section className="section">
-          <SectionHeader
-            title="Rapport"
-            description="Download een Excel-rapport via het API endpoint /rapportages/excel."
-          />
-          <p className="notice">
-            Het rapport wordt gegenereerd op basis van de huidige invoer in het actieve huishouden en scenario.
-          </p>
-          <div className="household-controls">
-            <button type="button" onClick={downloadRapport} disabled={isReportLoading || !canCalculate}>
-              {isReportLoading ? "Rapport genereren..." : "Download Excel-rapport"}
-            </button>
-          </div>
-          {reportErrorMessage ? <p className="error">{reportErrorMessage}</p> : null}
-        </section>
+        <ReportSection
+          SectionHeader={SectionHeader}
+          downloadRapport={downloadRapport}
+          isReportLoading={isReportLoading}
+          canCalculate={canCalculate}
+          reportErrorMessage={reportErrorMessage}
+        />
       );
     }
 
     if (activeStep === "import") {
       return (
-        <section className="section">
-          <SectionHeader
-            title="Pensioengegevens Import"
-            description="Importeer MPO-bestanden en zet ouderdomspensioenen direct om naar pensioen-componenten."
-          />
-
-          <p className="notice">
-            Ondersteund in deze stap: CSV, Excel (.xlsx/.xls), JSON en PDF.
-          </p>
-
-          <div className="household-controls">
-            <label className="field inline-field">
-              <span>MPO-bestand persoon 1</span>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls,.json,.pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  if (file) {
-                    importMpoFileForPersoon(file, "P1");
-                  }
-                }}
-              />
-            </label>
-            <span className="notice">{importBestandP1Naam ? `Laatst: ${importBestandP1Naam}` : "Nog geen bestand"}</span>
-          </div>
-
-          <ImportPreviewTable title="Preview import persoon 1" rows={importPreviewP1} />
-          {importStatsP1 ? (
-            <p className="notice">
-              P1: bron {importStatsP1.bronregels}, geimporteerd {importStatsP1.geimporteerd},
-              overgeslagen type {importStatsP1.overgeslagenType}, bedrag {importStatsP1.overgeslagenBedrag},
-              duplicaat {importStatsP1.overgeslagenDuplicaat}.
-            </p>
-          ) : null}
-          {importWarningsP1.length > 0 ? (
-            <ul className="validation-list">
-              {importWarningsP1.map((melding) => (
-                <li key={`p1-${melding}`}>{melding}</li>
-              ))}
-            </ul>
-          ) : null}
-
-          {heeftPartner ? (
-            <div className="household-controls">
-              <label className="field inline-field">
-                <span>MPO-bestand persoon 2</span>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls,.json,.pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (file) {
-                      importMpoFileForPersoon(file, "P2");
-                    }
-                  }}
-                />
-              </label>
-              <span className="notice">{importBestandP2Naam ? `Laatst: ${importBestandP2Naam}` : "Nog geen bestand"}</span>
-            </div>
-          ) : (
-            <p className="notice">Partner staat uit. Schakel P2 in op de stap Personen om voor P2 te importeren.</p>
-          )}
-
-          {heeftPartner ? <ImportPreviewTable title="Preview import persoon 2" rows={importPreviewP2} /> : null}
-          {heeftPartner && importStatsP2 ? (
-            <p className="notice">
-              P2: bron {importStatsP2.bronregels}, geimporteerd {importStatsP2.geimporteerd},
-              overgeslagen type {importStatsP2.overgeslagenType}, bedrag {importStatsP2.overgeslagenBedrag},
-              duplicaat {importStatsP2.overgeslagenDuplicaat}.
-            </p>
-          ) : null}
-          {heeftPartner && importWarningsP2.length > 0 ? (
-            <ul className="validation-list">
-              {importWarningsP2.map((melding) => (
-                <li key={`p2-${melding}`}>{melding}</li>
-              ))}
-            </ul>
-          ) : null}
-
-          {importInfoMessage ? <p className="notice">{importInfoMessage}</p> : null}
-          {importErrorMessage ? <p className="error">{importErrorMessage}</p> : null}
-        </section>
+        <MpoImportSection
+          heeftPartner={heeftPartner}
+          isImportingP1={isImportingP1}
+          isImportingP2={isImportingP2}
+          importBestandP1Naam={importBestandP1Naam}
+          importBestandP2Naam={importBestandP2Naam}
+          importPreviewP1={importPreviewP1}
+          importPreviewP2={importPreviewP2}
+          importStatsP1={importStatsP1}
+          importStatsP2={importStatsP2}
+          importWarningsP1={importWarningsP1}
+          importWarningsP2={importWarningsP2}
+          importInfoMessages={importInfoMessages}
+          importErrorMessages={importErrorMessages}
+          onImportFile={importMpoFileForPersoon}
+          SectionHeader={SectionHeader}
+        />
       );
     }
 

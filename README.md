@@ -73,8 +73,9 @@ cashflowprognose voor een huishouden.
   - personen-stap met optionele partner (P2), inclusief validatie en correcte payload naar de API
   - periode-stap met jaarvalidatie; berekenen is geblokkeerd tot invoer geldig is
   - rapport-stap met directe Excel-download via API (`/api/v1/rapportages/excel`) op basis van actieve invoer
-  - import-stap met MPO-bestandsimport naar pensioen-componenten (CSV, Excel en JSON in React; PDF volgt)
-  - import-validatie in React met preview, duplicate-waarschuwingen en telling van overgeslagen regels
+  - import-stap met MPO-bestandsimport naar pensioen-componenten (CSV, Excel, JSON en PDF)
+  - PDF-import loopt via API-endpoint `/api/v1/import/mpo/pdf` en gebruikt de backend-parser voor MPO-PDF's
+  - import-validatie in React met preview, compacte samenvatting per persoon, duplicate-waarschuwingen, telling van overgeslagen regels en feedback tijdens import
 
 ## Usage
 
@@ -132,6 +133,8 @@ Om te berekenen in de React UI:
 3. Vul cards in voor inkomsten/uitgaven en vermogen.
 4. Klik op `Berekenen` in de contextbalk bovenin.
 5. Bekijk resultaten in de sectie `Resultaten op Jaarbasis`.
+6. Importeer in de stap `Import` MPO-bestanden voor P1 en optioneel P2.
+  Tijdens import toont de UI per persoon voortgang, foutmeldingen en de laatste succesvolle bestandsnaam.
 
 7. Beheer scenario's in het scherm Scenario:
   - kies het standaardscenario via de radioknoppen
