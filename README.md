@@ -55,6 +55,15 @@ cashflowprognose voor een huishouden.
   - minimale Streamlit client (`app_api_client.py`) die via HTTP de API aanroept
   - expliciete Berekenen-knop
   - melding wanneer invoer gewijzigd is sinds de laatste berekening
+  - sidebar met live API-status en handmatige referentie-refresh
+  - uitgebreid jaarresultaten-dashboard met KPI's, jaartabel en trendgrafieken
+  - aparte tab voor ruwe API JSON-output
+- Nieuwe React UI (experimenteel, aparte branch `feature/react-ui-cards`):
+  - sectie **Inkomsten / Uitgaven** met tegel-cards voor loon, uitkering, pensioen en eenmalige posten
+  - periodieke **Uitgave**-card in dezelfde sectie; wordt als negatieve cashflow verwerkt (buiten box 1/box 3)
+  - sectie **Vermogen** met tegel-cards voor sparen, beleggen, eigen woning, overige bezittingen en hypotheek
+  - type-afhankelijke invoervelden per card (o.a. begin/einddatum, bedrag, frequentie, groei/inflatie/rente)
+  - berekenknop via API (`/api/v1/berekeningen`) met jaarresultaten in tabel/KPI's
 
 ## Usage
 
@@ -90,12 +99,35 @@ http://127.0.0.1:8000/docs
 streamlit run app_api_client.py
 ```
 
-6. Beheer scenario's in het scherm Scenario:
+De API-client toont berekeningen primair op jaarbasis in de tab
+`Resultaten op Jaarbasis`.
+
+6. Start de nieuwe React UI (op aparte branch):
+
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+Open daarna de lokale Vite URL (meestal `http://localhost:5173`).
+De default API-basis in de UI is `/api/v1` en wordt lokaal via Vite-proxy
+doorgezet naar `http://127.0.0.1:8000`.
+
+Om te berekenen in de React UI:
+
+1. Start eerst de API (`uvicorn ... pensioen.api.main:app`).
+2. Start daarna de React UI (`npm run dev` in `frontend-react`).
+3. Vul cards in voor inkomsten/uitgaven en vermogen.
+4. Klik op `Bereken via API`.
+5. Bekijk resultaten in de sectie `Resultaten op Jaarbasis`.
+
+7. Beheer scenario's in het scherm Scenario:
   - kies het standaardscenario via de radioknoppen
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
 
-7. Vul in het scherm Financiële Planning alle componenten in:
+8. Vul in het scherm Financiële Planning alle componenten in:
   - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen
   - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, hypotheek, auto's, kunst, etc.
     * Kies bij het type **Eigen woning** voor de woningvelden zoals WOZ-waarde en jaarlijkse waardestijging
@@ -106,13 +138,13 @@ streamlit run app_api_client.py
     * Voor andere bezittingen is dit waardestijging of afschrijving
   - **Eenmalige Posten**: Eenmalige ontvangsten en uitgaven op specifieke data
 
-8. Open in de app het tabblad Accountantsoverzicht en klik op
+9. Open in de app het tabblad Accountantsoverzicht en klik op
   Berekening uitvoeren.
 
-9. Controleer de componenttabel Netto cashflow opgebouwd uit losse
+10. Controleer de componenttabel Netto cashflow opgebouwd uit losse
   componenten in het accountantsoverzicht.
 
-10. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
+11. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py
@@ -127,7 +159,7 @@ PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py tc_2025_
 Output staat standaard in
 `tests/fixtures/belasting_testcases/accountant_exports/`.
 
-11. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
+12. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py
@@ -145,7 +177,7 @@ Alleen als je expliciet een single-case rapport wilt schrijven:
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_010 --schrijf-rapport
 ```
 
-12. Beheer belastingtarieven in het scherm Instellingen:
+13. Beheer belastingtarieven in het scherm Instellingen:
   - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
   - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
   - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren

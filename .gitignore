@@ -1,3 +1,5 @@
+frontend-react/node_modules/
+frontend-react/dist/
 data/uploads/
 .env
 __pycache__/

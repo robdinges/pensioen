@@ -1,0 +1,265 @@
+:root {
+  --bg: #f4f8ee;
+  --bg-accent: #e8f2d7;
+  --ink: #1b2a1f;
+  --muted: #4f6255;
+  --card: #fffdf7;
+  --line: #d6dfcc;
+  --primary: #165d48;
+  --primary-soft: #d1eadf;
+  --danger: #9d2f2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 95% 8%, #cee8cf 0, transparent 24%),
+    radial-gradient(circle at 8% 20%, #f6f1c6 0, transparent 28%),
+    var(--bg);
+}
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero {
+  background: linear-gradient(130deg, #f7f4e4 10%, #dff0df 100%);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #507253;
+  font-size: 0.78rem;
+}
+
+.hero h1 {
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--muted);
+}
+
+.toolbar {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.error {
+  margin-top: 0.7rem;
+  color: #9d2f2f;
+  font-weight: 600;
+}
+
+.notice {
+  margin-top: 0.5rem;
+  color: #395042;
+  font-size: 0.88rem;
+}
+
+.section {
+  background: color-mix(in oklab, var(--card) 92%, white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 12px 24px -22px rgba(38, 70, 40, 0.4);
+}
+
+.section-header h2 {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.7rem;
+  margin: 0;
+}
+
+.section-header p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+}
+
+.add-row {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--bg-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.add-row h4 {
+  margin: 0;
+}
+
+.add-row div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: white;
+}
+
+.card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.card p {
+  margin: 0.2rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.field span {
+  font-size: 0.78rem;
+  color: #4f6255;
+}
+
+input,
+select,
+button,
+.ghost {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 0.52rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+
+button {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.05);
+}
+
+.ghost {
+  background: #fff;
+  color: var(--danger);
+  border-color: #ebc6c6;
+}
+
+pre {
+  margin: 0;
+  background: #132018;
+  color: #cff2d6;
+  border-radius: 12px;
+  border: 1px solid #2f4d35;
+  padding: 0.85rem;
+  overflow: auto;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.kpi {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem;
+  background: #f7fbf1;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.kpi span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.kpi strong {
+  font-size: 1rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #e7efdc;
+  padding: 0.55rem;
+  font-size: 0.9rem;
+}
+
+th {
+  color: #405445;
+  background: #f2f8e8;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 1rem 0.7rem 2.2rem;
+  }
+}
