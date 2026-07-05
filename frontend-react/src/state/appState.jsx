@@ -14,20 +14,33 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case "SET_ACTIVE_STEP":
-      return { ...state, activeStep: action.payload };
-    case "SET_CONTEXT":
+      return state.activeStep === action.payload ? state : { ...state, activeStep: action.payload };
+    case "SET_CONTEXT": {
+      const nextCurrentHousehold = action.payload.currentHousehold ?? state.currentHousehold;
+      const nextActiveScenario = action.payload.activeScenario ?? state.activeScenario;
+      if (
+        nextCurrentHousehold === state.currentHousehold &&
+        nextActiveScenario === state.activeScenario
+      ) {
+        return state;
+      }
       return {
         ...state,
-        currentHousehold: action.payload.currentHousehold ?? state.currentHousehold,
-        activeScenario: action.payload.activeScenario ?? state.activeScenario,
+        currentHousehold: nextCurrentHousehold,
+        activeScenario: nextActiveScenario,
       };
+    }
     case "SET_CALC_STATUS":
-      return { ...state, calculationStatus: action.payload };
+      return state.calculationStatus === action.payload
+        ? state
+        : { ...state, calculationStatus: action.payload };
     case "MARK_STALE":
-      return {
-        ...state,
-        calculationStatus: state.calculationStatus === "calculating" ? "calculating" : "stale",
-      };
+      return state.calculationStatus === "calculating" || state.calculationStatus === "stale"
+        ? state
+        : {
+            ...state,
+            calculationStatus: "stale",
+          };
     case "MARK_FRESH":
       return {
         ...state,
@@ -35,10 +48,12 @@ function reducer(state, action) {
         lastCalculatedAt: action.payload,
       };
     case "SET_AUTOSAVE_STATUS":
-      return {
-        ...state,
-        autosaveStatus: action.payload,
-      };
+      return state.autosaveStatus === action.payload
+        ? state
+        : {
+            ...state,
+            autosaveStatus: action.payload,
+          };
     default:
       return state;
   }
@@ -47,19 +62,21 @@ function reducer(state, action) {
 export function AppStateProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const value = useMemo(
+  const actions = useMemo(
     () => ({
-      state,
-      actions: {
-        setActiveStep: (step) => dispatch({ type: "SET_ACTIVE_STEP", payload: step }),
-        setContext: (payload) => dispatch({ type: "SET_CONTEXT", payload }),
-        setCalcStatus: (status) => dispatch({ type: "SET_CALC_STATUS", payload: status }),
-        markStale: () => dispatch({ type: "MARK_STALE" }),
-        markFresh: () => dispatch({ type: "MARK_FRESH", payload: new Date().toISOString() }),
-        setAutosaveStatus: (status) => dispatch({ type: "SET_AUTOSAVE_STATUS", payload: status }),
-      },
+      setActiveStep: (step) => dispatch({ type: "SET_ACTIVE_STEP", payload: step }),
+      setContext: (payload) => dispatch({ type: "SET_CONTEXT", payload }),
+      setCalcStatus: (status) => dispatch({ type: "SET_CALC_STATUS", payload: status }),
+      markStale: () => dispatch({ type: "MARK_STALE" }),
+      markFresh: () => dispatch({ type: "MARK_FRESH", payload: new Date().toISOString() }),
+      setAutosaveStatus: (status) => dispatch({ type: "SET_AUTOSAVE_STATUS", payload: status }),
     }),
-    [state],
+    [],
+  );
+
+  const value = useMemo(
+    () => ({ state, actions }),
+    [state, actions],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

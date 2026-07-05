@@ -69,6 +69,7 @@ cashflowprognose voor een huishouden.
   - huishouden-stap met toevoegen, hernoemen, verwijderen en wisselen tussen meerdere huishoudens
   - scenario-stap met toevoegen, hernoemen, verwijderen en kiezen van actief scenario per huishouden
   - scenario-stap met dupliceren van actief scenario en aparte invoersnapshots per scenario
+  - scenario-stap met basale scenariovergelijking via API (`/api/v1/vergelijkingen`) inclusief KPI-tabel
   - personen-stap met optionele partner (P2), inclusief validatie en correcte payload naar de API
   - periode-stap met jaarvalidatie; berekenen is geblokkeerd tot invoer geldig is
   - rapport-stap met directe Excel-download via API (`/api/v1/rapportages/excel`) op basis van actieve invoer

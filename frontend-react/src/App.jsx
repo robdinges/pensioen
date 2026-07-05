@@ -138,6 +138,19 @@ function euro(value) {
   }).format(value ?? 0);
 }
 
+function signedEuro(value) {
+  const amount = decimalLike(value);
+  if (amount === 0) {
+    return euro(0);
+  }
+  return `${amount > 0 ? "+" : "-"}${euro(Math.abs(amount))}`;
+}
+
+function signedPercentagePoints(value) {
+  const amount = decimalLike(value);
+  return `${amount > 0 ? "+" : ""}${amount.toFixed(1)} pp`;
+}
+
 function emptyValuesFor(type) {
   const fields = TYPE_CONFIG[type].fields;
   return fields.reduce((acc, field) => {
@@ -172,6 +185,11 @@ function createDefaultScenarioData() {
     inputSignatureAtCalculation: "",
     calculationStatus: "idle",
   };
+}
+
+function decimalLike(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function extractFilename(contentDisposition) {
@@ -271,6 +289,50 @@ function parseJsonText(jsonText) {
   }
 
   return [];
+}
+
+async function readJsonResponse(response) {
+  const raw = await response.text();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { message: raw };
+  }
+}
+
+async function parsePdfViaApi(file, apiBase) {
+  if (file.size === 0) {
+    throw new Error("Het geselecteerde PDF-bestand is leeg.");
+  }
+
+  const formData = new FormData();
+  formData.append("bestand", file);
+
+  const response = await fetch(`${apiBase}/import/mpo/pdf`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    const detail = data?.detail;
+    if (typeof detail === "string") {
+      throw new Error(detail);
+    }
+    if (detail?.message) {
+      throw new Error(detail.message);
+    }
+    if (data?.message) {
+      throw new Error(data.message);
+    }
+    throw new Error(`PDF-import mislukt (${response.status})`);
+  }
+
+  return Array.isArray(data?.records) ? data.records.map((row) => normalizeMpoRow(row)) : [];
 }
 
 async function parseExcelBuffer(buffer) {
@@ -766,6 +828,10 @@ function AppContent() {
   const [importStatsP2, setImportStatsP2] = useState(null);
   const [resultaat, setResultaat] = useState(null);
   const [inputSignatureAtCalculation, setInputSignatureAtCalculation] = useState("");
+  const [compareScenarioId, setCompareScenarioId] = useState("");
+  const [comparisonResult, setComparisonResult] = useState(null);
+  const [comparisonError, setComparisonError] = useState("");
+  const [isComparing, setIsComparing] = useState(false);
   const [scenarioSnapshots, setScenarioSnapshots] = useState({
     [initialScenarioId]: createDefaultScenarioData(),
   });
@@ -783,6 +849,8 @@ function AppContent() {
       scenarioSnapshots: {
         [initialScenarioId]: createDefaultScenarioData(),
       },
+      compareScenarioId: "",
+      comparisonResult: null,
       importBestandP1Naam: "",
       importBestandP2Naam: "",
       importPreviewP1: [],
@@ -820,6 +888,27 @@ function AppContent() {
     scenarios[0] ||
     null;
   const activeScenarioName = activeScenario?.naam || "Basisscenario";
+  const compareScenario = scenarios.find((scenario) => scenario.id === compareScenarioId) || null;
+  const compareScenarioName = compareScenario?.naam || "";
+  const comparisonSummary = useMemo(() => {
+    const results = comparisonResult?.scenario_resultaten;
+    if (!Array.isArray(results) || results.length < 2 || !compareScenarioName) {
+      return null;
+    }
+
+    const activeItem = results.find((item) => item.scenario_naam === activeScenarioName);
+    const compareItem = results.find((item) => item.scenario_naam === compareScenarioName);
+    if (!activeItem || !compareItem) {
+      return null;
+    }
+
+    return {
+      nettoDelta: decimalLike(compareItem.netto_per_maand_mediaan) - decimalLike(activeItem.netto_per_maand_mediaan),
+      vermogen80Delta: decimalLike(compareItem.vermogen_op_80) - decimalLike(activeItem.vermogen_op_80),
+      belastingdrukDelta:
+        decimalLike(compareItem.gemiddelde_belastingdruk) - decimalLike(activeItem.gemiddelde_belastingdruk),
+    };
+  }, [comparisonResult, activeScenarioName, compareScenarioName]);
 
   const jaarVanNum = Number(jaarVan);
   const jaarTotNum = Number(jaarTot);
@@ -874,6 +963,21 @@ function AppContent() {
     calculationStatus: state.calculationStatus,
   });
 
+  const scenarioRequestFromSnapshot = (snapshot, scenarioNaam) => {
+    const request = buildRequestPayload({
+      posts: snapshot.posts,
+      persoonNaam,
+      geboortedatum,
+      jaarVan: snapshot.jaarVan,
+      jaarTot: snapshot.jaarTot,
+      scenarioNaam,
+      heeftPartner,
+      partnerNaam,
+      partnerGeboortedatum,
+    });
+    return request;
+  };
+
   const hydrateFromScenarioSnapshot = (snapshot) => {
     const source = snapshot || createDefaultScenarioData();
     setPosts(Array.isArray(source.posts) && source.posts.length > 0 ? source.posts : [createPost("loon"), createPost("sparen")]);
@@ -911,6 +1015,8 @@ function AppContent() {
     scenarios,
     activeScenarioId,
     scenarioSnapshots,
+    compareScenarioId,
+    comparisonResult,
     importBestandP1Naam,
     importBestandP2Naam,
     importPreviewP1,
@@ -981,6 +1087,14 @@ function AppContent() {
         : { [loadedActiveScenarioId]: fallbackScenarioData };
 
     setScenarioSnapshots(loadedScenarioSnapshots);
+    setCompareScenarioId(
+      typeof source.compareScenarioId === "string" ? source.compareScenarioId : "",
+    );
+    setComparisonResult(
+      source.comparisonResult && typeof source.comparisonResult === "object"
+        ? source.comparisonResult
+        : null,
+    );
     hydrateFromScenarioSnapshot(
       loadedScenarioSnapshots[loadedActiveScenarioId] || fallbackScenarioData,
     );
@@ -1021,6 +1135,8 @@ function AppContent() {
       scenarioSnapshots: {
         [initialScenario.id]: initialScenarioData,
       },
+      compareScenarioId: "",
+      comparisonResult: null,
       importBestandP1Naam: initialScenarioData.importBestandP1Naam,
       importBestandP2Naam: initialScenarioData.importBestandP2Naam,
       importPreviewP1: initialScenarioData.importPreviewP1,
@@ -1156,6 +1272,71 @@ function AppContent() {
     hydrateFromScenarioSnapshot(clonedData);
   };
 
+  const runScenarioComparison = async () => {
+    if (!compareScenarioId) {
+      setComparisonError("Kies eerst een tweede scenario om te vergelijken.");
+      return;
+    }
+
+    const currentSnapshot = buildCurrentScenarioSnapshot();
+    const otherScenario = scenarios.find((scenario) => scenario.id === compareScenarioId);
+    const otherSnapshot = scenarioSnapshots[compareScenarioId];
+
+    if (!otherScenario || !otherSnapshot) {
+      setComparisonError("Het gekozen scenario kon niet worden geladen.");
+      return;
+    }
+
+    setIsComparing(true);
+    setComparisonError("");
+
+    try {
+      const activeRequest = scenarioRequestFromSnapshot(currentSnapshot, activeScenarioName);
+      const otherRequest = scenarioRequestFromSnapshot(otherSnapshot, otherScenario.naam);
+      const jaarVanVergelijking = Math.min(Number(currentSnapshot.jaarVan), Number(otherSnapshot.jaarVan));
+      const jaarTotVergelijking = Math.max(Number(currentSnapshot.jaarTot), Number(otherSnapshot.jaarTot));
+
+      const response = await fetch(`${apiBase}/vergelijkingen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarios: [activeRequest.scenario, otherRequest.scenario],
+          persoon1: activeRequest.persoon1,
+          persoon2: activeRequest.persoon2,
+          records1: [],
+          records2: [],
+          jaar_van: jaarVanVergelijking,
+          jaar_tot: jaarTotVergelijking,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data?.detail;
+        if (Array.isArray(detail) && detail.length > 0 && detail[0]?.msg) {
+          setComparisonError(detail[0].msg);
+        } else if (typeof detail === "string") {
+          setComparisonError(detail);
+        } else if (detail?.message) {
+          setComparisonError(detail.message);
+        } else {
+          setComparisonError(`Scenariovergelijking mislukt (${response.status})`);
+        }
+        return;
+      }
+
+      setComparisonResult({
+        ...data?.vergelijking,
+        jaar_van: jaarVanVergelijking,
+        jaar_tot: jaarTotVergelijking,
+      });
+    } catch (err) {
+      setComparisonError(err instanceof Error ? err.message : "Onbekende fout bij scenariovergelijking");
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
   const importMpoFileForPersoon = async (file, persoonCode) => {
     if (!file) {
       setImportErrorMessage("Selecteer eerst een MPO-bestand.");
@@ -1163,8 +1344,8 @@ function AppContent() {
     }
 
     const extension = file.name.toLowerCase().split(".").pop();
-    if (extension !== "csv" && extension !== "json" && extension !== "xlsx" && extension !== "xls") {
-      setImportErrorMessage("Alleen CSV, Excel (.xlsx/.xls) en JSON worden ondersteund in de React importstap.");
+    if (extension !== "csv" && extension !== "json" && extension !== "xlsx" && extension !== "xls" && extension !== "pdf") {
+      setImportErrorMessage("Alleen CSV, Excel (.xlsx/.xls), JSON en PDF worden ondersteund in de React importstap.");
       return;
     }
 
@@ -1177,6 +1358,8 @@ function AppContent() {
       } else if (extension === "json") {
         const content = await file.text();
         rows = parseJsonText(content);
+      } else if (extension === "pdf") {
+        rows = await parsePdfViaApi(file, apiBase);
       } else {
         const buffer = await file.arrayBuffer();
         rows = await parseExcelBuffer(buffer);
@@ -1269,6 +1452,8 @@ function AppContent() {
       partnerGeboortedatum,
       scenarios,
       activeScenarioId,
+      compareScenarioId,
+      comparisonResult,
       importBestandP1Naam,
       importBestandP2Naam,
       importPreviewP1,
@@ -1413,6 +1598,8 @@ function AppContent() {
     partnerGeboortedatum,
     scenarios,
     activeScenarioId,
+    compareScenarioId,
+    comparisonResult,
     importBestandP1Naam,
     importBestandP2Naam,
     importPreviewP1,
@@ -1467,6 +1654,20 @@ function AppContent() {
   }, [activeScenarioName, actions]);
 
   useEffect(() => {
+    const availableScenarioIds = scenarios.map((scenario) => scenario.id).filter((id) => id !== activeScenarioId);
+    if (availableScenarioIds.length === 0) {
+      if (compareScenarioId) {
+        setCompareScenarioId("");
+      }
+      return;
+    }
+
+    if (!compareScenarioId || !availableScenarioIds.includes(compareScenarioId)) {
+      setCompareScenarioId(availableScenarioIds[0]);
+    }
+  }, [scenarios, activeScenarioId, compareScenarioId]);
+
+  useEffect(() => {
     if (!hydrated) {
       return;
     }
@@ -1495,6 +1696,8 @@ function AppContent() {
     scenarios,
     activeScenarioId,
     scenarioSnapshots,
+    compareScenarioId,
+    comparisonResult,
     importBestandP1Naam,
     importBestandP2Naam,
     importPreviewP1,
@@ -1863,6 +2066,100 @@ function AppContent() {
             </button>
           </div>
 
+          <div className="household-controls">
+            <label className="field inline-field">
+              <span>Vergelijk met scenario</span>
+              <select
+                value={compareScenarioId}
+                onChange={(e) => setCompareScenarioId(e.target.value)}
+                disabled={scenarios.length <= 1}
+              >
+                {scenarios.filter((scenario) => scenario.id !== activeScenarioId).map((scenario) => (
+                  <option key={scenario.id} value={scenario.id}>
+                    {scenario.naam || "Onbenoemd scenario"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={runScenarioComparison} disabled={isComparing || scenarios.length <= 1}>
+              {isComparing ? "Vergelijken..." : "Vergelijk scenario's"}
+            </button>
+          </div>
+
+          {comparisonError ? <p className="error">{comparisonError}</p> : null}
+
+          {comparisonResult?.scenario_resultaten?.length ? (
+            <div className="table-wrap import-preview">
+              <p className="notice">
+                Vergelijking over {comparisonResult.jaar_van} - {comparisonResult.jaar_tot}
+                {comparisonResult.beste_scenario_netto?.scenario_naam
+                  ? ` | Beste mediaan netto: ${comparisonResult.beste_scenario_netto.scenario_naam}`
+                  : ""}
+              </p>
+              {comparisonSummary ? (
+                <div className="kpis comparison-kpis">
+                  <div className="kpi comparison-kpi">
+                    <span>Vergelijkd scenario</span>
+                    <strong>{compareScenarioName}</strong>
+                  </div>
+                  <div className="kpi comparison-kpi">
+                    <span>Delta netto p/m</span>
+                    <strong className={comparisonSummary.nettoDelta >= 0 ? "trend-positive" : "trend-negative"}>
+                      {signedEuro(comparisonSummary.nettoDelta)}
+                    </strong>
+                  </div>
+                  <div className="kpi comparison-kpi">
+                    <span>Delta vermogen op 80</span>
+                    <strong className={comparisonSummary.vermogen80Delta >= 0 ? "trend-positive" : "trend-negative"}>
+                      {signedEuro(comparisonSummary.vermogen80Delta)}
+                    </strong>
+                  </div>
+                  <div className="kpi comparison-kpi">
+                    <span>Delta belastingdruk</span>
+                    <strong className={comparisonSummary.belastingdrukDelta <= 0 ? "trend-positive" : "trend-negative"}>
+                      {signedPercentagePoints(comparisonSummary.belastingdrukDelta)}
+                    </strong>
+                  </div>
+                </div>
+              ) : null}
+              <table>
+                <thead>
+                  <tr>
+                    <th>Scenario</th>
+                    <th>Mediaan netto p/m</th>
+                    <th>Laagste jaar</th>
+                    <th>Vermogen op 70</th>
+                    <th>Vermogen op 80</th>
+                    <th>Belastingdruk</th>
+                    <th>Tekortjaren</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonResult.scenario_resultaten.map((item) => (
+                    <tr
+                      key={item.scenario_naam}
+                      className={[
+                        "comparison-row",
+                        item.scenario_naam === activeScenarioName ? "is-active" : "",
+                        item.scenario_naam === comparisonResult.beste_scenario_netto?.scenario_naam ? "is-best" : "",
+                      ].filter(Boolean).join(" ")}
+                    >
+                      <td>{item.scenario_naam}</td>
+                      <td>{euro(decimalLike(item.netto_per_maand_mediaan))}</td>
+                      <td>
+                        {item.laagste_inkomensjaar ? `${item.laagste_inkomensjaar}: ${euro(decimalLike(item.netto_laagste_jaar))}` : "-"}
+                      </td>
+                      <td>{euro(decimalLike(item.vermogen_op_70))}</td>
+                      <td>{euro(decimalLike(item.vermogen_op_80))}</td>
+                      <td>{`${decimalLike(item.gemiddelde_belastingdruk).toFixed(1)}%`}</td>
+                      <td>{item.aantal_tekortjaren ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
           <p className="notice">
             Het actieve scenario wordt gebruikt als naam in de berekenpayload.
           </p>
@@ -1938,7 +2235,7 @@ function AppContent() {
           />
 
           <p className="notice">
-            Ondersteund in deze stap: CSV, Excel (.xlsx/.xls) en JSON. PDF volgt in een vervolgslice.
+            Ondersteund in deze stap: CSV, Excel (.xlsx/.xls), JSON en PDF.
           </p>
 
           <div className="household-controls">
@@ -1946,7 +2243,7 @@ function AppContent() {
               <span>MPO-bestand persoon 1</span>
               <input
                 type="file"
-                accept=".csv,.xlsx,.xls,.json"
+                accept=".csv,.xlsx,.xls,.json,.pdf"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
                   if (file) {
@@ -1980,7 +2277,7 @@ function AppContent() {
                 <span>MPO-bestand persoon 2</span>
                 <input
                   type="file"
-                  accept=".csv,.xlsx,.xls,.json"
+                  accept=".csv,.xlsx,.xls,.json,.pdf"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     if (file) {

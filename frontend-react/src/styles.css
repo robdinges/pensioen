@@ -429,12 +429,36 @@ pre {
   font-size: 1rem;
 }
 
+.comparison-kpis {
+  margin-top: 0.9rem;
+}
+
+.comparison-kpi {
+  background: linear-gradient(180deg, #f8fbf4 0%, #f0f7e8 100%);
+}
+
+.trend-positive {
+  color: #1f6e43;
+}
+
+.trend-negative {
+  color: #9d2f2f;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
 
 .import-preview {
   margin-top: 0.8rem;
+}
+
+.comparison-row.is-active td:first-child {
+  font-weight: 700;
+}
+
+.comparison-row.is-best {
+  background: #f3fbef;
 }
 
 table {

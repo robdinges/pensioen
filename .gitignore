@@ -16,3 +16,4 @@ build/
 .sessie.json
 .venv/
 .venv312/
+.playwright-mcp/

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi import File, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from pensioen.api.referentietabellen import codes_en_labels, input_hints
@@ -10,6 +15,7 @@ from pensioen.api.schemas import BerekeningRequest, RapportageRequest, Vergelijk
 from pensioen.api.serialisatie import naar_json_compatibel
 from pensioen.calculations.cashflow_engine import bereken_huishouden
 from pensioen.calculations.inheritance_engine import validate_inheritance_tree
+from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.reports.rapport_engine import genereer_rapport
 from pensioen.tax.belasting_loader import laad_tarieven_bereik, resolve_tariefwaarden_voor_jaar
@@ -60,6 +66,54 @@ def referenties_codes_endpoint() -> JSONResponse:
 def referenties_input_hints_endpoint() -> JSONResponse:
     """Geef required velden en defaults voor UI-form generatie."""
     return JSONResponse({"hints": input_hints()})
+
+
+@app.post("/api/v1/import/mpo/pdf")
+async def import_mpo_pdf_endpoint(bestand: UploadFile = File(...)) -> JSONResponse:
+    """Parseer een MPO-PDF en geef herkenbare pensioenrecords terug voor UI-import."""
+    naam = (bestand.filename or "").lower()
+    if not naam.endswith(".pdf"):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid_file_type",
+                "message": "Alleen PDF-bestanden zijn toegestaan voor dit endpoint.",
+            },
+        )
+
+    inhoud = await bestand.read()
+    if not inhoud:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "empty_file",
+                "message": "Het geuploade PDF-bestand is leeg.",
+            },
+        )
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(inhoud)
+        tmp_pad = Path(tmp.name)
+
+    try:
+        records = MPOParser.parse_pdf(tmp_pad)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "mpo_pdf_parse_error",
+                "message": str(exc),
+            },
+        ) from exc
+    finally:
+        os.unlink(tmp_pad)
+
+    return JSONResponse(
+        {
+            "records": naar_json_compatibel(records),
+            "aantal_records": len(records),
+        }
+    )
 
 
 @app.post("/api/v1/berekeningen")

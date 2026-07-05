@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
 from pensioen.api.main import app
+from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.scenario import Scenario
 
 
@@ -53,6 +55,53 @@ def test_referenties_input_hints_endpoint() -> None:
     assert "scenario" in hints
     assert "defaults" in hints["scenario"]
     assert hints["component"]["defaults"]["frequentie"] == "maandelijks"
+
+
+def test_import_mpo_pdf_endpoint_happy_path(monkeypatch) -> None:
+    def fake_parse_pdf(_pad):
+        return [
+            PensioenRecord(
+                uitvoerder="ABP",
+                regeling="Ouderdomspensioen",
+                type_pensioen=TypePensioen.OUDERDOMS,
+                ingangsdatum=date(2030, 1, 1),
+                bruto_per_jaar=Decimal("12000"),
+            )
+        ]
+
+    monkeypatch.setattr("pensioen.api.main.MPOParser.parse_pdf", fake_parse_pdf)
+
+    response = client.post(
+        "/api/v1/import/mpo/pdf",
+        files={"bestand": ("mpo.pdf", b"%PDF-1.4 fake", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["aantal_records"] == 1
+    assert data["records"][0]["uitvoerder"] == "ABP"
+
+
+def test_import_mpo_pdf_endpoint_rejects_non_pdf() -> None:
+    response = client.post(
+        "/api/v1/import/mpo/pdf",
+        files={"bestand": ("mpo.txt", b"geen pdf", "text/plain")},
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "invalid_file_type"
+
+
+def test_import_mpo_pdf_endpoint_rejects_empty_pdf() -> None:
+    response = client.post(
+        "/api/v1/import/mpo/pdf",
+        files={"bestand": ("leeg.pdf", b"", "application/pdf")},
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "empty_file"
 
 
 def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
