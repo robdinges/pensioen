@@ -51,6 +51,51 @@
 
 ## 🚀 STRATEGISCHE EPICS (juli 2026)
 
+### Prioriteitsvolgorde (huidige uitvoeringslijn)
+1. Rond #401 volledig af (API-contracten en stabiele endpoints).
+2. Start direct daarna #403 als verplichte kwaliteitspoort in CI.
+3. Plan #405 pas na stabiele regressiebasis vanuit #403.
+
+### Uitvoeringsplan (komende stappen)
+
+#### Stap A: #403 Kwaliteitspoort activeren (nu)
+Doel:
+- API-contracten en regressietests verplicht maken voor merges.
+
+Minimum oplevering:
+- Contracttests voor:
+	- `GET /api/v1/health`
+	- `POST /api/v1/berekeningen`
+	- `POST /api/v1/vergelijkingen`
+	- `POST /api/v1/rapportages/excel`
+- Regressieset op `tests/fixtures/belasting_testcases/normalized/*_normalized.json`.
+- CI-fail op afwijkingen buiten afgesproken toleranties.
+
+Gate om naar #402 te gaan:
+- 5 opeenvolgende groene CI-runs op `main` zonder regressiebreuk.
+
+#### Stap B: #402 Parametercodering starten
+Startmoment:
+- Direct na Gate A.
+
+Scope eerste iteratie:
+- Codesets voor inkomenssoorten, vermogenssoorten en frequenties.
+- Validatie op codes in API-schema's.
+- Lookup-tabellen voor labels (NL) als bron voor UI en rapportage.
+
+Gate om #406 te starten:
+- Geen hardcoded labels meer in API-responses voor gecodeerde velden.
+- Minimaal 1 backward-compat pad voor bestaande invoer gevalideerd.
+
+#### Stap C: #406 Gebruiksvriendelijke UI herstellen
+Startmoment:
+- Na Gate B (mag in laatste fase van #402 voorbereid worden).
+
+Scope eerste iteratie:
+- Expliciete Berekenen-knop en verouderd-status bij invoerwijziging.
+- Wizard/progress-flow over kernstappen.
+- Eenduidige foutmeldingen gekoppeld aan API-validatiecodes.
+
 #### #401: Epic 1 - API-laag + simpele API-UI 🔴 HIGH
 **Beschrijving**: Stateless API-first MVP bovenop de bestaande rekenengine.
 
@@ -96,6 +141,23 @@
 - Startpunt voor automatische acceptatietests
 
 **Afhankelijkheden**: #401
+
+**Acceptatiecriteria (MVP-gate)**:
+- API-contracttests dekken alle primaire endpoints en foutpaden.
+- Regressieset draait op genormaliseerde referentiesets (`*_normalized.json`).
+- CI faalt bij afwijkingen buiten afgesproken toleranties.
+- Een rekenwijziging is niet mergebaar zonder bijgewerkte testcase-artefacten.
+
+**Uitvoeringssubtaken #403 (operationeel)**:
+- API-contracttests uitbreiden met foutpaden per endpoint (422/validatiecodes).
+- Regressietest toevoegen die alle `normalized/*_normalized.json` cases doorrekent.
+- Tolerantiegrenzen centraliseren in testconfig (PASS/WARN/FAIL drempels).
+- CI workflow uitbreiden met verplichte stap: normalize -> validatiepipeline -> API-regressie.
+- Merge policy: blokkeren bij regressieafwijking buiten tolerantie.
+
+**Huidige voortgang #403**:
+- Contracttests basis + extra foutpaden voor vergelijkingen/rapportage staan in `tests/test_api_main.py`.
+- Volgende taak: batch-regressietest op volledige normalized set.
 
 **Status**: 📝 PLANNED
 

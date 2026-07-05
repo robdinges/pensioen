@@ -80,6 +80,26 @@ pensioen/
 
 ## Project Conventions
 
+### Calculation Ownership (Single Source Of Truth)
+- `src/pensioen/calculations/cashflow_engine.py` orkestreert maand/jaar-flow en roept fiscale modules aan.
+- `src/pensioen/tax/belasting_engine.py` bevat box 1/box 3/premie-kernberekeningen.
+- `src/pensioen/tax/heffingskorting.py` bevat alle heffingskortingformules.
+- `src/pensioen/tax/eigen_woning_engine.py` bevat eigen-woninglogica en tariefsaanpassing.
+- `src/pensioen/tax/aow_engine.py` bevat AOW-datum en AOW-breukregels.
+- UI, API-serialisatie en exports presenteren resultaten maar bevatten geen fiscale herberekeningen.
+
+### Definition Of Done (Rekenwijzigingen)
+- Elke wijziging aan berekeningen bevat minimaal:
+    - testcase-update in `tests/fixtures/belasting_testcases/raw/`
+    - regeneratie van `tests/fixtures/belasting_testcases/normalized/`
+    - regressietest of validatierapport-update in `tests/` of `tests/fixtures/belasting_testcases/`
+- Geen feature is functioneel gereed zonder bijgewerkte testartefacten en expliciete borging van regels in instructies waar nodig.
+
+### Interne Verslaglegging En Tokens
+- Houd interne verslaglegging compact en taakgericht; geen uitgebreide recaps tenzij expliciet gevraagd.
+- Voeg alleen documentatie/rapportage-artefacten toe als deze functioneel nodig zijn voor beheer, validatie of compliance.
+- Geef bij voortgang alleen delta-informatie (wat is veranderd sinds vorige update).
+
 ### Naamgeving (Naming)
 - Dutch namen voor domeinconcepten: `pensioenleeftijd`, `netto_inkomen`, `opbouwpercentage`, `belasting_p1`
 - snake_case voor alle identifiers

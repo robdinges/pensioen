@@ -50,6 +50,7 @@ cashflowprognose voor een huishouden.
   - FastAPI-endpoints voor healthcheck, berekening, scenariovergelijking en Excel-rapportage
   - automatische OpenAPI/Swagger documentatie
   - inheritance-validatie op scenario-lijsten (cycles, orphans, self-parenting)
+  - code-normalisatie op API-input voor component- en vermogenscodes (hoofdletter/spatievarianten worden geharmoniseerd)
 - Simpele API-gedreven UI:
   - minimale Streamlit client (`app_api_client.py`) die via HTTP de API aanroept
   - expliciete Berekenen-knop
@@ -160,6 +161,23 @@ Gerichte API-tests:
 ```bash
 PYTHONPATH=src python3 -m pytest tests/test_api_main.py -q
 ```
+
+API-contract + regressie op genormaliseerde cases:
+
+```bash
+PYTHONPATH=src python3 -m pytest tests/test_api_main.py tests/test_api_regressie_normalized.py -q
+```
+
+Strikte validatiepipeline (faalt bij FAIL-cases):
+
+```bash
+PYTHONPATH=src:. python3 tools/test_validatie_pipeline.py --strict
+```
+
+De regressiebaseline staat in:
+`tests/fixtures/belasting_testcases/api_regressie_baseline.json`
+
+In CI is een baseline-wijziging standaard geblokkeerd; alleen expliciet toegestaan met PR-titelmarker `[baseline-update]`.
 
 Troubleshooting:
 

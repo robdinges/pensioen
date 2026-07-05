@@ -334,7 +334,7 @@ def test_single_testcase(testcase_id: str) -> dict | None:
         return None
 
 
-def test_alle_testcases() -> None:
+def test_alle_testcases() -> list[str]:
     """Test alle testcases en maak rapport voor de IB 2025 set."""
     print("=" * 80)
     print("TEST ALLE TESTCASES")
@@ -345,14 +345,19 @@ def test_alle_testcases() -> None:
     print(f"Gevonden: {len(testcases)} testcases\n")
 
     rapport_regels = []
+    statussen: list[str] = []
     for tc_id in sorted(testcases.keys()):
         rapport_regel = test_single_testcase(tc_id)
+        if rapport_regel:
+            statussen.append(str(rapport_regel.get("status", "")))
         if rapport_regel and _is_ib2025_case(rapport_regel["testcase_id"]):
             rapport_regels.append(rapport_regel)
 
     if rapport_regels:
         _genereer_markdown_rapport(rapport_regels)
         print(f"Markdown rapport opgeslagen: {RAPPORT_PATH}")
+
+    return statussen
 
 
 def main() -> None:
@@ -361,18 +366,24 @@ def main() -> None:
 
     args = sys.argv[1:]
     schrijf_rapport = "--schrijf-rapport" in args
+    strict = "--strict" in args
     args = [arg for arg in args if arg != "--schrijf-rapport"]
+    args = [arg for arg in args if arg != "--strict"]
 
     if args:
         testcase_id = args[0]
         rapport_regel = test_single_testcase(testcase_id)
+        if strict and (not rapport_regel or rapport_regel.get("status") == "FAIL"):
+            sys.exit(1)
         if schrijf_rapport and rapport_regel and _is_ib2025_case(testcase_id):
             _genereer_markdown_rapport([rapport_regel])
             print(f"Markdown rapport opgeslagen: {RAPPORT_PATH}")
         elif schrijf_rapport:
             print("Geen IB 2025-case; rapport niet geschreven.")
     else:
-        test_alle_testcases()
+        statussen = test_alle_testcases()
+        if strict and (not statussen or any(status == "FAIL" for status in statussen)):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

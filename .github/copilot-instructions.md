@@ -18,6 +18,16 @@
 
 - Summaries must be <= 5 bullet points unless explicitly expanded.
 
+## Internal reporting discipline
+
+- Keep internal progress reporting minimal by default (max 1 short status update per meaningful step).
+
+- Do not generate extra narrative reports or duplicate summaries unless explicitly requested.
+
+- Prefer concise deltas over full recaps when work is incremental.
+
+- If token usage can be reduced by skipping optional explanation, skip it.
+
 ## Data handling
 
 - Never duplicate large JSON structures in examples.
@@ -31,6 +41,12 @@
 - Prefer incremental diffs or targeted functions instead of full-file rewrites.
 
 - Only modify relevant sections.
+
+## Done criteria (project gate)
+
+- Treat calculation-affecting changes as incomplete until related tests/fixtures are updated.
+
+- For fiscal or cashflow logic updates, require raw testcase updates plus regenerated normalized artifacts.
 
 ## Context discipline
 

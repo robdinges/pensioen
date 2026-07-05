@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
 
+from pensioen.api.referentietabellen import codes_en_labels, input_hints
 from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest
 from pensioen.api.serialisatie import naar_json_compatibel
 from pensioen.calculations.cashflow_engine import bereken_huishouden
@@ -47,6 +48,18 @@ def _bouw_belasting_configs(request: BerekeningRequest):
 def healthcheck() -> dict[str, str]:
     """Eenvoudige healthcheck endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/api/v1/referenties/codes")
+def referenties_codes_endpoint() -> JSONResponse:
+    """Geef canonieke codesets met labels voor API/UI-clients."""
+    return JSONResponse({"codes": codes_en_labels()})
+
+
+@app.get("/api/v1/referenties/input-hints")
+def referenties_input_hints_endpoint() -> JSONResponse:
+    """Geef required velden en defaults voor UI-form generatie."""
+    return JSONResponse({"hints": input_hints()})
 
 
 @app.post("/api/v1/berekeningen")

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Guard baseline changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          BASELINE_PATH="tests/fixtures/belasting_testcases/api_regressie_baseline.json"
+          changed=""
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            changed=$(git diff --name-only "origin/$BASE_REF...HEAD" || true)
+          else
+            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              changed=$(git diff --name-only HEAD~1 HEAD || true)
+            fi
+          fi
+
+          if echo "$changed" | grep -qx "$BASELINE_PATH"; then
+            if [[ "$PR_TITLE" == *"[baseline-update]"* ]]; then
+              echo "Baseline change toegestaan via PR marker [baseline-update]."
+              exit 0
+            fi
+            echo "Baseline gewijzigd zonder expliciete toestemming."
+            echo "Voeg [baseline-update] toe aan PR-titel om dit bewust toe te staan."
+            exit 1
+          fi
+
+      - name: Normalize testcases
+        run: |
+          PYTHONPATH=src:. python tools/normalize_testcases.py
+
+      - name: Strict validatiepipeline
+        run: |
+          PYTHONPATH=src:. python tools/test_validatie_pipeline.py --strict
+
+      - name: API contract and regression tests
+        run: |
+          python -m pytest tests/test_api_main.py tests/test_api_regressie_normalized.py -q

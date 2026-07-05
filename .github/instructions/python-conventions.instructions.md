@@ -22,6 +22,11 @@ BELASTINGSCHIJF_1 = 0.3693
 - Documenteer eenheden in de docstring: `"""Geeft jaarlijks pensioen terug in euro's."""`
 - Valideer invoer aan de grenzen: `assert 18 <= leeftijd <= 100`
 
+## Berekeningen - Eigenaarschap
+- Plaats fiscale formules uitsluitend in tax-modules onder `src/pensioen/tax/`.
+- Houd `src/pensioen/calculations/` beperkt tot orkestratie en aggregatie.
+- Voeg geen fiscale herberekeningen toe in UI-, report- of API-serialisatielagen.
+
 ## Afrondingsregels Belastingdienst (IB 2025)
 - Voer interne berekeningen uit met volledige precisie; geen tussentijdse afronding in formules
 - Rond pas af op logische eindniveaus per belastingplichtige (niet op huishoudniveau)
@@ -45,3 +50,7 @@ BELASTINGSCHIJF_1 = 0.3693
   assert bereken_pensioen(40000, 35) == pytest.approx(14000.0, rel=1e-3)
   ```
 - Testbestandsnamen volgen `test_<modulenaam>.py`
+- Elke nieuwe of aangepaste berekenregel vereist:
+  - update van testcasebron in `tests/fixtures/belasting_testcases/raw/`
+  - regeneratie van `tests/fixtures/belasting_testcases/normalized/`
+  - minimaal één regressietest of fixture-validatie-update
