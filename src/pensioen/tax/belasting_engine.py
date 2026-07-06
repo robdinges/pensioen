@@ -12,6 +12,22 @@ from pensioen.tax.belasting_loader import BelastingConfig, SchijfConfig
 CENT = Decimal("0.01")
 
 
+def _naar_float(waarde: Decimal | None) -> float | None:
+    if waarde is None:
+        return None
+    return float(waarde)
+
+
+def _serializeer_schijven(schijven: list[SchijfConfig]) -> list[dict[str, float | None]]:
+    return [
+        {
+            "tot": _naar_float(schijf.tot),
+            "tarief": float(schijf.tarief),
+        }
+        for schijf in schijven
+    ]
+
+
 def rond_af(bedrag: Decimal) -> Decimal:
     """Rond een geldbedrag af op centen (ROUND_HALF_UP)."""
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
@@ -226,6 +242,28 @@ def netto_uit_bruto(
             heffingskorting.bereken_alleenstaandeouderenkorting(
                 bruto, config, is_aow_deels, is_alleenstaand
             )
+        ),
+        "grondslagen": {
+            "bruto_jaarinkomen": float(bruto),
+            "arbeidsinkomen": float(arbeidsinkomen),
+            "premiegrondslag": float(
+                min(bruto, config.premies.premiegrens) if config.premies else Decimal("0")
+            ),
+        },
+        "schijven": {
+            "box1_niet_aow": _serializeer_schijven(config.box1_niet_aow),
+            "box1_aow": _serializeer_schijven(config.box1_aow),
+        },
+        "premies_config": (
+            {
+                "premiegrens": float(config.premies.premiegrens),
+                "aow_tarief_niet_aow": float(config.premies.aow_tarief_niet_aow),
+                "aow_tarief_aow": float(config.premies.aow_tarief_aow),
+                "anw_tarief": float(config.premies.anw_tarief),
+                "wlz_tarief": float(config.premies.wlz_tarief),
+            }
+            if config.premies
+            else None
         ),
     }
 

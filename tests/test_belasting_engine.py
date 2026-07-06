@@ -16,6 +16,7 @@ from pensioen.tax.belasting_engine import (
     netto_uit_bruto,
 )
 from pensioen.tax.heffingskorting import bereken_ahk_met_aow
+from pensioen.tax import belasting_loader
 from pensioen.tax.belasting_loader import (
     laad_tarieven,
     resolve_tariefwaarden_voor_jaar,
@@ -153,6 +154,32 @@ class TestNettoUitBruto:
         config, melding = laad_tarieven(2099)
         assert melding != ""
         assert "2099" in melding
+        assert config.jaar == 2026
+
+    def test_fallback_gebruikt_laatstbekende_jaar(self, tmp_path: Path, monkeypatch) -> None:
+        """Bij een gat in jaren wordt het laatst bekende jaar <= doeljaar gebruikt."""
+        bron_2025 = Path(__file__).resolve().parents[1] / "config" / "belasting_2025.json"
+        bron_2026 = Path(__file__).resolve().parents[1] / "config" / "belasting_2026.json"
+
+        (tmp_path / "belasting_2025.json").write_text(
+            bron_2025.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        data_2027 = json.loads(bron_2026.read_text(encoding="utf-8"))
+        data_2027["jaar"] = 2027
+        (tmp_path / "belasting_2027.json").write_text(
+            json.dumps(data_2027, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(belasting_loader, "_CONFIG_DIR", tmp_path)
+
+        config, melding = laad_tarieven(2026)
+
+        assert config.jaar == 2025
+        assert "2025" in melding
+        assert "laatst bekend" in melding
 
     def test_transparantie_tarieven_aanwezig(self) -> None:
         """Resultaat bevat informatie over gebruikte tarieven."""

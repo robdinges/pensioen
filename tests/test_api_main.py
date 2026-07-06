@@ -113,6 +113,9 @@ def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
     assert "cashflow" in data
     assert data["cashflow"]["scenario_naam"] == scenario_standaard.naam
     assert len(data["cashflow"]["jaren"]) == 3
+    eerste_maand = data["cashflow"]["jaren"][0]["maanden"][0]
+    assert eerste_maand["gebruikte_tarieven"]["persoon1"]["schijven"]["box1_niet_aow"]
+    assert "box3" in eerste_maand["gebruikte_tarieven"]
 
 
 def test_berekeningen_endpoint_normaliseert_codes(persoon1, scenario_standaard) -> None:

@@ -76,6 +76,8 @@ cashflowprognose voor een huishouden.
   - import-stap met MPO-bestandsimport naar pensioen-componenten (CSV, Excel, JSON en PDF)
   - PDF-import loopt via API-endpoint `/api/v1/import/mpo/pdf` en gebruikt de backend-parser voor MPO-PDF's
   - import-validatie in React met preview, compacte samenvatting per persoon, duplicate-waarschuwingen, telling van overgeslagen regels en feedback tijdens import
+  - accountant-stap met uitgebreide controle per belastingjaar: jaaroverzicht, grondslagen, heffingskortingen, gebruikte schijven/premies, box-3 parameters en maandtabel voor narekening
+  - tarieffallback per jaar: als een belastingjaar ontbreekt, gebruikt de engine het laatst bekende jaar tot en met dat doeljaar, met expliciete melding in resultaten en accountant-stap
 
 ## Usage
 
@@ -135,13 +137,17 @@ Om te berekenen in de React UI:
 5. Bekijk resultaten in de sectie `Resultaten op Jaarbasis`.
 6. Importeer in de stap `Import` MPO-bestanden voor P1 en optioneel P2.
   Tijdens import toont de UI per persoon voortgang, foutmeldingen en de laatste succesvolle bestandsnaam.
+7. Gebruik de stap `Accountant` voor detailcontrole per jaar:
+  - controleer bruto-opbouw, heffingskortingen, box-3 grondslag en netto jaaruitkomst
+  - bekijk gebruikte belastingtabellen, premiepercentages en AOW-breuken
+  - loop de maandregels na inclusief belasting, uitgaven, incidentele posten en vermogen einde maand
 
-7. Beheer scenario's in het scherm Scenario:
+8. Beheer scenario's in het scherm Scenario:
   - kies het standaardscenario via de radioknoppen
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
 
-8. Vul in het scherm Financiële Planning alle componenten in:
+9. Vul in het scherm Financiële Planning alle componenten in:
   - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen
   - **Vermogen & Bezittingen**: Spaargeld, beleggingen, eigen woning, hypotheek, auto's, kunst, etc.
     * Kies bij het type **Eigen woning** voor de woningvelden zoals WOZ-waarde en jaarlijkse waardestijging
@@ -152,13 +158,13 @@ Om te berekenen in de React UI:
     * Voor andere bezittingen is dit waardestijging of afschrijving
   - **Eenmalige Posten**: Eenmalige ontvangsten en uitgaven op specifieke data
 
-9. Open in de app het tabblad Accountantsoverzicht en klik op
+10. Open in de app het tabblad Accountantsoverzicht en klik op
   Berekening uitvoeren.
 
-10. Controleer de componenttabel Netto cashflow opgebouwd uit losse
-  componenten in het accountantsoverzicht.
+11. Controleer de jaarblokken, tarieven, grondslagen en maandregels in
+  het accountantsoverzicht voor handmatige narekening.
 
-11. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
+12. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py
@@ -173,7 +179,7 @@ PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py tc_2025_
 Output staat standaard in
 `tests/fixtures/belasting_testcases/accountant_exports/`.
 
-12. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
+13. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py
@@ -191,7 +197,7 @@ Alleen als je expliciet een single-case rapport wilt schrijven:
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_010 --schrijf-rapport
 ```
 
-13. Beheer belastingtarieven in het scherm Instellingen:
+14. Beheer belastingtarieven in het scherm Instellingen:
   - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
   - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
   - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren

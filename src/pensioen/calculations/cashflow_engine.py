@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 CENT = Decimal("0.01")
 
 
+def _naar_float(waarde: Decimal | None) -> float | None:
+    if waarde is None:
+        return None
+    return float(waarde)
+
+
 def _rond_af(bedrag: Decimal) -> Decimal:
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
 
@@ -68,6 +74,54 @@ def _heeft_handmatige_aow_componenten(scenario: Scenario) -> bool:
     """Bepaal of het scenario handmatig ingevoerde AOW-componenten bevat."""
 
     return any(is_handmatige_aow_component(component) for component in scenario.componenten)
+
+
+def _bouw_accountant_tarieven_payload(
+    belasting_p1,
+    belasting_p2_resultaat,
+    belasting_config: BelastingConfig,
+    saldo_begin_jaar: Decimal,
+    scenario: Scenario,
+    heeft_partner: bool,
+    box3_jaar: Decimal,
+) -> dict:
+    spaargeld_fractie_box3 = scenario.box3_spaargeld_fractie
+    if spaargeld_fractie_box3 is None:
+        spaargeld_fractie_box3 = Decimal("1")
+    if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
+        berekende_fractie = scenario.bereken_spaargeld_fractie_startvermogen()
+        if berekende_fractie is not None:
+            spaargeld_fractie_box3 = berekende_fractie
+
+    vrijstelling = belasting_config.box3.vrijstelling_per_persoon * Decimal("2" if heeft_partner else "1")
+    belastbaar_vermogen = max(Decimal("0"), saldo_begin_jaar - vrijstelling)
+    gewogen_forfait = (
+        spaargeld_fractie_box3 * belasting_config.box3.forfaitair_spaargeld
+        + (Decimal("1") - spaargeld_fractie_box3) * belasting_config.box3.forfaitair_overig
+    )
+    fictief_rendement = belastbaar_vermogen * gewogen_forfait
+
+    return {
+        "belastingjaar": belasting_config.jaar,
+        "persoon1": belasting_p1.gebruikte_tarieven,
+        "persoon2": (
+            belasting_p2_resultaat.gebruikte_tarieven if belasting_p2_resultaat is not None else None
+        ),
+        "box3": {
+            "box3_meenemen": scenario.box3_meenemen,
+            "grondslag_start_vermogen": _naar_float(saldo_begin_jaar),
+            "vrijstelling": _naar_float(vrijstelling),
+            "belastbaar_vermogen": _naar_float(belastbaar_vermogen),
+            "spaargeld_fractie": _naar_float(spaargeld_fractie_box3),
+            "forfaitair_spaargeld": float(belasting_config.box3.forfaitair_spaargeld),
+            "forfaitair_overig": float(belasting_config.box3.forfaitair_overig),
+            "gewogen_forfait": _naar_float(gewogen_forfait),
+            "fictief_rendement": _naar_float(fictief_rendement),
+            "tarief": float(belasting_config.box3.tarief),
+            "heffing_jaar": _naar_float(box3_jaar),
+            "disclaimer": belasting_config.box3.disclaimer,
+        },
+    }
 
 
 def _bereken_jaar(
@@ -286,6 +340,7 @@ def _bereken_jaar(
 
     # --- Stap 3: Box 3 heffing ---
     box3_maand = Decimal("0")
+    box3_jaar = Decimal("0")
     box3_disclaimer = ""
     if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
         # Box 3 peildatum gebruikt startverdeling (1 januari), niet maandcomponenten.
@@ -375,7 +430,15 @@ def _bereken_jaar(
             huishoudelijke_uitgaven=mb["uitgaven"],
             vermogen_einde_maand=saldo,
             aannames=list(aannames),
-            gebruikte_tarieven=belasting_p1.gebruikte_tarieven,
+            gebruikte_tarieven=_bouw_accountant_tarieven_payload(
+                belasting_p1,
+                belasting_p2_resultaat,
+                belasting_config,
+                saldo_begin_jaar,
+                scenario,
+                heeft_partner,
+                box3_jaar,
+            ),
         )
         maandresultaten.append(resultaat)
 

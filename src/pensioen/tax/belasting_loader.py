@@ -156,23 +156,44 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
     aanname_melding = ""
 
     if not config_pad.exists():
-        # Zoek het meest recente beschikbare belastingbestand
+        # Zoek beschikbare belastingbestanden en kies het laatst bekende jaar
+        # dat niet ná het gevraagde jaar ligt.
         beschikbaar = sorted(
-            _CONFIG_DIR.glob("belasting_*.json"),
+            [
+                p
+                for p in _CONFIG_DIR.glob("belasting_*.json")
+                if p.stem.split("_")[1].isdigit()
+            ],
             key=lambda p: int(p.stem.split("_")[1]),
-            reverse=True,
         )
         if not beschikbaar:
             raise FileNotFoundError(
                 f"Geen belastingconfiguratiebestanden gevonden in {_CONFIG_DIR}."
             )
-        fallback_pad = beschikbaar[0]
-        fallback_jaar = int(fallback_pad.stem.split("_")[1])
-        aanname_melding = (
-            f"⚠️ Officiële belastingtarieven voor {jaar} zijn nog niet beschikbaar. "
-            f"Tarieven van {fallback_jaar} worden als aanname gebruikt. "
-            f"Controleer en pas aan via Instellingen > Belastingparameters."
-        )
+
+        bekende_jaren = [int(p.stem.split("_")[1]) for p in beschikbaar]
+        kandidaten = [j for j in bekende_jaren if j <= jaar]
+
+        if kandidaten:
+            fallback_jaar = max(kandidaten)
+            fallback_pad = next(p for p in beschikbaar if int(p.stem.split("_")[1]) == fallback_jaar)
+            aanname_melding = (
+                f"⚠️ Officiële belastingtarieven voor {jaar} zijn nog niet beschikbaar. "
+                f"Tarieven van {fallback_jaar} (laatst bekend) worden als aanname gebruikt. "
+                f"Controleer en pas aan via Instellingen > Belastingparameters."
+            )
+        else:
+            # Er is geen historisch jaar <= gevraagd beschikbaar; gebruik dan het
+            # vroegst beschikbare bestand als best-effort fallback.
+            fallback_pad = beschikbaar[0]
+            fallback_jaar = int(fallback_pad.stem.split("_")[1])
+            aanname_melding = (
+                f"⚠️ Officiële belastingtarieven voor {jaar} zijn nog niet beschikbaar. "
+                f"Geen historisch tariefjaar gevonden; tarieven van {fallback_jaar} "
+                f"(eerst beschikbaar) worden als aanname gebruikt. "
+                f"Controleer en pas aan via Instellingen > Belastingparameters."
+            )
+
         logger.warning(aanname_melding)
         config_pad = fallback_pad
 

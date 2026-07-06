@@ -3,6 +3,30 @@ import AccountantSection from "./components/AccountantSection";
 import AppShell from "./components/layout/AppShell";
 import ComponentsSection from "./components/ComponentsSection";
 import ContextTopBar from "./components/layout/ContextTopBar";
+import {
+  aggregateYearRows,
+  buildRequestPayload,
+  buildInputSignature,
+  createEmptyValues,
+  createDefaultScenarioData,
+  createHouseholdSnapshot,
+  createInitialHouseholdSnapshot,
+  createPost,
+  decimalLike,
+  DEFAULT_API_BASE,
+  DEFAULT_GEBOORTEDATUM,
+  DEFAULT_PERSOON_NAAM,
+  euro,
+  extractFilename,
+  FIELD_META,
+  FLOW_STEPS,
+  normalizeHouseholdSnapshot,
+  normalizeScenarioSnapshot,
+  createScenarioSnapshot,
+  signedEuro,
+  signedPercentagePoints,
+  TYPE_CONFIG,
+} from "./planner/plannerCore";
 import ReportSection from "./components/ReportSection";
 import ResultsSection from "./components/ResultsSection";
 import ScenarioSection from "./components/ScenarioSection";
@@ -19,421 +43,6 @@ import PostCard from "./components/PostCard";
 import WizardSidebar from "./components/layout/WizardSidebar";
 import MpoImportSection from "./components/MpoImportSection";
 import { AppStateProvider, useAppState } from "./state/appState";
-
-const FLOW_STEPS = [
-  { id: "huishouden", label: "Huishouden" },
-  { id: "personen", label: "Personen" },
-  { id: "import", label: "Import" },
-  { id: "periode", label: "Berekeningsperiode" },
-  { id: "scenario", label: "Scenario's" },
-  { id: "componenten", label: "Componenten" },
-  { id: "resultaten", label: "Resultaten" },
-  { id: "accountant", label: "Accountant" },
-  { id: "rapport", label: "Rapport" },
-];
-
-const TYPE_CONFIG = {
-  loon: {
-    section: "inkomsten",
-    label: "Loon",
-    hint: "Periodiek arbeidsinkomen.",
-    fields: ["persoon", "bedrag", "bedrag_type", "frequentie", "startdatum", "einddatum", "inflatie_pct"],
-  },
-  uitkering: {
-    section: "inkomsten",
-    label: "Uitkering",
-    hint: "WW, WIA of andere periodieke uitkering.",
-    fields: ["persoon", "bedrag", "bedrag_type", "frequentie", "startdatum", "einddatum", "inflatie_pct"],
-  },
-  pensioen: {
-    section: "inkomsten",
-    label: "Pensioen",
-    hint: "AOW of werkgeverspensioen.",
-    fields: ["persoon", "bedrag", "bedrag_type", "frequentie", "startdatum", "einddatum", "inflatie_pct"],
-  },
-  uitgave: {
-    section: "inkomsten",
-    label: "Uitgave",
-    hint: "Periodieke uitgave buiten box 1 en box 3.",
-    fields: ["persoon", "bedrag", "frequentie", "startdatum", "einddatum", "inflatie_pct"],
-  },
-  eenmalige_inkomsten: {
-    section: "inkomsten",
-    label: "Eenmalige inkomsten",
-    hint: "Bonus, erfenis, verkoopopbrengst.",
-    fields: ["persoon", "bedrag", "datum"],
-  },
-  eenmalige_uitgaven: {
-    section: "inkomsten",
-    label: "Eenmalige uitgaven",
-    hint: "Verbouwing, auto, schenking.",
-    fields: ["persoon", "bedrag", "datum"],
-  },
-  sparen: {
-    section: "vermogen",
-    label: "Sparen",
-    hint: "Spaarrekening of deposito.",
-    fields: ["persoon", "beginwaarde", "inleg", "groei_pct", "startdatum", "einddatum"],
-  },
-  beleggen: {
-    section: "vermogen",
-    label: "Beleggen",
-    hint: "ETF, aandelen, beleggingsrekening.",
-    fields: ["persoon", "beginwaarde", "inleg", "groei_pct", "startdatum", "einddatum"],
-  },
-  eigen_woning: {
-    section: "vermogen",
-    label: "Eigen woning",
-    hint: "WOZ-waarde en verwachte waardegroei.",
-    fields: ["persoon", "beginwaarde", "groei_pct", "startdatum", "einddatum"],
-  },
-  overige_bezittingen: {
-    section: "vermogen",
-    label: "Overige bezittingen",
-    hint: "Auto, kunst, bedrijfsmiddelen, overig.",
-    fields: ["persoon", "beginwaarde", "groei_pct", "startdatum", "einddatum"],
-  },
-  hypotheek: {
-    section: "vermogen",
-    label: "Schulden (hypotheek)",
-    hint: "Hypotheekschuld met rente en aflossing.",
-    fields: ["persoon", "beginwaarde", "rente_pct", "maandlast", "startdatum", "einddatum"],
-  },
-};
-
-const FIELD_META = {
-  persoon: { label: "Persoon", type: "select", options: ["P1", "P2", "Huishouden"], defaultValue: "P1" },
-  bedrag: { label: "Bedrag", type: "number", step: "100", defaultValue: "0" },
-  bedrag_type: { label: "Bedrag type", type: "select", options: ["bruto", "netto"], defaultValue: "bruto" },
-  beginwaarde: { label: "Beginwaarde", type: "number", step: "1000", defaultValue: "0" },
-  inleg: { label: "Periodieke inleg", type: "number", step: "100", defaultValue: "0" },
-  maandlast: { label: "Maandlast", type: "number", step: "50", defaultValue: "0" },
-  frequentie: {
-    label: "Frequentie",
-    type: "select",
-    options: ["maandelijks", "kwartaal", "halfjaarlijks", "jaarlijks"],
-    defaultValue: "maandelijks",
-  },
-  datum: { label: "Datum", type: "date", defaultValue: "" },
-  startdatum: { label: "Begin datum", type: "date", defaultValue: "" },
-  einddatum: { label: "Eind datum", type: "date", defaultValue: "" },
-  groei_pct: { label: "Groei / rendement %", type: "number", step: "0.1", defaultValue: "0" },
-  inflatie_pct: { label: "Inflatiecorrectie %", type: "number", step: "0.1", defaultValue: "2" },
-  rente_pct: { label: "Rente %", type: "number", step: "0.1", defaultValue: "0" },
-};
-
-const CATEGORY_BY_TYPE = {
-  loon: "arbeidsinkomen",
-  uitkering: "overig_inkomen",
-  pensioen: "pensioen_inkomen",
-  uitgave: "uitgave",
-};
-
-const VERMOGEN_TYPE_BY_POST = {
-  sparen: "spaargeld",
-  beleggen: "beleggingen",
-  eigen_woning: "eigen_woning",
-  overige_bezittingen: "overig",
-  hypotheek: "hypotheek",
-};
-
-function toAmount(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : 0;
-}
-
-function toIsoOrNull(value) {
-  return value ? value : null;
-}
-
-function euro(value) {
-  return new Intl.NumberFormat("nl-NL", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(value ?? 0);
-}
-
-function signedEuro(value) {
-  const amount = decimalLike(value);
-  if (amount === 0) {
-    return euro(0);
-  }
-  return `${amount > 0 ? "+" : "-"}${euro(Math.abs(amount))}`;
-}
-
-function signedPercentagePoints(value) {
-  const amount = decimalLike(value);
-  return `${amount > 0 ? "+" : ""}${amount.toFixed(1)} pp`;
-}
-
-function emptyValuesFor(type) {
-  const fields = TYPE_CONFIG[type].fields;
-  return fields.reduce((acc, field) => {
-    acc[field] = FIELD_META[field].defaultValue;
-    return acc;
-  }, {});
-}
-
-function createPost(type) {
-  return {
-    id: crypto.randomUUID(),
-    type,
-    titel: TYPE_CONFIG[type].label,
-    values: emptyValuesFor(type),
-  };
-}
-
-function createDefaultScenarioData() {
-  return {
-    posts: [createPost("loon"), createPost("sparen")],
-    jaarVan: String(new Date().getFullYear()),
-    jaarTot: String(new Date().getFullYear() + 20),
-    importBestandP1Naam: "",
-    importBestandP2Naam: "",
-    importPreviewP1: [],
-    importPreviewP2: [],
-    importWarningsP1: [],
-    importWarningsP2: [],
-    importStatsP1: null,
-    importStatsP2: null,
-    resultaat: null,
-    inputSignatureAtCalculation: "",
-    calculationStatus: "idle",
-  };
-}
-
-function decimalLike(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : 0;
-}
-
-function extractFilename(contentDisposition) {
-  if (!contentDisposition) {
-    return "pensioen_rapport.xlsx";
-  }
-
-  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1]);
-  }
-
-  const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
-  if (quotedMatch?.[1]) {
-    return quotedMatch[1];
-  }
-
-  const plainMatch = contentDisposition.match(/filename=([^;]+)/i);
-  if (plainMatch?.[1]) {
-    return plainMatch[1].trim();
-  }
-
-  return "pensioen_rapport.xlsx";
-}
-
-function buildRequestPayload({
-  posts,
-  persoonNaam,
-  geboortedatum,
-  jaarVan,
-  jaarTot,
-  scenarioNaam,
-  heeftPartner,
-  partnerNaam,
-  partnerGeboortedatum,
-}) {
-  const inkomstenPosts = posts.filter((post) => TYPE_CONFIG[post.type].section === "inkomsten");
-  const vermogenPosts = posts.filter((post) => TYPE_CONFIG[post.type].section === "vermogen");
-
-  const componenten = [];
-  const incidentele_items = [];
-  const vermogensitems = [];
-
-  let jaarlijkse_inleg_sparen = 0;
-  let jaarlijkse_inleg_beleggen = 0;
-  let spaargeld_start = 0;
-  let beleggingen_start = 0;
-  const sparenRendementen = [];
-  const beleggenRendementen = [];
-
-  const mapPersoon = (persoon, fallback) => {
-    if (!persoon) {
-      return fallback;
-    }
-    if (persoon === "P2" && !heeftPartner) {
-      return fallback;
-    }
-    return persoon;
-  };
-
-  for (const post of inkomstenPosts) {
-    const values = post.values;
-    if (post.type === "eenmalige_inkomsten" || post.type === "eenmalige_uitgaven") {
-      const bedrag = Math.abs(toAmount(values.bedrag));
-      incidentele_items.push({
-        datum: values.datum || `${jaarVan}-01-01`,
-        bedrag: String(post.type === "eenmalige_uitgaven" ? -bedrag : bedrag),
-        omschrijving: post.titel,
-      });
-      continue;
-    }
-
-    componenten.push({
-      omschrijving: post.titel,
-      categorie: CATEGORY_BY_TYPE[post.type],
-      persoon: mapPersoon(values.persoon, "P1"),
-      bedrag: String(Math.abs(toAmount(values.bedrag))),
-      bedrag_type: post.type === "uitgave" ? "netto" : values.bedrag_type || "bruto",
-      frequentie: values.frequentie || "maandelijks",
-      beleggings_type: "sparen",
-      begindatum: toIsoOrNull(values.startdatum),
-      einddatum: toIsoOrNull(values.einddatum),
-      groei_pct: String(toAmount(values.inflatie_pct)),
-    });
-  }
-
-  for (const post of vermogenPosts) {
-    const values = post.values;
-    const type = VERMOGEN_TYPE_BY_POST[post.type];
-
-    if (post.type === "sparen") {
-      spaargeld_start += Math.max(0, toAmount(values.beginwaarde));
-      jaarlijkse_inleg_sparen += Math.max(0, toAmount(values.inleg));
-      sparenRendementen.push(toAmount(values.groei_pct));
-    }
-    if (post.type === "beleggen") {
-      beleggingen_start += Math.max(0, toAmount(values.beginwaarde));
-      jaarlijkse_inleg_beleggen += Math.max(0, toAmount(values.inleg));
-      beleggenRendementen.push(toAmount(values.groei_pct));
-    }
-
-    const item = {
-      omschrijving: post.titel,
-      type,
-      persoon: mapPersoon(values.persoon, "Huishouden"),
-      aanschafwaarde: String(Math.abs(toAmount(values.beginwaarde))),
-      aanschafdatum: toIsoOrNull(values.startdatum),
-      verkoopdatum: toIsoOrNull(values.einddatum),
-      groei_pct: String(toAmount(values.groei_pct)),
-      box3_belast: post.type !== "eigen_woning" && post.type !== "hypotheek",
-    };
-
-    if (post.type === "hypotheek") {
-      item.is_primaire_woning = true;
-      item.hypotheekrente_pct = String(Math.max(0, toAmount(values.rente_pct)));
-      item.einddatum_aftrekbaarheid = toIsoOrNull(values.einddatum);
-    }
-
-    if (post.type === "eigen_woning") {
-      item.woz_waarde = String(Math.abs(toAmount(values.beginwaarde)));
-      item.woz_jaarlijkse_stijging_pct = String(toAmount(values.groei_pct));
-    }
-
-    vermogensitems.push(item);
-  }
-
-  const rendement_sparen_pct =
-    sparenRendementen.length > 0
-      ? sparenRendementen.reduce((sum, value) => sum + value, 0) / sparenRendementen.length
-      : 0;
-  const rendement_beleggen_pct =
-    beleggenRendementen.length > 0
-      ? beleggenRendementen.reduce((sum, value) => sum + value, 0) / beleggenRendementen.length
-      : 0;
-
-  return {
-    scenario: {
-      naam: scenarioNaam || "React UI scenario",
-      spaargeld_start: String(spaargeld_start),
-      beleggingen_start: String(beleggingen_start),
-      jaarlijkse_inleg: "0",
-      jaarlijkse_inleg_sparen: String(jaarlijkse_inleg_sparen),
-      jaarlijkse_inleg_beleggen: String(jaarlijkse_inleg_beleggen),
-      rendement_sparen_pct: String(rendement_sparen_pct),
-      rendement_beleggen_pct: String(rendement_beleggen_pct),
-      inflatie_pct: "2",
-      box3_meenemen: true,
-      componenten,
-      incidentele_items,
-      vermogensitems,
-    },
-    persoon1: {
-      naam: persoonNaam,
-      geboortedatum,
-      heeft_partner: heeftPartner,
-    },
-    persoon2: heeftPartner
-      ? {
-          naam: partnerNaam,
-          geboortedatum: partnerGeboortedatum,
-          heeft_partner: true,
-        }
-      : null,
-    records1: [],
-    records2: [],
-    jaar_van: Number(jaarVan),
-    jaar_tot: Number(jaarTot),
-    scenario_lijst: [],
-  };
-}
-
-function aggregateYearRows(cashflow) {
-  const jaren = cashflow?.jaren;
-  if (!Array.isArray(jaren)) {
-    return [];
-  }
-
-  return jaren.map((jaar) => {
-    const maanden = Array.isArray(jaar.maanden) ? jaar.maanden : [];
-    let bruto = 0;
-    let belasting = 0;
-    let netto = 0;
-
-    maanden.forEach((m) => {
-      const brutoMaand =
-        toAmount(m.arbeid_p1_bruto) +
-        toAmount(m.arbeid_p2_bruto) +
-        toAmount(m.aow_p1_bruto) +
-        toAmount(m.aow_p2_bruto) +
-        toAmount(m.pensioen_p1_bruto) +
-        toAmount(m.pensioen_p2_bruto) +
-        toAmount(m.lijfrente_bruto) +
-        toAmount(m.rente_bruto) +
-        toAmount(m.overig_bruto);
-
-      const belastingMaand =
-        toAmount(m.belasting_p1) +
-        toAmount(m.belasting_p2) +
-        toAmount(m.box3_heffing);
-
-      const kortingMaand = toAmount(m.heffingskorting_p1) + toAmount(m.heffingskorting_p2);
-      const nettoMaand =
-        brutoMaand +
-        toAmount(m.inkomen_componenten_netto) -
-        belastingMaand +
-        kortingMaand -
-        toAmount(m.inhoudingen) -
-        toAmount(m.huishoudelijke_uitgaven) +
-        toAmount(m.eenmalig_ontvangst) -
-        toAmount(m.eenmalig_uitgave);
-
-      bruto += brutoMaand;
-      belasting += belastingMaand;
-      netto += nettoMaand;
-    });
-
-    const vermogenEinde = maanden.length ? toAmount(maanden[maanden.length - 1].vermogen_einde_maand) : 0;
-
-    return {
-      jaar: jaar.jaar,
-      bruto,
-      belasting,
-      netto,
-      nettoPerMaand: maanden.length ? netto / maanden.length : 0,
-      vermogenEinde,
-    };
-  });
-}
 
 function SectionHeader({ title, description }) {
   return (
@@ -459,9 +68,9 @@ function AppContent() {
   const [posts, setPosts] = useState([createPost("loon"), createPost("sparen")]);
   const [inkomenType, setInkomenType] = useState("uitkering");
   const [vermogenType, setVermogenType] = useState("beleggen");
-  const [apiBase, setApiBase] = useState("/api/v1");
-  const [persoonNaam, setPersoonNaam] = useState("Jan Jansen");
-  const [geboortedatum, setGeboortedatum] = useState("1963-03-15");
+  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
+  const [persoonNaam, setPersoonNaam] = useState(DEFAULT_PERSOON_NAAM);
+  const [geboortedatum, setGeboortedatum] = useState(DEFAULT_GEBOORTEDATUM);
   const [heeftPartner, setHeeftPartner] = useState(false);
   const [partnerNaam, setPartnerNaam] = useState("");
   const [partnerGeboortedatum, setPartnerGeboortedatum] = useState("");
@@ -492,35 +101,13 @@ function AppContent() {
     [initialScenarioId]: createDefaultScenarioData(),
   });
   const [householdSnapshots, setHouseholdSnapshots] = useState({
-    [initialHouseholdId]: {
-      posts: [createPost("loon"), createPost("sparen")],
-      apiBase: "/api/v1",
-      persoonNaam: "Jan Jansen",
-      geboortedatum: "1963-03-15",
-      heeftPartner: false,
-      partnerNaam: "",
-      partnerGeboortedatum: "",
-      scenarios: [{ id: initialScenarioId, naam: "Basisscenario" }],
-      activeScenarioId: initialScenarioId,
-      scenarioSnapshots: {
-        [initialScenarioId]: createDefaultScenarioData(),
-      },
-      compareScenarioId: "",
-      comparisonResult: null,
-      importBestandP1Naam: "",
-      importBestandP2Naam: "",
-      importPreviewP1: [],
-      importPreviewP2: [],
-      importWarningsP1: [],
-      importWarningsP2: [],
-      importStatsP1: null,
-      importStatsP2: null,
-      jaarVan: String(new Date().getFullYear()),
-      jaarTot: String(new Date().getFullYear() + 20),
-      resultaat: null,
-      inputSignatureAtCalculation: "",
-      calculationStatus: "idle",
-    },
+    [initialHouseholdId]: createInitialHouseholdSnapshot({
+      scenarioId: initialScenarioId,
+      scenarioNaam: "Basisscenario",
+      scenarioData: createDefaultScenarioData(),
+      persoonNaam: DEFAULT_PERSOON_NAAM,
+      geboortedatum: DEFAULT_GEBOORTEDATUM,
+    }),
   });
   const [hydrated, setHydrated] = useState(false);
 
@@ -616,22 +203,23 @@ function AppContent() {
   const removePost = (id) => setPosts((prev) => prev.filter((post) => post.id !== id));
   const addPost = (type) => setPosts((prev) => [...prev, createPost(type)]);
 
-  const buildCurrentScenarioSnapshot = () => ({
-    posts,
-    jaarVan,
-    jaarTot,
-    importBestandP1Naam,
-    importBestandP2Naam,
-    importPreviewP1,
-    importPreviewP2,
-    importWarningsP1,
-    importWarningsP2,
-    importStatsP1,
-    importStatsP2,
-    resultaat,
-    inputSignatureAtCalculation,
-    calculationStatus: state.calculationStatus,
-  });
+  const buildCurrentScenarioSnapshot = () =>
+    createScenarioSnapshot({
+      posts,
+      jaarVan,
+      jaarTot,
+      importBestandP1Naam,
+      importBestandP2Naam,
+      importPreviewP1,
+      importPreviewP2,
+      importWarningsP1,
+      importWarningsP2,
+      importStatsP1,
+      importStatsP2,
+      resultaat,
+      inputSignatureAtCalculation,
+      calculationStatus: state.calculationStatus,
+    });
 
   const scenarioRequestFromSnapshot = (snapshot, scenarioNaam) => {
     const request = buildRequestPayload({
@@ -649,125 +237,67 @@ function AppContent() {
   };
 
   const hydrateFromScenarioSnapshot = (snapshot) => {
-    const source = snapshot || createDefaultScenarioData();
-    setPosts(Array.isArray(source.posts) && source.posts.length > 0 ? source.posts : [createPost("loon"), createPost("sparen")]);
-    setJaarVan(typeof source.jaarVan === "string" ? source.jaarVan : String(new Date().getFullYear()));
-    setJaarTot(
-      typeof source.jaarTot === "string"
-        ? source.jaarTot
-        : String(new Date().getFullYear() + 20),
-    );
-    setImportBestandP1Naam(typeof source.importBestandP1Naam === "string" ? source.importBestandP1Naam : "");
-    setImportBestandP2Naam(typeof source.importBestandP2Naam === "string" ? source.importBestandP2Naam : "");
-    setImportPreviewP1(Array.isArray(source.importPreviewP1) ? source.importPreviewP1 : []);
-    setImportPreviewP2(Array.isArray(source.importPreviewP2) ? source.importPreviewP2 : []);
-    setImportWarningsP1(Array.isArray(source.importWarningsP1) ? source.importWarningsP1 : []);
-    setImportWarningsP2(Array.isArray(source.importWarningsP2) ? source.importWarningsP2 : []);
-    setImportStatsP1(source.importStatsP1 && typeof source.importStatsP1 === "object" ? source.importStatsP1 : null);
-    setImportStatsP2(source.importStatsP2 && typeof source.importStatsP2 === "object" ? source.importStatsP2 : null);
+    const source = normalizeScenarioSnapshot(snapshot);
+    setPosts(source.posts);
+    setJaarVan(source.jaarVan);
+    setJaarTot(source.jaarTot);
+    setImportBestandP1Naam(source.importBestandP1Naam);
+    setImportBestandP2Naam(source.importBestandP2Naam);
+    setImportPreviewP1(source.importPreviewP1);
+    setImportPreviewP2(source.importPreviewP2);
+    setImportWarningsP1(source.importWarningsP1);
+    setImportWarningsP2(source.importWarningsP2);
+    setImportStatsP1(source.importStatsP1);
+    setImportStatsP2(source.importStatsP2);
     setResultaat(source.resultaat || null);
-    setInputSignatureAtCalculation(
-      typeof source.inputSignatureAtCalculation === "string" ? source.inputSignatureAtCalculation : "",
-    );
-    actions.setCalcStatus(
-      typeof source.calculationStatus === "string" ? source.calculationStatus : "idle",
-    );
+    setInputSignatureAtCalculation(source.inputSignatureAtCalculation);
+    actions.setCalcStatus(source.calculationStatus);
   };
 
-  const buildCurrentSnapshot = () => ({
-    posts,
-    apiBase,
-    persoonNaam,
-    geboortedatum,
-    heeftPartner,
-    partnerNaam,
-    partnerGeboortedatum,
-    scenarios,
-    activeScenarioId,
-    scenarioSnapshots,
-    compareScenarioId,
-    comparisonResult,
-    importBestandP1Naam,
-    importBestandP2Naam,
-    importPreviewP1,
-    importPreviewP2,
-    importWarningsP1,
-    importWarningsP2,
-    importStatsP1,
-    importStatsP2,
-    jaarVan,
-    jaarTot,
-    resultaat,
-    inputSignatureAtCalculation,
-    calculationStatus: state.calculationStatus,
-  });
+  const buildCurrentSnapshot = () =>
+    createHouseholdSnapshot({
+      posts,
+      apiBase,
+      persoonNaam,
+      geboortedatum,
+      heeftPartner,
+      partnerNaam,
+      partnerGeboortedatum,
+      scenarios,
+      activeScenarioId,
+      scenarioSnapshots,
+      compareScenarioId,
+      comparisonResult,
+      importBestandP1Naam,
+      importBestandP2Naam,
+      importPreviewP1,
+      importPreviewP2,
+      importWarningsP1,
+      importWarningsP2,
+      importStatsP1,
+      importStatsP2,
+      jaarVan,
+      jaarTot,
+      resultaat,
+      inputSignatureAtCalculation,
+      calculationStatus: state.calculationStatus,
+    });
 
   const hydrateFromSnapshot = (snapshot) => {
-    const source = snapshot || {};
-    if (Array.isArray(source.posts) && source.posts.length > 0) {
-      setPosts(source.posts);
-    } else {
-      setPosts([createPost("loon"), createPost("sparen")]);
-    }
-    setApiBase(typeof source.apiBase === "string" ? source.apiBase : "/api/v1");
-    setPersoonNaam(typeof source.persoonNaam === "string" ? source.persoonNaam : "");
-    setGeboortedatum(typeof source.geboortedatum === "string" ? source.geboortedatum : "");
-    setHeeftPartner(Boolean(source.heeftPartner));
-    setPartnerNaam(typeof source.partnerNaam === "string" ? source.partnerNaam : "");
-    setPartnerGeboortedatum(
-      typeof source.partnerGeboortedatum === "string" ? source.partnerGeboortedatum : "",
-    );
-    const loadedScenarios =
-      Array.isArray(source.scenarios) && source.scenarios.length > 0
-        ? source.scenarios
-        : [{ id: crypto.randomUUID(), naam: "Basisscenario" }];
-    setScenarios(loadedScenarios);
-    const loadedActiveScenarioId =
-      typeof source.activeScenarioId === "string" &&
-      loadedScenarios.some((scenario) => scenario.id === source.activeScenarioId)
-        ? source.activeScenarioId
-        : loadedScenarios[0].id;
-    setActiveScenarioId(loadedActiveScenarioId);
-
-    const fallbackScenarioData = {
-      ...createDefaultScenarioData(),
-      posts: Array.isArray(source.posts) && source.posts.length > 0 ? source.posts : [createPost("loon"), createPost("sparen")],
-      jaarVan: typeof source.jaarVan === "string" ? source.jaarVan : String(new Date().getFullYear()),
-      jaarTot:
-        typeof source.jaarTot === "string"
-          ? source.jaarTot
-          : String(new Date().getFullYear() + 20),
-      importBestandP1Naam: typeof source.importBestandP1Naam === "string" ? source.importBestandP1Naam : "",
-      importBestandP2Naam: typeof source.importBestandP2Naam === "string" ? source.importBestandP2Naam : "",
-      importPreviewP1: Array.isArray(source.importPreviewP1) ? source.importPreviewP1 : [],
-      importPreviewP2: Array.isArray(source.importPreviewP2) ? source.importPreviewP2 : [],
-      importWarningsP1: Array.isArray(source.importWarningsP1) ? source.importWarningsP1 : [],
-      importWarningsP2: Array.isArray(source.importWarningsP2) ? source.importWarningsP2 : [],
-      importStatsP1: source.importStatsP1 && typeof source.importStatsP1 === "object" ? source.importStatsP1 : null,
-      importStatsP2: source.importStatsP2 && typeof source.importStatsP2 === "object" ? source.importStatsP2 : null,
-      resultaat: source.resultaat || null,
-      inputSignatureAtCalculation:
-        typeof source.inputSignatureAtCalculation === "string" ? source.inputSignatureAtCalculation : "",
-      calculationStatus: typeof source.calculationStatus === "string" ? source.calculationStatus : "idle",
-    };
-
-    const loadedScenarioSnapshots =
-      source.scenarioSnapshots && typeof source.scenarioSnapshots === "object"
-        ? source.scenarioSnapshots
-        : { [loadedActiveScenarioId]: fallbackScenarioData };
-
-    setScenarioSnapshots(loadedScenarioSnapshots);
-    setCompareScenarioId(
-      typeof source.compareScenarioId === "string" ? source.compareScenarioId : "",
-    );
-    setComparisonResult(
-      source.comparisonResult && typeof source.comparisonResult === "object"
-        ? source.comparisonResult
-        : null,
-    );
-    hydrateFromScenarioSnapshot(
-      loadedScenarioSnapshots[loadedActiveScenarioId] || fallbackScenarioData,
-    );
+    const source = normalizeHouseholdSnapshot(snapshot);
+    setPosts(source.posts);
+    setApiBase(source.apiBase);
+    setPersoonNaam(source.persoonNaam);
+    setGeboortedatum(source.geboortedatum);
+    setHeeftPartner(source.heeftPartner);
+    setPartnerNaam(source.partnerNaam);
+    setPartnerGeboortedatum(source.partnerGeboortedatum);
+    setScenarios(source.scenarios);
+    setActiveScenarioId(source.activeScenarioId);
+    setScenarioSnapshots(source.scenarioSnapshots);
+    setCompareScenarioId(source.compareScenarioId);
+    setComparisonResult(source.comparisonResult);
+    hydrateFromScenarioSnapshot(source.activeScenarioSnapshot);
   };
 
   const switchHousehold = (nextHouseholdId) => {
@@ -790,37 +320,7 @@ function AppContent() {
   const addHousehold = () => {
     const label = newHouseholdName.trim() || `Huishouden ${households.length + 1}`;
     const nextHouseholdId = crypto.randomUUID();
-    const initialScenario = { id: crypto.randomUUID(), naam: "Basisscenario" };
-    const initialScenarioData = createDefaultScenarioData();
-    const snapshot = {
-      posts: initialScenarioData.posts,
-      apiBase: "/api/v1",
-      persoonNaam: "",
-      geboortedatum: "",
-      heeftPartner: false,
-      partnerNaam: "",
-      partnerGeboortedatum: "",
-      scenarios: [initialScenario],
-      activeScenarioId: initialScenario.id,
-      scenarioSnapshots: {
-        [initialScenario.id]: initialScenarioData,
-      },
-      compareScenarioId: "",
-      comparisonResult: null,
-      importBestandP1Naam: initialScenarioData.importBestandP1Naam,
-      importBestandP2Naam: initialScenarioData.importBestandP2Naam,
-      importPreviewP1: initialScenarioData.importPreviewP1,
-      importPreviewP2: initialScenarioData.importPreviewP2,
-      importWarningsP1: initialScenarioData.importWarningsP1,
-      importWarningsP2: initialScenarioData.importWarningsP2,
-      importStatsP1: initialScenarioData.importStatsP1,
-      importStatsP2: initialScenarioData.importStatsP2,
-      jaarVan: initialScenarioData.jaarVan,
-      jaarTot: initialScenarioData.jaarTot,
-      resultaat: initialScenarioData.resultaat,
-      inputSignatureAtCalculation: initialScenarioData.inputSignatureAtCalculation,
-      calculationStatus: initialScenarioData.calculationStatus,
-    };
+    const snapshot = createInitialHouseholdSnapshot({ scenarioNaam: "Basisscenario" });
 
     setHouseholds((prev) => [...prev, { id: nextHouseholdId, name: label }]);
     setHouseholdSnapshots((prev) => ({
@@ -1031,7 +531,9 @@ function AppContent() {
         rows = parseCsvText(content);
       } else if (extension === "json") {
         const content = await file.text();
-        rows = parseJsonText(content);
+        rows = parseJsonText(content, {
+          geboortedatum: persoonCode === "P2" ? partnerGeboortedatum : geboortedatum,
+        });
       } else if (extension === "pdf") {
         rows = await parsePdfViaApi(file, apiBase);
       } else {
@@ -1046,7 +548,7 @@ function AppContent() {
         titel: title,
         source: "mpo",
         values: {
-          ...emptyValuesFor("pensioen"),
+          ...createEmptyValues("pensioen"),
           persoon: code,
           bedrag: String(bedrag),
           bedrag_type: "bruto",
@@ -1112,7 +614,7 @@ function AppContent() {
   const jaarRows = useMemo(() => aggregateYearRows(resultaat?.cashflow), [resultaat]);
   const inputSignature = useMemo(
     () =>
-      JSON.stringify({
+      buildInputSignature({
         activeHouseholdId,
         posts,
         apiBase,
@@ -1735,7 +1237,7 @@ function AppContent() {
 
     if (activeStep === "accountant") {
       return (
-        <AccountantSection SectionHeader={SectionHeader} resultsSection={renderResultaten()} />
+        <AccountantSection SectionHeader={SectionHeader} resultaat={resultaat} euro={euro} />
       );
     }
 

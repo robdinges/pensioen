@@ -38,6 +38,100 @@ function parseDecimalText(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseIsoDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateToIso(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return "";
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function leeftijdBlokNaarIso(blok, geboortedatum) {
+  const leeftijd = blok?.Leeftijd;
+  const geboorte = parseIsoDate(geboortedatum);
+  if (!leeftijd || !geboorte) {
+    return "";
+  }
+
+  const jaren = Number(leeftijd.Jaren || 0);
+  const maanden = Number(leeftijd.Maanden || 0);
+  if (!Number.isFinite(jaren) || !Number.isFinite(maanden)) {
+    return "";
+  }
+
+  return formatDateToIso(new Date(geboorte.getFullYear() + jaren, geboorte.getMonth() + maanden, 1));
+}
+
+function normalizeStructuredMpoJson(parsed, options = {}) {
+  const ouderdomsTijdvakken = parsed?.Details?.OuderdomsPensioenDetails?.OuderdomsPensioen;
+  if (!Array.isArray(ouderdomsTijdvakken) || ouderdomsTijdvakken.length === 0) {
+    return [];
+  }
+
+  const sortedTijdvakken = [...ouderdomsTijdvakken].sort((left, right) => {
+    const leftLeeftijd = left?.Van?.Leeftijd || {};
+    const rightLeeftijd = right?.Van?.Leeftijd || {};
+    const jaarDelta = Number(leftLeeftijd.Jaren || 999) - Number(rightLeeftijd.Jaren || 999);
+    if (jaarDelta !== 0) {
+      return jaarDelta;
+    }
+    return Number(leftLeeftijd.Maanden || 0) - Number(rightLeeftijd.Maanden || 0);
+  });
+
+  const pensioenMap = new Map();
+
+  sortedTijdvakken.forEach((tijdvak) => {
+    const ingangsdatum = leeftijdBlokNaarIso(tijdvak?.Van, options.geboortedatum);
+    const einddatum = tijdvak?.Tot?.Leeftijd
+      ? leeftijdBlokNaarIso(tijdvak.Tot, options.geboortedatum)
+      : "";
+
+    ["Pensioen", "IndicatiefPensioen"].forEach((typeSleutel) => {
+      const items = Array.isArray(tijdvak?.[typeSleutel]) ? tijdvak[typeSleutel] : [];
+      items.forEach((item) => {
+        const herkenningsNummer = String(item?.HerkenningsNummer || "").trim();
+        const uitvoerder = String(item?.PensioenUitvoerder || "").trim();
+        const sleutel = `${herkenningsNummer || uitvoerder || "onbekend"}|${typeSleutel}`;
+        const bestaande = pensioenMap.get(sleutel);
+        const volgende = {
+          herkenningsNummer,
+          uitvoerder,
+          typeSleutel,
+          item,
+          ingangsdatum: bestaande?.ingangsdatum || ingangsdatum,
+          einddatum,
+        };
+        pensioenMap.set(sleutel, volgende);
+      });
+    });
+  });
+
+  return [...pensioenMap.values()].map((entry) =>
+    normalizeMpoRow({
+      uitvoerder: entry.uitvoerder,
+      regeling: entry.herkenningsNummer || entry.uitvoerder || "MPO regeling",
+      type_pensioen:
+        entry.typeSleutel === "IndicatiefPensioen" ? "ouderdomspensioen indicatief" : "ouderdomspensioen",
+      ingangsdatum: entry.ingangsdatum,
+      einddatum: entry.einddatum,
+      bruto_per_jaar: entry.item?.TeBereiken ?? entry.item?.Opgebouwd ?? 0,
+      indexatie_verwacht_pct: 0,
+    }),
+  );
+}
+
 export function parseCsvText(csvText) {
   const lines = csvText
     .split(/\r?\n/)
@@ -61,7 +155,7 @@ export function parseCsvText(csvText) {
   });
 }
 
-export function parseJsonText(jsonText) {
+export function parseJsonText(jsonText, options = {}) {
   const parsed = JSON.parse(jsonText);
   if (Array.isArray(parsed)) {
     return parsed.map((row) => normalizeMpoRow(row));
@@ -69,6 +163,11 @@ export function parseJsonText(jsonText) {
 
   if (Array.isArray(parsed?.records)) {
     return parsed.records.map((row) => normalizeMpoRow(row));
+  }
+
+  const structuredRows = normalizeStructuredMpoJson(parsed, options);
+  if (structuredRows.length > 0) {
+    return structuredRows;
   }
 
   return [];
