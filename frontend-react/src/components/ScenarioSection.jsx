@@ -118,9 +118,9 @@ export default function ScenarioSection({
                 <strong>{compareScenarioName}</strong>
               </div>
               <div className="kpi comparison-kpi">
-                <span>Delta netto p/m</span>
+                <span>Delta netto p/j</span>
                 <strong className={comparisonSummary.nettoDelta >= 0 ? "trend-positive" : "trend-negative"}>
-                  {signedEuro(comparisonSummary.nettoDelta)}
+                  {signedEuro(comparisonSummary.nettoDelta * 12)}
                 </strong>
               </div>
               <div className="kpi comparison-kpi">
@@ -141,7 +141,7 @@ export default function ScenarioSection({
             <thead>
               <tr>
                 <th>Scenario</th>
-                <th>Mediaan netto p/m</th>
+                <th>Mediaan netto p/j</th>
                 <th>Laagste jaar</th>
                 <th>Vermogen op 70</th>
                 <th>Vermogen op 80</th>
@@ -160,7 +160,7 @@ export default function ScenarioSection({
                   ].filter(Boolean).join(" ")}
                 >
                   <td>{item.scenario_naam}</td>
-                  <td>{euro(decimalLike(item.netto_per_maand_mediaan))}</td>
+                  <td>{euro(decimalLike(item.netto_per_maand_mediaan) * 12)}</td>
                   <td>
                     {item.laagste_inkomensjaar ? `${item.laagste_inkomensjaar}: ${euro(decimalLike(item.netto_laagste_jaar))}` : "-"}
                   </td>

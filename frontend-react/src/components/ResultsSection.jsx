@@ -14,12 +14,12 @@ export default function ResultsSection({ SectionHeader, jaarRows, euro }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Jaar</th><th>Bruto</th><th>Belasting</th><th>Netto</th><th>Netto p/m</th><th>Vermogen einde jaar</th></tr>
+                <tr><th>Jaar</th><th>Bruto</th><th>Belasting</th><th>Netto</th><th>Vermogen einde jaar</th></tr>
               </thead>
               <tbody>
                 {jaarRows.map((row) => (
                   <tr key={row.jaar}>
-                    <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.nettoPerMaand)}</td><td>{euro(row.vermogenEinde)}</td>
+                    <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.vermogenEinde)}</td>
                   </tr>
                 ))}
               </tbody>

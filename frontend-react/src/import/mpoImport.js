@@ -58,6 +58,26 @@ function formatDateToIso(value) {
   return `${year}-${month}-${day}`;
 }
 
+function chooseEarliestIsoDate(left, right) {
+  if (!left) {
+    return right || "";
+  }
+  if (!right) {
+    return left;
+  }
+  return left <= right ? left : right;
+}
+
+function chooseLatestIsoDate(left, right) {
+  if (!left) {
+    return right || "";
+  }
+  if (!right) {
+    return left;
+  }
+  return left >= right ? left : right;
+}
+
 function leeftijdBlokNaarIso(blok, geboortedatum) {
   const leeftijd = blok?.Leeftijd;
   const geboorte = parseIsoDate(geboortedatum);
@@ -72,6 +92,14 @@ function leeftijdBlokNaarIso(blok, geboortedatum) {
   }
 
   return formatDateToIso(new Date(geboorte.getFullYear() + jaren, geboorte.getMonth() + maanden, 1));
+}
+
+function standPerNaarIso(item) {
+  const standPer = String(item?.StandPer || "").trim();
+  if (!standPer) {
+    return "";
+  }
+  return formatDateToIso(parseIsoDate(standPer));
 }
 
 function normalizeStructuredMpoJson(parsed, options = {}) {
@@ -105,13 +133,23 @@ function normalizeStructuredMpoJson(parsed, options = {}) {
         const uitvoerder = String(item?.PensioenUitvoerder || "").trim();
         const sleutel = `${herkenningsNummer || uitvoerder || "onbekend"}|${typeSleutel}`;
         const bestaande = pensioenMap.get(sleutel);
+        const standPerIso = standPerNaarIso(item);
+        const volgendeIngang = chooseEarliestIsoDate(
+          bestaande?.ingangsdatum || "",
+          ingangsdatum || standPerIso,
+        );
+        const volgendeEinde = chooseLatestIsoDate(
+          bestaande?.einddatum || "",
+          einddatum,
+        );
         const volgende = {
           herkenningsNummer,
           uitvoerder,
           typeSleutel,
           item,
-          ingangsdatum: bestaande?.ingangsdatum || ingangsdatum,
-          einddatum,
+          ingangsdatum: volgendeIngang,
+          einddatum: volgendeEinde,
+          standPer: chooseLatestIsoDate(bestaande?.standPer || "", standPerIso),
         };
         pensioenMap.set(sleutel, volgende);
       });
@@ -124,7 +162,7 @@ function normalizeStructuredMpoJson(parsed, options = {}) {
       regeling: entry.herkenningsNummer || entry.uitvoerder || "MPO regeling",
       type_pensioen:
         entry.typeSleutel === "IndicatiefPensioen" ? "ouderdomspensioen indicatief" : "ouderdomspensioen",
-      ingangsdatum: entry.ingangsdatum,
+      ingangsdatum: entry.ingangsdatum || entry.standPer || "",
       einddatum: entry.einddatum,
       bruto_per_jaar: entry.item?.TeBereiken ?? entry.item?.Opgebouwd ?? 0,
       indexatie_verwacht_pct: 0,

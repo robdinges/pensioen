@@ -74,9 +74,14 @@ cashflowprognose voor een huishouden.
   - periode-stap met jaarvalidatie; berekenen is geblokkeerd tot invoer geldig is
   - rapport-stap met directe Excel-download via API (`/api/v1/rapportages/excel`) op basis van actieve invoer
   - import-stap met MPO-bestandsimport naar pensioen-componenten (CSV, Excel, JSON en PDF)
+  - MPO JSON-import vult start- en einddatums robuuster: via leeftijd+geboortedatum en fallback op StandPer wanneer geboortedatum ontbreekt
   - PDF-import loopt via API-endpoint `/api/v1/import/mpo/pdf` en gebruikt de backend-parser voor MPO-PDF's
   - import-validatie in React met preview, compacte samenvatting per persoon, duplicate-waarschuwingen, telling van overgeslagen regels en feedback tijdens import
   - accountant-stap met uitgebreide controle per belastingjaar: jaaroverzicht, grondslagen, heffingskortingen, gebruikte schijven/premies, box-3 parameters en maandtabel voor narekening
+  - overzichten in de React UI tonen op jaarniveau (jaartotalen), zonder maandtabel in accountant/resultaten-overzichten
+  - accountantsoverzicht bevat per sectie expliciete post-specificaties (definitie + formule) voor controle en narekening
+  - accountantsoverzicht toont per controlejaar ook de exacte actieve bronposten (welke lonen, uitkeringen, pensioenen, etc.) inclusief persoon, bedragtype, frequentie en periode
+  - accountantsoverzicht toont jaren standaard ingeklapt; per jaar kan detail op verzoek worden uitgeklapt
   - tarieffallback per jaar: als een belastingjaar ontbreekt, gebruikt de engine het laatst bekende jaar tot en met dat doeljaar, met expliciete melding in resultaten en accountant-stap
 
 ## Usage

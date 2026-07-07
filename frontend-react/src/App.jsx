@@ -1237,7 +1237,7 @@ function AppContent() {
 
     if (activeStep === "accountant") {
       return (
-        <AccountantSection SectionHeader={SectionHeader} resultaat={resultaat} euro={euro} />
+        <AccountantSection SectionHeader={SectionHeader} resultaat={resultaat} euro={euro} posts={posts} />
       );
     }
 
