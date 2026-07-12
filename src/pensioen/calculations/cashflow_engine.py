@@ -516,13 +516,10 @@ def _bereken_jaar(
 
     jaar_belasting_p1 = belasting_p1.belasting + ew_p1.tariefsaanpassing
     is_aow_p1 = aow_breuk_p1 > Decimal("0")
-    if is_aow_p1 and not heeft_partner:
-        ahk_p1 = belasting_engine.rond_af(heffingskorting.bereken_ahk(bruto_jaar_p1, belasting_config))
-    else:
-        ahk_inkomen_p1 = box1_grondslag_p1 if is_aow_p1 else bruto_jaar_p1
-        ahk_p1 = belasting_engine.rond_af(
-            heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p1, belasting_config, aow_breuk_p1)
-        )
+    ahk_inkomen_p1 = box1_grondslag_p1 if is_aow_p1 else bruto_jaar_p1
+    ahk_p1 = belasting_engine.rond_af(
+        heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p1, belasting_config, aow_breuk_p1)
+    )
     ak_p1 = belasting_engine.rond_af(heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, belasting_config))
     ok_p1 = belasting_engine.rond_af(
         heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, belasting_config, is_aow_p1)

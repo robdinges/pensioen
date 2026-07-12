@@ -13,6 +13,7 @@ from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import IncidenteelItem, Scenario
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
+from pensioen.tax import aow_engine, heffingskorting
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
 
 
@@ -54,6 +55,43 @@ class TestCashflowHuishouden:
         )
         assert len(cashflow.jaren) == 10
         assert all(len(jr.maanden) == 12 for jr in cashflow.jaren)
+
+    def test_alleenstaande_aow_2025_heeft_belastingdienst_heffingskortingen(self) -> None:
+        """Regressie: alleenstaande AOW 2025 gebruikt AOW-AHK + juiste ouderenkorting."""
+        persoon = Persoon(naam="AOW", geboortedatum=date(1945, 1, 1), heeft_partner=False)
+        scenario = Scenario(
+            naam="Alleen AOW",
+            spaargeld_start=Decimal("0"),
+            box3_meenemen=False,
+            componenten=[],
+        )
+        configs = _maak_configs(2025, 2025)
+
+        cashflow = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2025,
+            jaar_tot=2025,
+            belasting_configs=configs,
+        )
+
+        jaar = cashflow.jaren[0]
+        tarieven = jaar.maanden[0].gebruikte_tarieven["persoon1"]
+        config_2025 = configs[2025][0]
+
+        verwacht_ahk = heffingskorting.bereken_ahk_met_aow(
+            jaar.bruto_inkomen.p1.totaal,
+            config_2025,
+            aow_engine.aow_breuk_jaar(persoon.geboortedatum, 2025),
+        ).quantize(Decimal("0.01"))
+
+        assert Decimal(str(tarieven["ahk"])) == verwacht_ahk
+        assert Decimal(str(tarieven["ahk"])) == Decimal("1536.00")
+        assert Decimal(str(tarieven["ouderenkorting"])) == Decimal("2035.00")
+        assert Decimal(str(tarieven["alleenstaandeouderenkorting"])) == Decimal("531.00")
 
     def test_netto_groter_dan_nul(
         self,

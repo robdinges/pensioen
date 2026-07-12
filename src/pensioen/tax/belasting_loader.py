@@ -334,6 +334,7 @@ def config_naar_tariefwaarden(config: BelastingConfig) -> dict[str, Decimal]:
     waarden["ahk_afbouw_van"] = config.ahk.afbouw_inkomen_van
     waarden["ahk_afbouw_pct"] = config.ahk.afbouw_pct
     waarden["ahk_minimum"] = config.ahk.minimum
+    waarden["ahk_aow_factor"] = config.ahk_aow_factor
 
     waarden["ak_max"] = config.arbeidskorting.max_bedrag
     waarden["ak_afbouw_drempel"] = config.arbeidskorting.afbouw_drempel
@@ -390,6 +391,7 @@ def pas_tariefwaarden_toe_op_config(
             afbouw_pct=waarden.get("ahk_afbouw_pct", config.ahk.afbouw_pct),
             minimum=waarden.get("ahk_minimum", config.ahk.minimum),
         ),
+        ahk_aow_factor=waarden.get("ahk_aow_factor", config.ahk_aow_factor),
         arbeidskorting=ArbeidskortingConfig(
             max_bedrag=waarden.get("ak_max", config.arbeidskorting.max_bedrag),
             afbouw_drempel=waarden.get("ak_afbouw_drempel", config.arbeidskorting.afbouw_drempel),

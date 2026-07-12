@@ -612,53 +612,21 @@ function AppContent() {
   };
 
   const jaarRows = useMemo(() => aggregateYearRows(resultaat?.cashflow), [resultaat]);
-  const inputSignature = useMemo(
+  const calculationInputSignature = useMemo(
     () =>
-      buildInputSignature({
-        activeHouseholdId,
-        posts,
-        apiBase,
-        persoonNaam,
-        geboortedatum,
-        heeftPartner,
-        partnerNaam,
-        partnerGeboortedatum,
-        scenarios,
-        activeScenarioId,
-        importBestandP1Naam,
-        importBestandP2Naam,
-        importPreviewP1,
-        importPreviewP2,
-        importWarningsP1,
-        importWarningsP2,
-        importStatsP1,
-        importStatsP2,
-        jaarVan,
-        jaarTot,
-      }),
+      buildInputSignature(
+        createBerekeningPayload(),
+      ),
     [
-      activeHouseholdId,
       posts,
-      apiBase,
       persoonNaam,
       geboortedatum,
+      jaarVan,
+      jaarTot,
+      activeScenarioName,
       heeftPartner,
       partnerNaam,
       partnerGeboortedatum,
-      scenarios,
-      activeScenarioId,
-      compareScenarioId,
-      comparisonResult,
-      importBestandP1Naam,
-      importBestandP2Naam,
-      importPreviewP1,
-      importPreviewP2,
-      importWarningsP1,
-      importWarningsP2,
-      importStatsP1,
-      importStatsP2,
-      jaarVan,
-      jaarTot,
     ],
   );
 
@@ -815,10 +783,10 @@ function AppContent() {
   ]);
 
   useEffect(() => {
-    if (resultaat && inputSignatureAtCalculation && inputSignature !== inputSignatureAtCalculation) {
+    if (resultaat && inputSignatureAtCalculation && calculationInputSignature !== inputSignatureAtCalculation) {
       actions.markStale();
     }
-  }, [resultaat, inputSignatureAtCalculation, inputSignature, actions]);
+  }, [resultaat, inputSignatureAtCalculation, calculationInputSignature, actions]);
 
   useEffect(() => {
     actions.setContext({ currentHousehold: activeHouseholdName });
@@ -923,8 +891,8 @@ function AppContent() {
 
   const canCalculate = stepCompletion.huishouden && personenIsValid && periodeIsValid;
 
-  const createBerekeningPayload = () =>
-    buildRequestPayload({
+  function createBerekeningPayload() {
+    return buildRequestPayload({
       posts,
       persoonNaam,
       geboortedatum,
@@ -935,6 +903,7 @@ function AppContent() {
       partnerNaam,
       partnerGeboortedatum,
     });
+  }
 
   const stepStatusMap = FLOW_STEPS.reduce((acc, step) => {
     if (step.id === activeStep) {
@@ -968,6 +937,7 @@ function AppContent() {
     actions.setCalcStatus("calculating");
     try {
       const payload = createBerekeningPayload();
+      const requestSignature = buildInputSignature(payload);
       const response = await fetch(`${apiBase}/berekeningen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -991,7 +961,7 @@ function AppContent() {
       }
 
       setResultaat(data);
-      setInputSignatureAtCalculation(inputSignature);
+  setInputSignatureAtCalculation(requestSignature);
       actions.markFresh();
       actions.setActiveStep("resultaten");
     } catch (err) {

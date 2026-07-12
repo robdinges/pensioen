@@ -105,6 +105,14 @@ class TestBerekenBox1:
         assert resolved.eigen_woning.tariefsaanpassing_pct == config.eigen_woning.tariefsaanpassing_pct
         assert resolved.eigen_woning.wet_hillen_pct == config.eigen_woning.wet_hillen_pct
 
+    def test_resolve_tariefwaarden_behoudt_ahk_aow_factor(self) -> None:
+        """Jaarresolutie moet de AOW-factor van AHK behouden."""
+        config, _ = laad_tarieven(2025)
+
+        resolved, _ = resolve_tariefwaarden_voor_jaar(config, 2025, [])
+
+        assert resolved.ahk_aow_factor == config.ahk_aow_factor
+
 
 class TestNettoUitBruto:
     """Tests voor de volledige netto-uit-bruto berekening."""
