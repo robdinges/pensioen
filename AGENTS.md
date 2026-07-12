@@ -1,5 +1,7 @@
 # Pensioen Project — Agent Instructions
 
+<!-- markdownlint-disable MD007 MD012 MD022 MD032 MD040 -->
+
 ## Project Overview
 Professionele Nederlandse pensioenplanner: dag-nauwkeurige cashflowprognoses voor een huishouden op basis van pensioen, AOW, werkinkomen, spaargeld en incidentele cashflows.
 
@@ -88,12 +90,29 @@ pensioen/
 - `src/pensioen/tax/aow_engine.py` bevat AOW-datum en AOW-breukregels.
 - UI, API-serialisatie en exports presenteren resultaten maar bevatten geen fiscale herberekeningen.
 
+### Functional Calculation Governance
+- Behandel wijzigingen aan berekeningen eerst als wijzigingen in de **functionele berekenarchitectuur**, niet als losse code-edits.
+- Map iedere wijziging eerst op precies één functionele stap uit de keten: `Scenario -> Persoonsgegevens -> Pensioen -> AOW -> Arbeid -> Bruto inkomen -> Eigen woning -> Box 1 -> Heffingskortingen -> Netto inkomen -> Box 3 -> Vermogen -> Resultaten`.
+- Leg per wijziging expliciet vast: source of truth, invoer, uitvoer, gebruikte tarieven, gebruikte tests en afhankelijke vervolgstappen.
+- Als een taak niet eenduidig op één berekenstap past, is de taak nog niet scherp genoeg en moet eerst het contract worden verduidelijkt.
+- Nieuwe of aangepaste UI-, API- of rapportagelogica mag geen zelfstandige fiscale herberekening introduceren.
+- Accountantoutput moet uiteindelijk volledig uit engine-output worden opgebouwd; tijdelijke afwijkingen moeten expliciet als migratieschuld benoemd blijven.
+- Gebruik de documenten `MASTERPLAN_PENSIOENAPPLICATIE.md`, `UITVOERINGSPLAN_HERSTRUCTURERING.md` en `EPIC1_WERKPAKKET_FISCALE_BOUWSTENEN.md` als leidraad voor calculation-affecting werk.
+
+### Delivery Discipline For Calculation Work
+- Werk bij calculation-affecting changes in kleine slices per bouwsteen of berekenstap, niet in brede refactors over meerdere domeinstappen tegelijk.
+- Voeg of wijzig eerst directe tests voor de betrokken bouwsteen voordat bredere engine- of UI-aanpassingen worden gedaan, tenzij de taak expliciet alleen analyse/documentatie is.
+- Verwijder geen legacy bron of parallel rekenpad voordat de nieuwe source of truth aantoonbaar dezelfde functionele uitkomst levert en regressietests aanwezig zijn.
+- Bij fiscale bugs moet het eindresultaat van de fix minimaal opleveren: één herleidbare oorzaak, één directe test op de betrokken bouwsteen en één regressietest op het hogere pad dat de bug zichtbaar maakte.
+
 ### Definition Of Done (Rekenwijzigingen)
 - Elke wijziging aan berekeningen bevat minimaal:
     - testcase-update in `tests/fixtures/belasting_testcases/raw/`
     - regeneratie van `tests/fixtures/belasting_testcases/normalized/`
     - regressietest of validatierapport-update in `tests/` of `tests/fixtures/belasting_testcases/`
 - Geen feature is functioneel gereed zonder bijgewerkte testartefacten en expliciete borging van regels in instructies waar nodig.
+- Geen calculation-affecting wijziging is gereed zonder expliciete koppeling aan één functionele berekenstap en bevestiging van de source of truth voor die stap.
+- Geen wijziging aan accountant-, rapportage- of resultaatweergave is gereed als die een eigen fiscale herberekening toevoegt of in stand houdt zonder expliciete migratiereden.
 
 ### Interne Verslaglegging En Tokens
 - Houd interne verslaglegging compact en taakgericht; geen uitgebreide recaps tenzij expliciet gevraagd.
