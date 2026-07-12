@@ -266,6 +266,30 @@ def _bouw_jaar_dataframe(resultaat: dict) -> pd.DataFrame:
     rijen: list[dict] = []
     for jaar_data in jaren:
         jaar = int(jaar_data.get("jaar", 0))
+        samenvatting = jaar_data.get("jaar_samenvatting")
+        if isinstance(samenvatting, dict) and samenvatting:
+            bruto_jaar = _naar_decimal(samenvatting.get("bruto"))
+            belasting_jaar = _naar_decimal(samenvatting.get("belasting"))
+            netto_jaar = _naar_decimal(samenvatting.get("netto"))
+            netto_per_maand = _naar_decimal(samenvatting.get("netto_per_maand"))
+            vermogen_einde_jaar = _naar_decimal(samenvatting.get("vermogen_einde_jaar"))
+            rijen.append(
+                {
+                    "jaar": jaar,
+                    "bruto_jaar": float(bruto_jaar),
+                    "belasting_jaar": float(belasting_jaar),
+                    "netto_jaar": float(netto_jaar),
+                    "netto_per_maand": float(netto_per_maand),
+                    "vermogen_einde_jaar": float(vermogen_einde_jaar),
+                    "bruto_jaar_fmt": _format_euro(bruto_jaar),
+                    "belasting_jaar_fmt": _format_euro(belasting_jaar),
+                    "netto_jaar_fmt": _format_euro(netto_jaar),
+                    "netto_per_maand_fmt": _format_euro(netto_per_maand),
+                    "vermogen_einde_jaar_fmt": _format_euro(vermogen_einde_jaar),
+                }
+            )
+            continue
+
         maanden = jaar_data.get("maanden", [])
         if not isinstance(maanden, list):
             maanden = []

@@ -113,6 +113,11 @@ def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
     assert "cashflow" in data
     assert data["cashflow"]["scenario_naam"] == scenario_standaard.naam
     assert len(data["cashflow"]["jaren"]) == 3
+    eerste_jaar = data["cashflow"]["jaren"][0]
+    assert "jaar_samenvatting" in eerste_jaar
+    assert "accountant_detail" in eerste_jaar
+    assert "netto" in eerste_jaar["jaar_samenvatting"]
+    assert "box3_heffing" in eerste_jaar["accountant_detail"]
     eerste_maand = data["cashflow"]["jaren"][0]["maanden"][0]
     assert eerste_maand["gebruikte_tarieven"]["persoon1"]["schijven"]["box1_niet_aow"]
     assert "box3" in eerste_maand["gebruikte_tarieven"]

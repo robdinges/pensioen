@@ -206,6 +206,8 @@ function AccountantYear({ jaarResultaat, euro, posts }) {
   if (months.length === 0) {
     return null;
   }
+  const detail = jaarResultaat?.accountant_detail || {};
+  const samenvatting = jaarResultaat?.jaar_samenvatting || {};
   const controlejaar = Number(jaarResultaat.jaar);
   const actieveBronposten = Array.isArray(posts)
     ? posts.filter((post) => isPostActiveInYear(post, controlejaar))
@@ -216,28 +218,28 @@ function AccountantYear({ jaarResultaat, euro, posts }) {
   const persoon2 = tarieven.persoon2 || null;
   const box3 = tarieven.box3 || {};
 
-  const brutoP1 = sumMonths(months, (month) => month.arbeid_p1_bruto + month.aow_p1_bruto + month.pensioen_p1_bruto);
-  const brutoP2 = sumMonths(months, (month) => month.arbeid_p2_bruto + month.aow_p2_bruto + month.pensioen_p2_bruto);
-  const arbeidP1 = sumMonths(months, (month) => month.arbeid_p1_bruto);
-  const arbeidP2 = sumMonths(months, (month) => month.arbeid_p2_bruto);
-  const aowP1 = sumMonths(months, (month) => month.aow_p1_bruto);
-  const aowP2 = sumMonths(months, (month) => month.aow_p2_bruto);
-  const pensioenP1 = sumMonths(months, (month) => month.pensioen_p1_bruto);
-  const pensioenP2 = sumMonths(months, (month) => month.pensioen_p2_bruto);
-  const overig = sumMonths(months, (month) => month.overig_bruto);
-  const rente = sumMonths(months, (month) => month.rente_bruto);
-  const nettoComponenten = sumMonths(months, (month) => month.inkomen_componenten_netto);
-  const belastingP1 = sumMonths(months, (month) => month.belasting_p1);
-  const belastingP2 = sumMonths(months, (month) => month.belasting_p2);
+  const brutoP1 = detail.bruto_p1 != null ? toNumber(detail.bruto_p1) : sumMonths(months, (month) => month.arbeid_p1_bruto + month.aow_p1_bruto + month.pensioen_p1_bruto);
+  const brutoP2 = detail.bruto_p2 != null ? toNumber(detail.bruto_p2) : sumMonths(months, (month) => month.arbeid_p2_bruto + month.aow_p2_bruto + month.pensioen_p2_bruto);
+  const arbeidP1 = detail.jaar_arbeid_p1 != null ? toNumber(detail.jaar_arbeid_p1) : sumMonths(months, (month) => month.arbeid_p1_bruto);
+  const arbeidP2 = detail.jaar_arbeid_p2 != null ? toNumber(detail.jaar_arbeid_p2) : sumMonths(months, (month) => month.arbeid_p2_bruto);
+  const aowP1 = detail.jaar_aow_p1 != null ? toNumber(detail.jaar_aow_p1) : sumMonths(months, (month) => month.aow_p1_bruto);
+  const aowP2 = detail.jaar_aow_p2 != null ? toNumber(detail.jaar_aow_p2) : sumMonths(months, (month) => month.aow_p2_bruto);
+  const pensioenP1 = detail.jaar_pen_p1 != null ? toNumber(detail.jaar_pen_p1) : sumMonths(months, (month) => month.pensioen_p1_bruto);
+  const pensioenP2 = detail.jaar_pen_p2 != null ? toNumber(detail.jaar_pen_p2) : sumMonths(months, (month) => month.pensioen_p2_bruto);
+  const overig = detail.jaar_overig_p1 != null ? toNumber(detail.jaar_overig_p1) : sumMonths(months, (month) => month.overig_bruto);
+  const rente = detail.jaar_rendement != null ? toNumber(detail.jaar_rendement) : sumMonths(months, (month) => month.rente_bruto);
+  const nettoComponenten = detail.jaar_netto_component_inkomen != null ? toNumber(detail.jaar_netto_component_inkomen) : sumMonths(months, (month) => month.inkomen_componenten_netto);
+  const belastingP1 = detail.netto_bel_p1 != null ? toNumber(detail.netto_bel_p1) : sumMonths(months, (month) => month.belasting_p1);
+  const belastingP2 = detail.netto_bel_p2 != null ? toNumber(detail.netto_bel_p2) : sumMonths(months, (month) => month.belasting_p2);
   const heffingskortingP1 = sumMonths(months, (month) => month.heffingskorting_p1);
   const heffingskortingP2 = sumMonths(months, (month) => month.heffingskorting_p2);
-  const box3Heffing = sumMonths(months, (month) => month.box3_heffing);
-  const inhoudingen = sumMonths(months, (month) => month.inhoudingen);
-  const uitgaven = sumMonths(months, (month) => month.huishoudelijke_uitgaven);
-  const eenmaligOntvangst = sumMonths(months, (month) => month.eenmalig_ontvangst);
-  const eenmaligUitgave = sumMonths(months, (month) => month.eenmalig_uitgave);
-  const netto = sumMonths(months, (month) => month.netto ?? 0);
-  const eindVermogen = toNumber(months[months.length - 1]?.vermogen_einde_maand);
+  const box3Heffing = detail.box3_heffing != null ? toNumber(detail.box3_heffing) : sumMonths(months, (month) => month.box3_heffing);
+  const inhoudingen = detail.jaar_inhoudingen != null ? toNumber(detail.jaar_inhoudingen) : sumMonths(months, (month) => month.inhoudingen);
+  const uitgaven = detail.jaar_huishoudelijke_uitgaven != null ? toNumber(detail.jaar_huishoudelijke_uitgaven) : sumMonths(months, (month) => month.huishoudelijke_uitgaven);
+  const eenmaligOntvangst = detail.jaar_incidenteel_ontvangst != null ? toNumber(detail.jaar_incidenteel_ontvangst) : sumMonths(months, (month) => month.eenmalig_ontvangst);
+  const eenmaligUitgave = detail.jaar_incidenteel_uitgave != null ? toNumber(detail.jaar_incidenteel_uitgave) : sumMonths(months, (month) => month.eenmalig_uitgave);
+  const netto = samenvatting.netto != null ? toNumber(samenvatting.netto) : sumMonths(months, (month) => month.netto ?? 0);
+  const eindVermogen = samenvatting.vermogen_einde_jaar != null ? toNumber(samenvatting.vermogen_einde_jaar) : toNumber(months[months.length - 1]?.vermogen_einde_maand);
   const effectiefTarief = brutoP1 + brutoP2 + overig + rente > 0
     ? Math.max(0, ((belastingP1 + belastingP2 + box3Heffing) - (heffingskortingP1 + heffingskortingP2)) / (brutoP1 + brutoP2 + overig + rente) * 100)
     : 0;

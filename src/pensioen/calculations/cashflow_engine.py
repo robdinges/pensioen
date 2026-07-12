@@ -7,6 +7,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
+from pensioen.calculations.detail_output_engine import bouw_accountant_detail, bouw_jaar_samenvatting
 from pensioen.calculations.inheritance_engine import resolve_scenario
 from pensioen.models.cashflow import (
     BrutoInkomenJaar,
@@ -19,7 +20,7 @@ from pensioen.models.component import BedragType, CategorieComponent, is_handmat
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
-from pensioen.tax import aow_engine, belasting_engine
+from pensioen.tax import aow_engine, belasting_engine, heffingskorting
 from pensioen.tax.belasting_loader import BelastingConfig
 from pensioen.tax.eigen_woning_engine import EigenWoningInvoer, bereken_eigen_woning
 
@@ -94,6 +95,24 @@ def _bouw_accountant_tarieven_payload(
     box3_jaar: Decimal,
     spaargeld_fractie_box3: Decimal,
     box3_bron: str,
+    inleg_per_jaar: Decimal,
+    maandrendement: Decimal,
+    aow_breuk_p1: Decimal,
+    aow_breuk_p2: Decimal,
+    ew_bron: str,
+    ew_woz_waarde: Decimal,
+    ew_betaalde_hypotheekrente: Decimal,
+    ew_eigenwoningschuld_begin: Decimal,
+    ew_woning_items: list,
+    ew_hypotheek_items: list,
+    ew_p1,
+    ew_p2,
+    box1_grondslag_p1: Decimal,
+    box1_grondslag_p2: Decimal,
+    jaar_belasting_p1: Decimal,
+    jaar_belasting_p2: Decimal,
+    jaar_heffingskorting_p1: Decimal,
+    jaar_heffingskorting_p2: Decimal,
 ) -> dict:
     vrijstelling = belasting_config.box3.vrijstelling_per_persoon * Decimal("2" if heeft_partner else "1")
     belastbaar_vermogen = max(Decimal("0"), box3_grondslag_begin_jaar - vrijstelling)
@@ -124,6 +143,98 @@ def _bouw_accountant_tarieven_payload(
             "tarief": float(belasting_config.box3.tarief),
             "heffing_jaar": _naar_float(box3_jaar),
             "disclaimer": belasting_config.box3.disclaimer,
+        },
+        "aow": {
+            "p1_breuk": _naar_float(aow_breuk_p1),
+            "p2_breuk": _naar_float(aow_breuk_p2),
+            "p1_is_aow": bool(aow_breuk_p1 > Decimal("0")),
+            "p2_is_aow": bool(aow_breuk_p2 > Decimal("0")),
+        },
+        "eigen_woning": {
+            "heeft_invoer": ew_bron != "geen",
+            "bron": ew_bron,
+            "woz_waarde": _naar_float(ew_woz_waarde),
+            "betaalde_hypotheekrente": _naar_float(ew_betaalde_hypotheekrente),
+            "eigenwoningschuld_begin": _naar_float(ew_eigenwoningschuld_begin),
+            "woning_items": ew_woning_items,
+            "hypotheek_items": ew_hypotheek_items,
+            "p1": {
+                "eigenwoningforfait": _naar_float(ew_p1.eigenwoningforfait),
+                "aftrekbare_hypotheekrente": _naar_float(ew_p1.aftrekbare_hypotheekrente),
+                "overige_aftrekbare_kosten": _naar_float(ew_p1.overige_aftrekbare_kosten),
+                "totaal_aftrek": _naar_float(ew_p1.totaal_aftrek),
+                "saldo_eigen_woning": _naar_float(ew_p1.saldo_eigen_woning),
+                "hillen_correctie": _naar_float(ew_p1.hillen_correctie),
+                "box1_mutatie": _naar_float(ew_p1.box1_mutatie),
+                "tariefsaanpassing": _naar_float(ew_p1.tariefsaanpassing),
+                "toelichting": ew_p1.toelichting,
+            },
+            "p2": (
+                {
+                    "eigenwoningforfait": _naar_float(ew_p2.eigenwoningforfait),
+                    "aftrekbare_hypotheekrente": _naar_float(ew_p2.aftrekbare_hypotheekrente),
+                    "overige_aftrekbare_kosten": _naar_float(ew_p2.overige_aftrekbare_kosten),
+                    "totaal_aftrek": _naar_float(ew_p2.totaal_aftrek),
+                    "saldo_eigen_woning": _naar_float(ew_p2.saldo_eigen_woning),
+                    "hillen_correctie": _naar_float(ew_p2.hillen_correctie),
+                    "box1_mutatie": _naar_float(ew_p2.box1_mutatie),
+                    "tariefsaanpassing": _naar_float(ew_p2.tariefsaanpassing),
+                    "toelichting": ew_p2.toelichting,
+                }
+                if ew_p2 is not None
+                else None
+            ),
+        },
+        "box1": {
+            "grondslag_p1": _naar_float(box1_grondslag_p1),
+            "grondslag_p2": _naar_float(box1_grondslag_p2),
+            "belasting_voor_korting_p1": _naar_float(belasting_p1.inkomstenbelasting),
+            "belasting_voor_korting_p2": (
+                _naar_float(belasting_p2_resultaat.inkomstenbelasting)
+                if belasting_p2_resultaat is not None
+                else _naar_float(Decimal("0"))
+            ),
+            "premie_aow_p1": _naar_float(belasting_p1.premie_aow),
+            "premie_anw_p1": _naar_float(belasting_p1.premie_anw),
+            "premie_wlz_p1": _naar_float(belasting_p1.premie_wlz),
+            "totaal_premies_p1": _naar_float(belasting_p1.totaal_premies),
+            "premie_aow_p2": (
+                _naar_float(belasting_p2_resultaat.premie_aow)
+                if belasting_p2_resultaat is not None
+                else _naar_float(Decimal("0"))
+            ),
+            "premie_anw_p2": (
+                _naar_float(belasting_p2_resultaat.premie_anw)
+                if belasting_p2_resultaat is not None
+                else _naar_float(Decimal("0"))
+            ),
+            "premie_wlz_p2": (
+                _naar_float(belasting_p2_resultaat.premie_wlz)
+                if belasting_p2_resultaat is not None
+                else _naar_float(Decimal("0"))
+            ),
+            "totaal_premies_p2": (
+                _naar_float(belasting_p2_resultaat.totaal_premies)
+                if belasting_p2_resultaat is not None
+                else _naar_float(Decimal("0"))
+            ),
+            "totale_hk_p1": _naar_float(jaar_heffingskorting_p1),
+            "totale_hk_p2": _naar_float(jaar_heffingskorting_p2),
+            "totaal_ib_en_premies_p1": _naar_float(jaar_belasting_p1),
+            "totaal_ib_en_premies_p2": _naar_float(jaar_belasting_p2),
+            "netto_bel_p1": _naar_float(max(Decimal("0"), jaar_belasting_p1 - jaar_heffingskorting_p1)),
+            "netto_bel_p2": _naar_float(max(Decimal("0"), jaar_belasting_p2 - jaar_heffingskorting_p2)),
+            "netto_p1": _naar_float(max(Decimal("0"), box1_grondslag_p1 - max(Decimal("0"), jaar_belasting_p1 - jaar_heffingskorting_p1))),
+            "netto_p2": _naar_float(max(Decimal("0"), box1_grondslag_p2 - max(Decimal("0"), jaar_belasting_p2 - jaar_heffingskorting_p2))),
+            "totaal_netto_inkomen": _naar_float(
+                max(Decimal("0"), box1_grondslag_p1 - max(Decimal("0"), jaar_belasting_p1 - jaar_heffingskorting_p1))
+                + max(Decimal("0"), box1_grondslag_p2 - max(Decimal("0"), jaar_belasting_p2 - jaar_heffingskorting_p2))
+            ),
+        },
+        "vermogen": {
+            "saldo_begin_jaar": _naar_float(saldo_begin_jaar),
+            "inleg_per_jaar": _naar_float(inleg_per_jaar),
+            "maandrendement": _naar_float(maandrendement),
         },
     }
 
@@ -184,6 +295,10 @@ def _bereken_jaar(
     jaar_aow_p2 = Decimal("0")
     jaar_pensioen_p1 = Decimal("0")
     jaar_pensioen_p2 = Decimal("0")
+    aow_breuk_p1 = aow_engine.aow_breuk_jaar(persoon1.geboortedatum, jaar)
+    aow_breuk_p2 = (
+        aow_engine.aow_breuk_jaar(persoon2.geboortedatum, jaar) if persoon2 else Decimal("0")
+    )
 
     maand_bruto: list[dict] = []
 
@@ -386,6 +501,7 @@ def _bereken_jaar(
         config=belasting_config,
         geboortedatum=persoon1.geboortedatum,
         jaar=jaar,
+        is_alleenstaand=not heeft_partner,
     )
     belasting_p2_resultaat = None
     if persoon2:
@@ -395,17 +511,67 @@ def _bereken_jaar(
             config=belasting_config,
             geboortedatum=persoon2.geboortedatum,
             jaar=jaar,
+            is_alleenstaand=False,
         )
 
     jaar_belasting_p1 = belasting_p1.belasting + ew_p1.tariefsaanpassing
-    jaar_heffingskorting_p1 = belasting_p1.heffingskorting
+    is_aow_p1 = aow_breuk_p1 > Decimal("0")
+    if is_aow_p1 and not heeft_partner:
+        ahk_p1 = belasting_engine.rond_af(heffingskorting.bereken_ahk(bruto_jaar_p1, belasting_config))
+    else:
+        ahk_inkomen_p1 = box1_grondslag_p1 if is_aow_p1 else bruto_jaar_p1
+        ahk_p1 = belasting_engine.rond_af(
+            heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p1, belasting_config, aow_breuk_p1)
+        )
+    ak_p1 = belasting_engine.rond_af(heffingskorting.bereken_arbeidskorting(jaar_arbeid_p1, belasting_config))
+    ok_p1 = belasting_engine.rond_af(
+        heffingskorting.bereken_ouderenkorting(box1_grondslag_p1, belasting_config, is_aow_p1)
+    )
+    aok_p1 = belasting_engine.rond_af(
+        heffingskorting.bereken_alleenstaandeouderenkorting(
+            box1_grondslag_p1,
+            belasting_config,
+            is_aow_p1,
+            is_alleenstaand=not heeft_partner,
+        )
+    )
+    jaar_heffingskorting_p1 = ahk_p1 + ak_p1 + ok_p1 + aok_p1
+    belasting_p1.heffingskorting = jaar_heffingskorting_p1
+    belasting_p1.gebruikte_tarieven.update(
+        {
+            "ahk": float(ahk_p1),
+            "arbeidskorting": float(ak_p1),
+            "ouderenkorting": float(ok_p1),
+            "alleenstaandeouderenkorting": float(aok_p1),
+        }
+    )
     jaar_belasting_p2 = Decimal("0")
     jaar_heffingskorting_p2 = Decimal("0")
     if belasting_p2_resultaat is not None:
         jaar_belasting_p2 = belasting_p2_resultaat.belasting + (
             ew_p2.tariefsaanpassing if ew_p2 is not None else Decimal("0")
         )
-        jaar_heffingskorting_p2 = belasting_p2_resultaat.heffingskorting
+        is_aow_p2 = aow_breuk_p2 > Decimal("0")
+        ahk_inkomen_p2 = box1_grondslag_p2 if is_aow_p2 else bruto_jaar_p2
+        ahk_p2 = belasting_engine.rond_af(
+            heffingskorting.bereken_ahk_met_aow(ahk_inkomen_p2, belasting_config, aow_breuk_p2)
+        )
+        ak_p2 = belasting_engine.rond_af(
+            heffingskorting.bereken_arbeidskorting(jaar_arbeid_p2, belasting_config)
+        )
+        ok_p2 = belasting_engine.rond_af(
+            heffingskorting.bereken_ouderenkorting(box1_grondslag_p2, belasting_config, is_aow_p2)
+        )
+        jaar_heffingskorting_p2 = ahk_p2 + ak_p2 + ok_p2
+        belasting_p2_resultaat.heffingskorting = jaar_heffingskorting_p2
+        belasting_p2_resultaat.gebruikte_tarieven.update(
+            {
+                "ahk": float(ahk_p2),
+                "arbeidskorting": float(ak_p2),
+                "ouderenkorting": float(ok_p2),
+                "alleenstaandeouderenkorting": float(Decimal("0")),
+            }
+        )
 
     # Maandelijkse belasting = jaarbelasting / 12
     maand_bel_p1 = _rond_af(jaar_belasting_p1 / Decimal("12"))
@@ -462,6 +628,8 @@ def _bereken_jaar(
         aannames.append(
             f"Box 3 grondslag bron: {box3_bron}; rendementsgrondslag start op € {saldo_begin_jaar:,}."
         )
+
+    maandrendement = vermogen_engine.maandrendement(scenario.rendement_pct or Decimal("0"))
 
     bruto_inkomen = BrutoInkomenJaar(
         p1=BrutoInkomenPersoon(
@@ -550,6 +718,24 @@ def _bereken_jaar(
                 box3_jaar,
                 spaargeld_fractie_box3,
                 box3_bron,
+                totale_inleg,
+                maandrendement,
+                aow_breuk_p1,
+                aow_breuk_p2,
+                eigen_woning_invoer["bron"],
+                eigen_woning_invoer["huishouden"].woz_waarde,
+                eigen_woning_invoer["huishouden"].betaalde_hypotheekrente,
+                eigen_woning_invoer["huishouden"].eigenwoningschuld_begin,
+                eigen_woning_invoer["woning_items"],
+                eigen_woning_invoer["hypotheek_items"],
+                ew_p1,
+                ew_p2,
+                box1_grondslag_p1,
+                box1_grondslag_p2,
+                jaar_belasting_p1,
+                jaar_belasting_p2,
+                jaar_heffingskorting_p1,
+                jaar_heffingskorting_p2,
             ),
         )
         maandresultaten.append(resultaat)
@@ -560,6 +746,13 @@ def _bereken_jaar(
         tarieven_jaar=belasting_config.jaar,
         tarieven_aanname=aanname_melding,
         bruto_inkomen=bruto_inkomen,
+    )
+    jaar_resultaat.jaar_samenvatting = bouw_jaar_samenvatting(jaar_resultaat)
+    jaar_resultaat.accountant_detail = bouw_accountant_detail(
+        jaar_resultaat,
+        aanname=aanname_melding,
+        tarief_bronnen={},
+        records_aangeleverd=len(records1) + len(records2),
     )
     return jaar_resultaat
 

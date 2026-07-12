@@ -36,6 +36,7 @@ cashflowprognose voor een huishouden.
   - toont bij een eenpersoonshuishouden nooit P2-kolommen of P2-bedragen
   - waarschuwt bij handmatig ingevoerde AOW-componenten en filtert deze uit de inkomenssom om dubbeltelling te voorkomen
   - toont de gebruikte bron voor box 3 tarief en forfaiten voor sparen/beleggen
+  - gebruikt primair engine-detailoutput (`jaar_samenvatting` en `accountant_detail`) als bron, met alleen compatibiliteitsfallbacks voor legacy datasets
 - Scriptmatige accountant-detail export voor validatie:
   - exporteert dezelfde jaar-detailberekening als de accountantspagina naar JSON en Markdown
   - ondersteunt batch-export van alle beschikbare genormaliseerde cases en losse testcase-ID's
@@ -66,6 +67,7 @@ cashflowprognose voor een huishouden.
   - melding wanneer invoer gewijzigd is sinds de laatste berekening
   - sidebar met live API-status en handmatige referentie-refresh
   - uitgebreid jaarresultaten-dashboard met KPI's, jaartabel en trendgrafieken
+  - jaarresultaten in tabellen worden primair uit engineveld `jaar_samenvatting` opgebouwd
   - aparte tab voor ruwe API JSON-output
 - Nieuwe React UI (experimenteel, aparte branch `feature/react-frontend-redesign-wizard`):
   - sectie **Inkomsten / Uitgaven** met tegel-cards voor loon, uitkering, pensioen en eenmalige posten
@@ -87,6 +89,7 @@ cashflowprognose voor een huishouden.
   - PDF-import loopt via API-endpoint `/api/v1/import/mpo/pdf` en gebruikt de backend-parser voor MPO-PDF's
   - import-validatie in React met preview, compacte samenvatting per persoon, duplicate-waarschuwingen, telling van overgeslagen regels en feedback tijdens import
   - accountant-stap met uitgebreide controle per belastingjaar: jaaroverzicht, grondslagen, heffingskortingen, gebruikte schijven/premies, box-3 parameters en maandtabel voor narekening
+  - accountant-stap consumeert primair `accountant_detail` uit de engine-output en reduceert client-side fiscale herberekeningen
   - overzichten in de React UI tonen op jaarniveau (jaartotalen), zonder maandtabel in accountant/resultaten-overzichten
   - accountantsoverzicht bevat per sectie expliciete post-specificaties (definitie + formule) voor controle en narekening
   - accountantsoverzicht toont per controlejaar ook de exacte actieve bronposten (welke lonen, uitkeringen, pensioenen, etc.) inclusief persoon, bedragtype, frequentie en periode
@@ -155,6 +158,7 @@ Om te berekenen in de React UI:
   - controleer bruto-opbouw, heffingskortingen, box-3 grondslag en netto jaaruitkomst
   - bekijk gebruikte belastingtabellen, premiepercentages en AOW-breuken
   - loop de maandregels na inclusief belasting, uitgaven, incidentele posten en vermogen einde maand
+  - details komen primair uit de enginevelden `accountant_detail` en `jaar_samenvatting` in de API-response
 
 8. Beheer scenario's in het scherm Scenario:
   - kies het standaardscenario via de radioknoppen
@@ -239,6 +243,12 @@ Gerichte Epic 3 testset (eigen woning + vermogen/box3 harmonisatie):
 
 ```bash
 PYTHONPATH=src .venv312/bin/python -m pytest tests/test_scenario_engine.py tests/test_cashflow_engine.py tests/test_regression_bugs.py tests/test_eigen_woning_engine.py -q
+```
+
+Gerichte Epic 4/5 testset (engine detail-output + accountant/UI/API ontkoppeling):
+
+```bash
+PYTHONPATH=src .venv312/bin/python -m pytest tests/test_regression_bugs.py tests/test_cashflow_engine.py tests/test_api_main.py -q
 ```
 
 Gerichte API-tests:

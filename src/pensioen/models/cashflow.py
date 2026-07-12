@@ -119,6 +119,8 @@ class JaarResultaat:
     tarieven_jaar: int = 0  # welk belastingjaar daadwerkelijk gebruikt
     tarieven_aanname: str = ""  # melding als toekomstig jaar
     bruto_inkomen: BrutoInkomenJaar = field(default_factory=BrutoInkomenJaar)
+    jaar_samenvatting: dict = field(default_factory=dict)
+    accountant_detail: dict = field(default_factory=dict)
 
     @property
     def arbeid_bruto(self) -> Decimal:

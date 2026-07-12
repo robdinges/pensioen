@@ -547,6 +547,18 @@ export function aggregateYearRows(cashflow) {
   }
 
   return jaren.map((jaar) => {
+    const samenvatting = jaar?.jaar_samenvatting;
+    if (samenvatting && typeof samenvatting === "object") {
+      return {
+        jaar: Number(jaar.jaar),
+        bruto: toAmount(samenvatting.bruto),
+        belasting: toAmount(samenvatting.belasting),
+        netto: toAmount(samenvatting.netto),
+        nettoPerMaand: toAmount(samenvatting.netto_per_maand),
+        vermogenEinde: toAmount(samenvatting.vermogen_einde_jaar),
+      };
+    }
+
     const maanden = Array.isArray(jaar.maanden) ? jaar.maanden : [];
     let bruto = 0;
     let belasting = 0;
