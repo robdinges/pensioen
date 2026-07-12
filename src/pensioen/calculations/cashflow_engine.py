@@ -21,6 +21,7 @@ from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
 from pensioen.tax import aow_engine, belasting_engine
 from pensioen.tax.belasting_loader import BelastingConfig
+from pensioen.tax.eigen_woning_engine import EigenWoningInvoer, bereken_eigen_woning
 
 logger = logging.getLogger(__name__)
 
@@ -87,20 +88,15 @@ def _bouw_accountant_tarieven_payload(
     belasting_p2_resultaat,
     belasting_config: BelastingConfig,
     saldo_begin_jaar: Decimal,
+    box3_grondslag_begin_jaar: Decimal,
     scenario: Scenario,
     heeft_partner: bool,
     box3_jaar: Decimal,
+    spaargeld_fractie_box3: Decimal,
+    box3_bron: str,
 ) -> dict:
-    spaargeld_fractie_box3 = scenario.box3_spaargeld_fractie
-    if spaargeld_fractie_box3 is None:
-        spaargeld_fractie_box3 = Decimal("1")
-    if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
-        berekende_fractie = scenario.bereken_spaargeld_fractie_startvermogen()
-        if berekende_fractie is not None:
-            spaargeld_fractie_box3 = berekende_fractie
-
     vrijstelling = belasting_config.box3.vrijstelling_per_persoon * Decimal("2" if heeft_partner else "1")
-    belastbaar_vermogen = max(Decimal("0"), saldo_begin_jaar - vrijstelling)
+    belastbaar_vermogen = max(Decimal("0"), box3_grondslag_begin_jaar - vrijstelling)
     gewogen_forfait = (
         spaargeld_fractie_box3 * belasting_config.box3.forfaitair_spaargeld
         + (Decimal("1") - spaargeld_fractie_box3) * belasting_config.box3.forfaitair_overig
@@ -115,7 +111,9 @@ def _bouw_accountant_tarieven_payload(
         ),
         "box3": {
             "box3_meenemen": scenario.box3_meenemen,
-            "grondslag_start_vermogen": _naar_float(saldo_begin_jaar),
+            "grondslag_start_vermogen": _naar_float(box3_grondslag_begin_jaar),
+            "grondslag_bron": box3_bron,
+            "rendement_grondslag_start": _naar_float(saldo_begin_jaar),
             "vrijstelling": _naar_float(vrijstelling),
             "belastbaar_vermogen": _naar_float(belastbaar_vermogen),
             "spaargeld_fractie": _naar_float(spaargeld_fractie_box3),
@@ -140,6 +138,8 @@ def _bereken_jaar(
     belasting_config: BelastingConfig,
     aanname_melding: str,
     saldo_begin_jaar: Decimal,
+    box3_grondslag_begin_jaar: Decimal,
+    box3_bron: str,
 ) -> JaarResultaat:
     """
     Bereken alle cashflows voor één kalenderjaar voor het huishouden.
@@ -315,8 +315,73 @@ def _bereken_jaar(
     bruto_jaar_p1 = jaar_arbeid_p1 + jaar_overig_p1 + jaar_aow_p1 + jaar_pensioen_p1
     bruto_jaar_p2 = jaar_arbeid_p2 + jaar_overig_p2 + jaar_aow_p2 + jaar_pensioen_p2
 
+    eigen_woning_invoer = scenario.verzamel_fiscale_eigen_woning_invoer(
+        jaar=jaar,
+        heeft_partner=heeft_partner,
+    )
+    heeft_eigen_woning_invoer = bool(eigen_woning_invoer["heeft_invoer"])
+
+    ew_p1 = bereken_eigen_woning(
+        EigenWoningInvoer(
+            woz_waarde=eigen_woning_invoer["p1"].woz_waarde if heeft_eigen_woning_invoer else Decimal("0"),
+            betaalde_hypotheekrente=(
+                eigen_woning_invoer["p1"].betaalde_hypotheekrente if heeft_eigen_woning_invoer else Decimal("0")
+            ),
+            overige_aftrekbare_kosten=(
+                eigen_woning_invoer["p1"].overige_aftrekbare_kosten if heeft_eigen_woning_invoer else Decimal("0")
+            ),
+            eigenwoningschuld_begin=(
+                eigen_woning_invoer["p1"].eigenwoningschuld_begin if heeft_eigen_woning_invoer else Decimal("0")
+            ),
+            eigenwoningschuld_eind=(
+                eigen_woning_invoer["p1"].eigenwoningschuld_eind if heeft_eigen_woning_invoer else Decimal("0")
+            ),
+            bruto_inkomen_box1=bruto_jaar_p1,
+        ),
+        belasting_config,
+    )
+    ew_p2 = None
+    if persoon2:
+        ew_p2 = bereken_eigen_woning(
+            EigenWoningInvoer(
+                woz_waarde=(
+                    eigen_woning_invoer["p2"].woz_waarde
+                    if heeft_eigen_woning_invoer and eigen_woning_invoer["p2"] is not None
+                    else Decimal("0")
+                ),
+                betaalde_hypotheekrente=(
+                    eigen_woning_invoer["p2"].betaalde_hypotheekrente
+                    if heeft_eigen_woning_invoer and eigen_woning_invoer["p2"] is not None
+                    else Decimal("0")
+                ),
+                overige_aftrekbare_kosten=(
+                    eigen_woning_invoer["p2"].overige_aftrekbare_kosten
+                    if heeft_eigen_woning_invoer and eigen_woning_invoer["p2"] is not None
+                    else Decimal("0")
+                ),
+                eigenwoningschuld_begin=(
+                    eigen_woning_invoer["p2"].eigenwoningschuld_begin
+                    if heeft_eigen_woning_invoer and eigen_woning_invoer["p2"] is not None
+                    else Decimal("0")
+                ),
+                eigenwoningschuld_eind=(
+                    eigen_woning_invoer["p2"].eigenwoningschuld_eind
+                    if heeft_eigen_woning_invoer and eigen_woning_invoer["p2"] is not None
+                    else Decimal("0")
+                ),
+                bruto_inkomen_box1=bruto_jaar_p2,
+            ),
+            belasting_config,
+        )
+
+    box1_grondslag_p1 = max(Decimal("0"), bruto_jaar_p1 + ew_p1.box1_mutatie)
+    box1_grondslag_p2 = max(
+        Decimal("0"),
+        bruto_jaar_p2 + (ew_p2.box1_mutatie if ew_p2 is not None else Decimal("0")),
+    )
+
     belasting_p1 = belasting_engine.netto_uit_bruto(
-        bruto=bruto_jaar_p1,
+        bruto=box1_grondslag_p1,
         arbeidsinkomen=jaar_arbeid_p1,
         config=belasting_config,
         geboortedatum=persoon1.geboortedatum,
@@ -325,22 +390,32 @@ def _bereken_jaar(
     belasting_p2_resultaat = None
     if persoon2:
         belasting_p2_resultaat = belasting_engine.netto_uit_bruto(
-            bruto=bruto_jaar_p2,
+            bruto=box1_grondslag_p2,
             arbeidsinkomen=jaar_arbeid_p2,
             config=belasting_config,
             geboortedatum=persoon2.geboortedatum,
             jaar=jaar,
         )
 
+    jaar_belasting_p1 = belasting_p1.belasting + ew_p1.tariefsaanpassing
+    jaar_heffingskorting_p1 = belasting_p1.heffingskorting
+    jaar_belasting_p2 = Decimal("0")
+    jaar_heffingskorting_p2 = Decimal("0")
+    if belasting_p2_resultaat is not None:
+        jaar_belasting_p2 = belasting_p2_resultaat.belasting + (
+            ew_p2.tariefsaanpassing if ew_p2 is not None else Decimal("0")
+        )
+        jaar_heffingskorting_p2 = belasting_p2_resultaat.heffingskorting
+
     # Maandelijkse belasting = jaarbelasting / 12
-    maand_bel_p1 = _rond_af(belasting_p1.belasting / Decimal("12"))
-    maand_hk_p1 = _rond_af(belasting_p1.heffingskorting / Decimal("12"))
+    maand_bel_p1 = _rond_af(jaar_belasting_p1 / Decimal("12"))
+    maand_hk_p1 = _rond_af(jaar_heffingskorting_p1 / Decimal("12"))
     maand_bel_p2 = (
-        _rond_af(belasting_p2_resultaat.belasting / Decimal("12"))
+        _rond_af(jaar_belasting_p2 / Decimal("12"))
         if belasting_p2_resultaat else Decimal("0")
     )
     maand_hk_p2 = (
-        _rond_af(belasting_p2_resultaat.heffingskorting / Decimal("12"))
+        _rond_af(jaar_heffingskorting_p2 / Decimal("12"))
         if belasting_p2_resultaat else Decimal("0")
     )
 
@@ -348,12 +423,13 @@ def _bereken_jaar(
     box3_maand = Decimal("0")
     box3_jaar = Decimal("0")
     box3_disclaimer = ""
-    if scenario.box3_meenemen and saldo_begin_jaar > Decimal("0"):
+    spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_startvermogen(date(jaar, 1, 1))
+    if scenario.box3_meenemen and box3_grondslag_begin_jaar > Decimal("0"):
         # Box 3 peildatum gebruikt startverdeling (1 januari), niet maandcomponenten.
-        spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_startvermogen()
-        
         box3_jaar, box3_disclaimer = belasting_engine.bereken_box3_heffing(
-            saldo_begin_jaar, belasting_config, heeft_partner,
+            box3_grondslag_begin_jaar,
+            belasting_config,
+            heeft_partner,
             spaargeld_fractie=spaargeld_fractie_box3,
         )
         box3_maand = _rond_af(box3_jaar / Decimal("12"))
@@ -377,6 +453,14 @@ def _bereken_jaar(
     if records1 or records2:
         aannames.append(
             "PensioenRecord-invoer ontvangen, maar pensioenbron in de engine is Scenario.componenten (PENSIOEN_INKOMEN)."
+        )
+    if heeft_eigen_woning_invoer:
+        aannames.append(
+            f"Eigen woning stap actief (bron: {eigen_woning_invoer['bron']}); box-1 grondslag bevat eigen-woningmutatie en tariefsaanpassing."
+        )
+    if scenario.box3_meenemen:
+        aannames.append(
+            f"Box 3 grondslag bron: {box3_bron}; rendementsgrondslag start op € {saldo_begin_jaar:,}."
         )
 
     bruto_inkomen = BrutoInkomenJaar(
@@ -460,9 +544,12 @@ def _bereken_jaar(
                 belasting_p2_resultaat,
                 belasting_config,
                 saldo_begin_jaar,
+                box3_grondslag_begin_jaar,
                 scenario,
                 heeft_partner,
                 box3_jaar,
+                spaargeld_fractie_box3,
+                box3_bron,
             ),
         )
         maandresultaten.append(resultaat)
@@ -516,7 +603,10 @@ def bereken_huishouden(
         scenario_resolved = scenario
 
     cashflow = HuishoudCashflow(scenario_naam=scenario_resolved.naam)
-    saldo = scenario_resolved.totaal_vermogen_start()
+    startwaarden_vermogen = scenario_resolved.bepaal_vermogen_startwaarden(date(jaar_van, 1, 1))
+    saldo = Decimal(str(startwaarden_vermogen["liquide_startvermogen"]))
+    box3_grondslag = Decimal(str(startwaarden_vermogen["box3_grondslag"]))
+    box3_bron = str(startwaarden_vermogen["bron"])
 
     for jaar in range(jaar_van, jaar_tot + 1):
         config, aanname_melding = belasting_configs[jaar]
@@ -531,9 +621,13 @@ def bereken_huishouden(
             belasting_config=config,
             aanname_melding=aanname_melding,
             saldo_begin_jaar=saldo,
+            box3_grondslag_begin_jaar=box3_grondslag,
+            box3_bron=box3_bron,
         )
         cashflow.jaren.append(jaar_resultaat)
         saldo = jaar_resultaat.vermogen_einde_jaar
+        box3_grondslag = saldo
+        box3_bron = "prognose_saldo"
 
     alle_aannames: set[str] = set()
     for jr in cashflow.jaren:

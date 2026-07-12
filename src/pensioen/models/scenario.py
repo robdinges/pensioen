@@ -143,12 +143,36 @@ class Scenario(BaseModel):
         """Totaal startvermogen (spaargeld + beleggingen)."""
         return self.spaargeld_start + self.beleggingen_start
 
-    def bereken_spaargeld_fractie_startvermogen(self) -> Decimal:
-        """Bereken spaargeldfractie op basis van expliciet startvermogen.
+    def bereken_spaargeld_fractie_startvermogen(self, peildatum: date | None = None) -> Decimal:
+        """Bereken spaargeldfractie voor box 3 op peildatum.
 
-        Dit is de juiste peildatum-verdeling voor box 3 op 1 januari:
-        spaargeld_start / (spaargeld_start + beleggingen_start).
+        Bronvolgorde:
+        1) Actieve vermogensitems (box-3-belaste SPAARGELD/BELEGGINGEN) op peildatum.
+        2) Legacy startvelden spaargeld_start/beleggingen_start.
+        3) Legacy override box3_spaargeld_fractie.
+        4) Veilige default 50/50.
         """
+        if peildatum is None:
+            peildatum = date.today()
+
+        box3_spaargeld = Decimal("0")
+        box3_beleggingen = Decimal("0")
+        for item in self.vermogensitems:
+            if not item.box3_belast or not item.is_actief_op(peildatum):
+                continue
+            waarde = item.waarde_op_datum(peildatum)
+            if item.type == VermogensType.SPAARGELD:
+                box3_spaargeld += waarde
+            elif item.type == VermogensType.BELEGGINGEN:
+                box3_beleggingen += waarde
+
+        totaal_items = box3_spaargeld + box3_beleggingen
+        if totaal_items > Decimal("0"):
+            return max(
+                Decimal("0"),
+                min(Decimal("1"), box3_spaargeld / totaal_items),
+            )
+
         totaal_start = self.totaal_vermogen_start()
         if totaal_start > Decimal("0"):
             return max(
@@ -156,7 +180,6 @@ class Scenario(BaseModel):
                 min(Decimal("1"), self.spaargeld_start / totaal_start),
             )
 
-        # Fallback op legacy veld indien aanwezig
         if self.box3_spaargeld_fractie is not None:
             return max(
                 Decimal("0"),
@@ -164,6 +187,49 @@ class Scenario(BaseModel):
             )
 
         return Decimal("0.5")
+
+    def bepaal_vermogen_startwaarden(self, peildatum: date) -> dict[str, Decimal | str]:
+        """Bepaal startwaarden voor vermogen- en box3-stappen op peildatum.
+
+        `vermogensitems` zijn leidend zodra er actieve SPAARGELD/BELEGGINGEN-items zijn.
+        Bij afwezigheid daarvan geldt legacy fallback op spaargeld_start/beleggingen_start.
+        """
+        liquide_spaargeld = Decimal("0")
+        liquide_beleggingen = Decimal("0")
+        box3_grondslag = Decimal("0")
+
+        for item in self.vermogensitems:
+            if not item.is_actief_op(peildatum):
+                continue
+
+            waarde = item.waarde_op_datum(peildatum)
+            if item.type == VermogensType.SPAARGELD:
+                liquide_spaargeld += waarde
+            elif item.type == VermogensType.BELEGGINGEN:
+                liquide_beleggingen += waarde
+
+            if item.box3_belast and item.type not in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
+                box3_grondslag += waarde
+
+        liquide_totaal = liquide_spaargeld + liquide_beleggingen
+        if liquide_totaal > Decimal("0"):
+            spaargeld_fractie = self.bereken_spaargeld_fractie_startvermogen(peildatum)
+            return {
+                "bron": "vermogensitems",
+                "liquide_startvermogen": liquide_totaal,
+                "box3_grondslag": box3_grondslag,
+                "box3_spaargeld_fractie": spaargeld_fractie,
+            }
+
+        spaargeld_legacy = self.spaargeld_start
+        beleggingen_legacy = self.beleggingen_start
+        legacy_totaal = spaargeld_legacy + beleggingen_legacy
+        return {
+            "bron": "legacy",
+            "liquide_startvermogen": legacy_totaal,
+            "box3_grondslag": legacy_totaal,
+            "box3_spaargeld_fractie": self.bereken_spaargeld_fractie_startvermogen(peildatum),
+        }
     
     def totaal_jaarlijkse_inleg(self) -> Decimal:
         """Retourneer totale jaarlijkse inleg (sparen + beleggen)."""

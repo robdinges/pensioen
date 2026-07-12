@@ -529,3 +529,79 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
     assert detail["jaar_pen_p1"] == hoofd.bruto_inkomen.p1.pensioen
     assert detail["jaar_pen_p2"] == hoofd.bruto_inkomen.p2.pensioen
     assert detail["jaar_pen_p1"] + detail["jaar_pen_p2"] == hoofd.pensioen_bruto
+
+
+def test_accountant_en_hoofdengine_alignen_op_eigen_woning_en_box3_bron() -> None:
+    """Hoofdengine en accountant gebruiken dezelfde bronkeuze voor woning en box 3."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False)
+    scenario = Scenario(
+        naam="Bron align",
+        box3_meenemen=True,
+        vermogensitems=[
+            VermogensItem(
+                omschrijving="Woning",
+                type=VermogensType.EIGEN_WONING,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("500000"),
+                woz_waarde=Decimal("500000"),
+                box3_belast=False,
+            ),
+            VermogensItem(
+                omschrijving="Hypotheek",
+                type=VermogensType.HYPOTHEEK,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("200000"),
+                is_primaire_woning=True,
+                hypotheekrente_pct=Decimal("3.0"),
+                box3_belast=False,
+            ),
+            VermogensItem(
+                omschrijving="Spaargeld",
+                type=VermogensType.SPAARGELD,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("120000"),
+                box3_belast=True,
+            ),
+            VermogensItem(
+                omschrijving="Auto",
+                type=VermogensType.AUTO,
+                persoon="Huishouden",
+                aanschafwaarde=Decimal("60000"),
+                box3_belast=False,
+            ),
+        ],
+    )
+    config, aanname = laad_tarieven(2026)
+
+    hoofd = bereken_huishouden(
+        scenario=scenario,
+        persoon1=persoon1,
+        persoon2=None,
+        records1=[],
+        records2=[],
+        jaar_van=2026,
+        jaar_tot=2026,
+        belasting_configs={2026: (config, aanname)},
+    ).jaren[0]
+    payload_box3 = hoofd.maanden[0].gebruikte_tarieven["box3"]
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=persoon1,
+        persoon2=None,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("120000"),
+    )
+
+    assert detail["ew_bron"] == "vermogensitems"
+    assert detail["ew_woz_waarde"] == Decimal("500000")
+    assert detail["ew_betaalde_hypotheekrente"] == Decimal("6000")
+    assert payload_box3["grondslag_bron"] == "vermogensitems"
+    assert payload_box3["grondslag_start_vermogen"] == 120000.0

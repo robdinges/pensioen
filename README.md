@@ -14,6 +14,8 @@ cashflowprognose voor een huishouden.
   - spaargelddeel met `forfaitair_spaargeld`
   - overig/beleggingendeel met `forfaitair_overig`
   - belasting over fictief rendement tegen box 3 tarief
+  - box 3 gebruikt expliciete peildatumgrondslag uit box-3-belaste vermogensitems; bij afwezigheid geldt legacy fallback
+  - rendementsgrondslag blijft expliciet gescheiden (liquide vermogen), zodat box 3 en rendement herleidbaar apart blijven
 - Afzonderlijke rendementen voor sparen en beleggen:
   - optioneel twee rendementstarieven instellen (spaarrekening vs. beleggingsportefeuille)
   - vermogenssplitsing gebaseerd op expliciet ingevoerd spaargeld en beleggingen
@@ -21,6 +23,10 @@ cashflowprognose voor een huishouden.
   - deze componentmix stuurt zowel de maandelijkse rendementsverdeling als de box 3 verdeling
   - fallback naar uniform rendement als aparte tarieven niet ingesteld
 - Scenario-invoer met verstelbare spaargeldfractie voor box 3.
+- Eigen woning als expliciete engine-stap tussen bruto inkomen en box 1:
+  - fiscale woninginvoer komt primair uit `vermogensitems` (woning/hypotheek), met legacy fallback op `Scenario.eigen_woning`
+  - box 1-grondslag bevat de eigen-woningmutatie (forfait, renteaftrek, Hillen)
+  - tariefsaanpassing aftrekposten wordt verwerkt in de jaarbelasting van de hoofdengine
 - Accountantsoverzicht met volledige component-analyse van netto cashflow:
   - inkomen (na box 1)
   - box 3 heffing op fictief rendement
@@ -164,6 +170,7 @@ Om te berekenen in de React UI:
     * Elk vermogensitem heeft zijn eigen rendement/groei percentage
     * Voor spaargeld en beleggingen is dit het verwachte jaarrendement
     * Voor andere bezittingen is dit waardestijging of afschrijving
+    * Voor de engine zijn `SPAARGELD` en `BELEGGINGEN` leidend als liquide startvermogen; box 3 gebruikt alleen box-3-belaste items als peildatumgrondslag
   - **Eenmalige Posten**: Eenmalige ontvangsten en uitgaven op specifieke data
 
 10. Open in de app het tabblad Accountantsoverzicht en klik op
@@ -226,6 +233,12 @@ Gerichte Epic 2 testset (pensioenbron-harmonisatie + bruto-opbouw):
 
 ```bash
 PYTHONPATH=src .venv312/bin/python -m pytest tests/test_parser_mpo.py tests/test_cashflow_engine.py tests/test_regression_bugs.py -q
+```
+
+Gerichte Epic 3 testset (eigen woning + vermogen/box3 harmonisatie):
+
+```bash
+PYTHONPATH=src .venv312/bin/python -m pytest tests/test_scenario_engine.py tests/test_cashflow_engine.py tests/test_regression_bugs.py tests/test_eigen_woning_engine.py -q
 ```
 
 Gerichte API-tests:

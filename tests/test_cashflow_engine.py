@@ -12,6 +12,7 @@ from pensioen.models.component import BedragType, CategorieComponent, Financieel
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import IncidenteelItem, Scenario
+from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
 
 
@@ -518,3 +519,94 @@ class TestCashflowHuishouden:
         verschil = vermogen_zonder - vermogen_met
         
         assert float(verschil) == pytest.approx(30000, abs=10)
+
+    def test_box3_grondslag_volgt_box3_belaste_vermogensitems(self) -> None:
+        """Box 3 gebruikt expliciet de box-3-grondslag uit vermogensitems, niet het rendementsaldo."""
+        persoon = Persoon(naam="Box3", geboortedatum=date(1980, 1, 1), heeft_partner=False)
+        scenario = Scenario(
+            naam="Box3 bron",
+            box3_meenemen=True,
+            spaargeld_start=Decimal("0"),
+            beleggingen_start=Decimal("0"),
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Spaargeld",
+                    type=VermogensType.SPAARGELD,
+                    aanschafwaarde=Decimal("100000"),
+                    box3_belast=True,
+                ),
+                VermogensItem(
+                    omschrijving="Auto",
+                    type=VermogensType.AUTO,
+                    aanschafwaarde=Decimal("500000"),
+                    box3_belast=False,
+                ),
+            ],
+        )
+
+        configs = _maak_configs(2027, 2027)
+        jaar = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        ).jaren[0]
+
+        payload_box3 = jaar.maanden[0].gebruikte_tarieven["box3"]
+        assert payload_box3["grondslag_bron"] == "vermogensitems"
+        assert payload_box3["grondslag_start_vermogen"] == 100000.0
+        assert payload_box3["rendement_grondslag_start"] == 100000.0
+
+    def test_eigen_woning_stap_is_actief_in_hoofdengine(self) -> None:
+        """Eigen woning mutatie wordt in de hoofdengine verwerkt vóór box 1."""
+        persoon = Persoon(naam="Woning", geboortedatum=date(1980, 1, 1), heeft_partner=False)
+        scenario = Scenario(
+            naam="Eigen woning stap",
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Arbeid",
+                    categorie=CategorieComponent.ARBEIDSINKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("60000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                )
+            ],
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Eigen woning",
+                    type=VermogensType.EIGEN_WONING,
+                    aanschafwaarde=Decimal("500000"),
+                    woz_waarde=Decimal("500000"),
+                    box3_belast=False,
+                ),
+                VermogensItem(
+                    omschrijving="Hypotheek",
+                    type=VermogensType.HYPOTHEEK,
+                    aanschafwaarde=Decimal("200000"),
+                    is_primaire_woning=True,
+                    hypotheekrente_pct=Decimal("3.0"),
+                    box3_belast=False,
+                ),
+            ],
+        )
+
+        configs = _maak_configs(2027, 2027)
+        jaar = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        ).jaren[0]
+
+        aannames_join = " | ".join(jaar.maanden[0].aannames)
+        assert "Eigen woning stap actief" in aannames_join

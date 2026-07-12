@@ -89,6 +89,51 @@ class TestScenarioModel:
         assert resultaat.betaalde_hypotheekrente == Decimal("6000")
         assert resultaat.eigenwoningschuld_begin == Decimal("200000")
 
+    def test_bepaal_vermogen_startwaarden_vermogensitems_is_leidend(self) -> None:
+        """Bij actieve SPAARGELD/BELEGGINGEN-items zijn vermogensitems leidend."""
+        scenario = Scenario(
+            naam="Vermogensbron",
+            spaargeld_start=Decimal("999999"),
+            beleggingen_start=Decimal("999999"),
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Spaarrekening",
+                    type=VermogensType.SPAARGELD,
+                    aanschafwaarde=Decimal("100000"),
+                    box3_belast=True,
+                ),
+                VermogensItem(
+                    omschrijving="Aandelen",
+                    type=VermogensType.BELEGGINGEN,
+                    aanschafwaarde=Decimal("50000"),
+                    box3_belast=True,
+                ),
+            ],
+        )
+
+        startwaarden = scenario.bepaal_vermogen_startwaarden(date(2026, 1, 1))
+
+        assert startwaarden["bron"] == "vermogensitems"
+        assert startwaarden["liquide_startvermogen"] == Decimal("150000")
+        assert startwaarden["box3_grondslag"] == Decimal("150000")
+        assert startwaarden["box3_spaargeld_fractie"] == Decimal("100000") / Decimal("150000")
+
+    def test_bepaal_vermogen_startwaarden_legacy_fallback(self) -> None:
+        """Zonder liquide vermogensitems blijft legacy startvermogen actief."""
+        scenario = Scenario(
+            naam="Legacy bron",
+            spaargeld_start=Decimal("80000"),
+            beleggingen_start=Decimal("20000"),
+            box3_spaargeld_fractie=Decimal("0.8"),
+        )
+
+        startwaarden = scenario.bepaal_vermogen_startwaarden(date(2026, 1, 1))
+
+        assert startwaarden["bron"] == "legacy"
+        assert startwaarden["liquide_startvermogen"] == Decimal("100000")
+        assert startwaarden["box3_grondslag"] == Decimal("100000")
+        assert startwaarden["box3_spaargeld_fractie"] == Decimal("0.8")
+
 
 class TestVergelijkScenarios:
     """Tests voor de scenariovergelijkingsfunctie."""
