@@ -7,6 +7,7 @@ cashflowprognose voor een huishouden.
 
 - Bruto-naar-netto berekening voor loon, AOW en pensioen per persoon.
   - afbouw van de algemene heffingskorting volgt bruto jaarinkomen als toetsingsbasis
+  - fiscale bouwstenen (premies, losse heffingskortingen en totaalkorting) hebben directe unit-tests met grenswaarden en afrondingschecks
 - Box 3 berekening via forfaitair rendement:
   - spaargelddeel met `forfaitair_spaargeld`
   - overig/beleggingendeel met `forfaitair_overig`
@@ -211,6 +212,12 @@ PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_01
 
 ```bash
 python3 -m pytest tests/ -q
+```
+
+Gerichte Epic 1 testset (directe fiscale bouwstenen + regressie op belastingpad):
+
+```bash
+PYTHONPATH=src .venv312/bin/python -m pytest tests/test_fiscale_bouwstenen.py tests/test_belasting_engine.py tests/validatie_aangifte_2025.py
 ```
 
 Gerichte API-tests:

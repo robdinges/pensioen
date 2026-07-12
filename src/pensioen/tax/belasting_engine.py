@@ -128,10 +128,20 @@ def bereken_premies_volksverzekeringen(
     is_aow: bool,
 ) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     """
-    Bereken premies volksverzekeringen (AOW, Anw, Wlz).
-    
-    Premies worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).
-    
+        Bereken premies volksverzekeringen (AOW, Anw, Wlz).
+
+        Functioneel contract:
+        - Doel: bereken premiecomponenten en totaal voor box-1-premies.
+        - Invoer: bruto jaarinkomen, jaarconfig, AOW-status voor het hele jaar.
+        - Grondslag: min(bruto_inkomen, premiegrens); geen negatieve correctie.
+        - Tarieven:
+            - AOW-premie: tarief_niet_aow of tarief_aow (meestal 0 bij volledig AOW).
+            - Anw- en Wlz-premie: altijd van toepassing op dezelfde grondslag.
+        - Afrondingsmoment: per premiecomponent op eurocenten (ROUND_HALF_UP).
+            Het totaal is de som van de afgeronde componenten.
+        - Randgeval: ontbrekende premiesconfig geeft (0, 0, 0, 0) voor
+            backward compatibility.
+
     Args:
         bruto_inkomen: Totaal bruto jaarinkomen.
         config: Belastingconfiguratie voor het jaar.
@@ -171,6 +181,14 @@ def netto_uit_bruto(
 ) -> BelastingResultaat:
     """
     Bereken het netto jaarinkomen vanuit bruto, inclusief heffingskortingen en premies.
+
+        Contract voor samenstelling en afronding:
+        - Inkomstenbelasting (box 1) en premies volksverzekeringen worden als
+            losse componenten berekend op hun eigen grondslag.
+        - Heffingskortingen worden berekend in de heffingskorting-module als som
+            van afgeronde componenten.
+        - Netto verschuldigd = max(0, inkomstenbelasting + totaal_premies - heffingskorting).
+        - Netto inkomen = bruto - netto verschuldigd, afgerond op eurocenten.
 
     Args:
         bruto: Totaal bruto jaarinkomen (arbeid + pensioen + AOW + overig).

@@ -43,12 +43,15 @@ def _afbouw_korting_met_maximum(
 
 def bereken_ahk(inkomen: Decimal, config: BelastingConfig) -> Decimal:
     """
-    Bereken de Algemene Heffingskorting (AHK).
+        Bereken de Algemene Heffingskorting (AHK).
 
-    De AHK bouwt af boven een inkomensdrempel.
-
-    Voor AOW-gerechtigden kan een AOW-factor gelden. Bij een gedeeltelijk
-    AOW-jaar passen we een tijdsevenredige weging toe op die factor.
+        Functioneel contract:
+        - Grondslag: bruto_inkomen.
+        - Logica: lineaire afbouw vanaf afbouw_inkomen_van tot minimaal minimum.
+        - AOW-factor: niet van toepassing in deze functie; gebruik daarvoor
+            bereken_ahk_met_aow.
+        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt in de
+            aanroepende compositiefunctie.
     """
     return _afbouw_korting(inkomen, config.ahk)
 
@@ -61,9 +64,12 @@ def bereken_ahk_met_aow(
     """
     Bereken AHK inclusief AOW-factor en tijdsevenredige berekening.
 
-    Belastingdienst-systematiek:
-    - AOW-factor werkt op het AHK-maximum (niet op de al afgebouwde uitkomst)
-    - Daarna volgt lineaire afbouw over het inkomen
+    Functioneel contract en systematiek:
+    - AOW-factor werkt op het AHK-maximum (niet op de al afgebouwde uitkomst).
+    - Daarna volgt lineaire afbouw over het inkomen.
+    - Bij deeljaar AOW werkt de breuk op het maximum via een gewogen factor.
+    - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
+      compositieniveau.
 
     Bij een gedeeltelijk AOW-jaar wordt het maximum tijdsevenredig gewogen.
     """
@@ -91,9 +97,17 @@ def bereken_ahk_met_aow(
 
 def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> Decimal:
     """
-    Bereken de arbeidskorting op basis van arbeidsinkomen.
+        Bereken de arbeidskorting op basis van arbeidsinkomen.
 
-    Vereenvoudigde berekening voor MVP:
+        Functioneel contract:
+        - Grondslag: uitsluitend arbeidsinkomen.
+        - Geen arbeidsinkomen: korting = 0.
+        - Positief arbeidsinkomen: korting_voor_afbouw = min(max_bedrag, arbeidsinkomen).
+        - Afbouw boven afbouw_drempel met afbouw_pct, met ondergrens minimum.
+        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
+            compositieniveau.
+
+        Vereenvoudigde berekening voor MVP:
     - Geen arbeidsinkomen → 0
     - Arbeidsinkomen aanwezig → min(max, arbeidsinkomen) minus afbouw boven drempel
 
@@ -119,9 +133,15 @@ def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> 
 
 def bereken_ouderenkorting(inkomen: Decimal, config: BelastingConfig, is_aow: bool) -> Decimal:
     """
-    Bereken de ouderenkorting.
+        Bereken de ouderenkorting.
 
-    Alleen van toepassing op AOW-gerechtigden.
+        Functioneel contract:
+        - Alleen van toepassing op AOW-gerechtigden.
+        - Grondslag: bruto_inkomen.
+        - Bij is_aow=False is de korting 0.
+        - Bij is_aow=True geldt lineaire afbouw met minimumvloer.
+        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
+            compositieniveau.
     """
     if not is_aow:
         return Decimal("0")
@@ -135,10 +155,14 @@ def bereken_alleenstaandeouderenkorting(
     is_alleenstaand: bool,
 ) -> Decimal:
     """
-    Bereken de alleenstaandeouderenkorting.
+        Bereken de alleenstaandeouderenkorting.
 
-    Alleen van toepassing op alleenstaande AOW-gerechtigden.
-    Vanaf belastingjaar 2025.
+        Functioneel contract:
+        - Alleen van toepassing bij combinatie is_aow=True en is_alleenstaand=True.
+        - Als jaarconfig geen AOK bevat: korting = 0.
+        - Grondslag: bruto_inkomen; verdere afbouw volgt de jaarconfig.
+        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
+            compositieniveau.
     """
     if not (is_aow and is_alleenstaand):
         return Decimal("0")
@@ -158,7 +182,14 @@ def bereken_totale_heffingskortingen(
     is_alleenstaand: bool = True,
 ) -> Decimal:
     """
-    Bereken de totale heffingskortingen voor één persoon.
+        Bereken de totale heffingskortingen voor één persoon.
+
+        Functioneel contract:
+        - Totale korting is exact de som van vier componenten:
+            AHK-met-AOW, arbeidskorting, ouderenkorting en alleenstaandeouderenkorting.
+        - Grondslagen per component blijven eigendom van de losse bouwstenen.
+        - Afrondingsvolgorde: eerst component volledig berekenen, dan afronden op
+            centen, daarna sommeren.
 
     Args:
         bruto_inkomen: Totaal bruto inkomen voor AHK-afbouw (arbeid + pensioen + AOW).
