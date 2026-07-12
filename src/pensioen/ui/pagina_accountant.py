@@ -190,41 +190,21 @@ def _bereken_jaar_detail(
             )
             if persoon2 else Decimal("0")
         )
-        overig_p1 = (
-            _component_som_maand(
-                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
-            )
-            + _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
-            )
+        overig_p1 = _component_som_maand(
+            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
         )
         overig_p2 = Decimal("0")
         if persoon2:
-            overig_p2 = (
-                _component_som_maand(
-                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
-                )
-                + _component_som_maand(
-                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
-                )
+            overig_p2 = _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
             )
-        overig_netto_p1 = (
-            _component_som_maand(
-                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.NETTO
-            )
-            + _component_som_maand(
-                scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
-            )
+        overig_netto_p1 = _component_som_maand(
+            scenario, CategorieComponent.OVERIG_INKOMEN, "P1", jaar, maand, BedragType.NETTO
         )
         overig_netto_p2 = Decimal("0")
         if persoon2:
-            overig_netto_p2 = (
-                _component_som_maand(
-                    scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.NETTO
-                )
-                + _component_som_maand(
-                    scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
-                )
+            overig_netto_p2 = _component_som_maand(
+                scenario, CategorieComponent.OVERIG_INKOMEN, "P2", jaar, maand, BedragType.NETTO
             )
         aow_p1 = pensioen_engine.bereken_aow_maand(
             persoon1.geboortedatum, aow_datum_p1, aow_bedrag_p1, jaar, maand
@@ -234,12 +214,14 @@ def _bereken_jaar_detail(
             aow_p2 = pensioen_engine.bereken_aow_maand(
                 persoon2.geboortedatum, aow_datum_p2, aow_bedrag_p2, jaar, maand
             )
-        pen_p1 = Decimal(str(sum(
-            pensioen_engine.bereken_pensioen_maand(r, jaar, maand) for r in records1
-        )))
-        pen_p2 = Decimal(str(sum(
-            pensioen_engine.bereken_pensioen_maand(r, jaar, maand) for r in records2
-        )))
+        pen_p1 = _component_som_maand(
+            scenario, CategorieComponent.PENSIOEN_INKOMEN, "P1", jaar, maand, BedragType.BRUTO
+        )
+        pen_p2 = Decimal("0")
+        if persoon2:
+            pen_p2 = _component_som_maand(
+                scenario, CategorieComponent.PENSIOEN_INKOMEN, "P2", jaar, maand, BedragType.BRUTO
+            )
         ontvangst, uitgave_inc = _incidentele_items_voor_maand(scenario, jaar, maand)
         uitgaven_maand = _component_som_maand(scenario, CategorieComponent.UITGAVE, None, jaar, maand)
         inhoudingen_maand = _component_som_maand(scenario, CategorieComponent.INHOUDING, None, jaar, maand)
@@ -468,11 +450,14 @@ def _bereken_jaar_detail(
         saldo = nieuw_saldo
 
     saldo_einde_jaar = saldo
+    records_aangeleverd = len(records1) + len(records2)
 
     return {
         "jaar": jaar,
         "config_jaar": config.jaar,
         "aanname": aanname,
+        "pensioenbron": "scenario_componenten",
+        "pensioen_records_genegeerd": records_aangeleverd,
         "tarief_bronnen": tarief_bronnen or {},
         "jaar_arbeid_p1": Decimal(str(jaar_arbeid_p1)),
         "jaar_arbeid_p2": Decimal(str(jaar_arbeid_p2)),

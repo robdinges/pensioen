@@ -198,6 +198,36 @@ def pensioenrecord_naar_component(
     )
 
 
+def pensioenrecords_naar_rekencomponenten(
+    records: list[PensioenRecord],
+    persoon: str,
+    toegestane_types: set[TypePensioen] | None = None,
+) -> list[FinancieelComponent]:
+    """
+    Converteer ruwe pensioenrecords naar de formele rekenbron (componenten).
+
+    Deze functie expliciteert de overgang in de keten:
+    ruwe importbron (PensioenRecord) -> rekenbron (FinancieelComponent).
+
+    Args:
+        records: Ruwe importrecords uit MPO-parser.
+        persoon: Persoonslabel in de rekenbron ("P1" of "P2").
+        toegestane_types: Welke recordtypes als regulier pensioeninkomen
+            naar de rekenbron mogen. Standaard alleen OUDERDOMS.
+
+    Returns:
+        Lijst componenten in categorie PENSIOEN_INKOMEN.
+    """
+    if toegestane_types is None:
+        toegestane_types = {TypePensioen.OUDERDOMS}
+
+    return [
+        pensioenrecord_naar_component(record, persoon=persoon)
+        for record in records
+        if record.type_pensioen in toegestane_types
+    ]
+
+
 class MPOParser:
     """Parser voor MijnPensioenoverzicht-exports."""
 

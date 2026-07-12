@@ -8,7 +8,13 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from pensioen.calculations import pensioen_engine, vermogen_engine
 from pensioen.calculations.inheritance_engine import resolve_scenario
-from pensioen.models.cashflow import HuishoudCashflow, JaarResultaat, MaandResultaat
+from pensioen.models.cashflow import (
+    BrutoInkomenJaar,
+    BrutoInkomenPersoon,
+    HuishoudCashflow,
+    JaarResultaat,
+    MaandResultaat,
+)
 from pensioen.models.component import BedragType, CategorieComponent, is_handmatige_aow_component
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
@@ -368,6 +374,25 @@ def _bereken_jaar(
         aannames.append(
             "Handmatige AOW-component gedetecteerd: automatische AOW blijft leidend en handmatige AOW is uit inkomenssommen gefilterd."
         )
+    if records1 or records2:
+        aannames.append(
+            "PensioenRecord-invoer ontvangen, maar pensioenbron in de engine is Scenario.componenten (PENSIOEN_INKOMEN)."
+        )
+
+    bruto_inkomen = BrutoInkomenJaar(
+        p1=BrutoInkomenPersoon(
+            arbeid=jaar_arbeid_p1,
+            aow=jaar_aow_p1,
+            pensioen=jaar_pensioen_p1,
+            overig=jaar_overig_p1,
+        ),
+        p2=BrutoInkomenPersoon(
+            arbeid=jaar_arbeid_p2,
+            aow=jaar_aow_p2,
+            pensioen=jaar_pensioen_p2,
+            overig=jaar_overig_p2,
+        ),
+    )
 
     for mb in maand_bruto:
         maand = mb["maand"]
@@ -447,6 +472,7 @@ def _bereken_jaar(
         maanden=maandresultaten,
         tarieven_jaar=belasting_config.jaar,
         tarieven_aanname=aanname_melding,
+        bruto_inkomen=bruto_inkomen,
     )
     return jaar_resultaat
 
@@ -469,8 +495,8 @@ def bereken_huishouden(
         scenario: Planningsscenario met financiële componenten.
         persoon1: Eerste persoon (hoofd).
         persoon2: Tweede persoon (partner), of None.
-        records1: Pensioenrecords van persoon1 (uit MPO).
-        records2: Pensioenrecords van persoon2 (uit MPO).
+        records1: Pensioenrecords van persoon1 (uit MPO, niet leidend in berekening).
+        records2: Pensioenrecords van persoon2 (uit MPO, niet leidend in berekening).
         jaar_van: Eerste prognosejaar.
         jaar_tot: Laatste prognosejaar (inclusief).
         belasting_configs: Dict van {jaar: (BelastingConfig, aanname_melding)}.

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from pensioen.models.pensioen_record import TypePensioen
-from pensioen.parsers.parser_mpo import MPOParser
+from pensioen.parsers.parser_mpo import MPOParser, pensioenrecords_naar_rekencomponenten
 from pensioen.validators.validator import valideer_records
 
 
@@ -60,6 +60,58 @@ class TestMPOParser:
     def test_onbekende_extensie_geeft_fout(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="Onbekende bestandsextensie"):
             MPOParser.parse(tmp_path / "bestand.txt")
+
+    def test_pensioenrecords_naar_rekencomponenten_filtert_op_ouderdoms(self) -> None:
+        """Transformatielaag neemt standaard alleen ouderdomspensioen op."""
+        from pensioen.models.pensioen_record import PensioenRecord
+
+        records = [
+            PensioenRecord(
+                uitvoerder="Fonds A",
+                regeling="OP",
+                type_pensioen=TypePensioen.OUDERDOMS,
+                ingangsdatum=date(2030, 1, 1),
+                bruto_per_jaar=Decimal("12000"),
+            ),
+            PensioenRecord(
+                uitvoerder="Fonds A",
+                regeling="PP",
+                type_pensioen=TypePensioen.PARTNER,
+                ingangsdatum=None,
+                bruto_per_jaar=Decimal("5000"),
+            ),
+        ]
+
+        componenten = pensioenrecords_naar_rekencomponenten(records, persoon="P1")
+
+        assert len(componenten) == 1
+        assert componenten[0].persoon == "P1"
+        assert componenten[0].categorie.value == "pensioen_inkomen"
+        assert componenten[0].bedrag == Decimal("12000")
+
+    def test_pensioenrecords_naar_rekencomponenten_met_explicit_type_set(self) -> None:
+        """Transformatielaag kan expliciet partnerpensioen meenemen als dat gevraagd wordt."""
+        from pensioen.models.pensioen_record import PensioenRecord
+
+        records = [
+            PensioenRecord(
+                uitvoerder="Fonds B",
+                regeling="PP",
+                type_pensioen=TypePensioen.PARTNER,
+                ingangsdatum=None,
+                bruto_per_jaar=Decimal("7000"),
+            )
+        ]
+
+        componenten = pensioenrecords_naar_rekencomponenten(
+            records,
+            persoon="P2",
+            toegestane_types={TypePensioen.PARTNER},
+        )
+
+        assert len(componenten) == 1
+        assert componenten[0].persoon == "P2"
+        assert "Partnerpensioen" in componenten[0].omschrijving
 
 
 class TestValidator:

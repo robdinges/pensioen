@@ -417,11 +417,66 @@ class TestCashflowHuishouden:
         cashflow = bereken_huishouden(
             scenario, persoon, None, [], [], 2027, 2027, configs
         )
-        
+
         # Vermogen daalt met ≈60.000
         vermogen_einde = cashflow.jaren[0].vermogen_einde_jaar
         assert vermogen_einde < Decimal("50000")
         assert vermogen_einde > Decimal("30000")
+
+    def test_jaarresultaat_heeft_expliciete_bruto_opbouw_per_persoon(self) -> None:
+        """JaarResultaat vult bruto_inkomen expliciet per persoon en huishouden."""
+        persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True)
+        persoon2 = Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True)
+
+        scenario = Scenario(
+            naam="Bruto opbouw",
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Arbeid P1",
+                    categorie=CategorieComponent.ARBEIDSINKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("24000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                ),
+                FinancieelComponent(
+                    omschrijving="Pensioen P2",
+                    categorie=CategorieComponent.PENSIOEN_INKOMEN,
+                    persoon="P2",
+                    bedrag=Decimal("12000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                ),
+                FinancieelComponent(
+                    omschrijving="Overig P1",
+                    categorie=CategorieComponent.OVERIG_INKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("6000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                ),
+            ],
+        )
+
+        configs = _maak_configs(2027, 2027)
+        jr = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon1,
+            persoon2=persoon2,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2027,
+            belasting_configs=configs,
+        ).jaren[0]
+
+        assert jr.bruto_inkomen.p1.arbeid == Decimal("24000")
+        assert jr.bruto_inkomen.p1.overig == Decimal("6000")
+        assert jr.bruto_inkomen.p2.pensioen == Decimal("12000")
+        assert jr.bruto_inkomen.p1.totaal == Decimal("30000")
+        assert jr.bruto_inkomen.p2.totaal == Decimal("12000")
+        assert jr.bruto_inkomen.totaal_huishouden == Decimal("42000")
 
     def test_eenmalige_uitgave_impact(self) -> None:
         """Eenmalige uitgave wordt direct van saldo afgetrokken."""

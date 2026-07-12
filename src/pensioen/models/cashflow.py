@@ -85,6 +85,32 @@ class MaandResultaat:
 
 
 @dataclass
+class BrutoInkomenPersoon:
+    """Expliciete opbouw van bruto inkomen per persoon."""
+
+    arbeid: Decimal = Decimal("0")
+    aow: Decimal = Decimal("0")
+    pensioen: Decimal = Decimal("0")
+    overig: Decimal = Decimal("0")
+
+    @property
+    def totaal(self) -> Decimal:
+        return self.arbeid + self.aow + self.pensioen + self.overig
+
+
+@dataclass
+class BrutoInkomenJaar:
+    """Expliciete bruto-inkomensopbouw voor een huishouden in één jaar."""
+
+    p1: BrutoInkomenPersoon = field(default_factory=BrutoInkomenPersoon)
+    p2: BrutoInkomenPersoon = field(default_factory=BrutoInkomenPersoon)
+
+    @property
+    def totaal_huishouden(self) -> Decimal:
+        return self.p1.totaal + self.p2.totaal
+
+
+@dataclass
 class JaarResultaat:
     """Geaggregeerd resultaat voor één kalenderjaar."""
 
@@ -92,6 +118,7 @@ class JaarResultaat:
     maanden: list[MaandResultaat] = field(default_factory=list)
     tarieven_jaar: int = 0  # welk belastingjaar daadwerkelijk gebruikt
     tarieven_aanname: str = ""  # melding als toekomstig jaar
+    bruto_inkomen: BrutoInkomenJaar = field(default_factory=BrutoInkomenJaar)
 
     @property
     def arbeid_bruto(self) -> Decimal:

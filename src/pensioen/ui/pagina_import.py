@@ -7,7 +7,7 @@ from datetime import date
 import streamlit as st
 
 from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
-from pensioen.parsers.parser_mpo import MPOParser, pensioenrecord_naar_component
+from pensioen.parsers.parser_mpo import MPOParser, pensioenrecords_naar_rekencomponenten
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.validators.validator import valideer_records
 from pensioen.ui.sessie_persistentie import sla_sessie_op
@@ -92,8 +92,11 @@ def toon_import_pagina() -> None:
                     scenario_lijst = st.session_state.get("scenario_lijst", [])
                     actief = get_actief_scenario(scenario_lijst)
                     if actief:
-                        # Filter alleen ouderdomspensioen (volgens keuze 3A)
-                        ouderdoms_records = [r for r in records1 if r.type_pensioen == TypePensioen.OUDERDOMS]
+                        reken_componenten = pensioenrecords_naar_rekencomponenten(
+                            records1,
+                            persoon="P1",
+                            toegestane_types={TypePensioen.OUDERDOMS},
+                        )
                         
                         # Verwijder bestaande pensioenen van P1 uit scenario
                         actief.componenten = [
@@ -102,11 +105,16 @@ def toon_import_pagina() -> None:
                         ]
                         
                         # Converteer en voeg toe
-                        for record in ouderdoms_records:
-                            comp = pensioenrecord_naar_component(record, persoon="P1")
-                            actief.componenten.append(comp)
+                        actief.componenten.extend(reken_componenten)
+                        overgeslagen = len(records1) - len(reken_componenten)
                         
-                        st.info(f"ℹ️ {len(ouderdoms_records)} ouderdomspensioen(en) toegevoegd als componenten voor P1")
+                        st.info(
+                            f"ℹ️ {len(reken_componenten)} ouderdomspensioen(en) toegevoegd als rekencomponenten voor P1"
+                        )
+                        if overgeslagen > 0:
+                            st.caption(
+                                f"{overgeslagen} niet-ouderdomsrecord(s) niet toegevoegd aan regulier pensioeninkomen."
+                            )
                     
                     sla_sessie_op()
             except Exception as exc:
@@ -142,8 +150,11 @@ def toon_import_pagina() -> None:
                     scenario_lijst = st.session_state.get("scenario_lijst", [])
                     actief = get_actief_scenario(scenario_lijst)
                     if actief:
-                        # Filter alleen ouderdomspensioen (volgens keuze 3A)
-                        ouderdoms_records = [r for r in records2 if r.type_pensioen == TypePensioen.OUDERDOMS]
+                        reken_componenten = pensioenrecords_naar_rekencomponenten(
+                            records2,
+                            persoon="P2",
+                            toegestane_types={TypePensioen.OUDERDOMS},
+                        )
                         
                         # Verwijder bestaande pensioenen van P2 uit scenario
                         actief.componenten = [
@@ -152,21 +163,39 @@ def toon_import_pagina() -> None:
                         ]
                         
                         # Converteer en voeg toe
-                        for record in ouderdoms_records:
-                            comp = pensioenrecord_naar_component(record, persoon="P2")
-                            actief.componenten.append(comp)
+                        actief.componenten.extend(reken_componenten)
+                        overgeslagen = len(records2) - len(reken_componenten)
                         
-                        st.info(f"ℹ️ {len(ouderdoms_records)} ouderdomspensioen(en) toegevoegd als componenten voor P2")
+                        st.info(
+                            f"ℹ️ {len(reken_componenten)} ouderdomspensioen(en) toegevoegd als rekencomponenten voor P2"
+                        )
+                        if overgeslagen > 0:
+                            st.caption(
+                                f"{overgeslagen} niet-ouderdomsrecord(s) niet toegevoegd aan regulier pensioeninkomen."
+                            )
                     
                     sla_sessie_op()
             except Exception as exc:
                 st.error(f"Fout bij inlezen: {exc}")
 
     st.divider()
-    totaal_p1 = len(st.session_state.get("records_p1", []))
-    totaal_p2 = len(st.session_state.get("records_p2", []))
+    scenario_lijst = st.session_state.get("scenario_lijst", [])
+    actief = get_actief_scenario(scenario_lijst)
+    totaal_p1 = 0
+    totaal_p2 = 0
+    if actief:
+        totaal_p1 = sum(
+            1
+            for c in actief.componenten
+            if c.categorie == CategorieComponent.PENSIOEN_INKOMEN and c.persoon == "P1"
+        )
+        totaal_p2 = sum(
+            1
+            for c in actief.componenten
+            if c.categorie == CategorieComponent.PENSIOEN_INKOMEN and c.persoon == "P2"
+        )
     st.caption(
-        f"Geladen: {totaal_p1} record(s) persoon 1 | {totaal_p2} record(s) persoon 2"
+        f"Actieve pensioencomponenten: {totaal_p1} (P1) | {totaal_p2} (P2)"
     )
 
     # ─── Vorige/Volgende knoppen ────────────────────────────────────────────

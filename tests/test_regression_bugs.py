@@ -468,3 +468,64 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
     assert detail["box3_forfait_overig"] == Decimal("0.0678")
     assert detail["box3_bron_forfait_spaargeld"].startswith("periode-match")
     assert detail["box3_bron_forfait_overig"].startswith("periode-match")
+
+
+def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
+    """Pensioenopbouw moet gelijk zijn tussen hoofdengine en accountantpad bij componentbron."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True)
+    persoon2 = Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True)
+    scenario = Scenario(
+        naam="Pensioenbron gelijk",
+        box3_meenemen=False,
+        componenten=[
+            FinancieelComponent(
+                omschrijving="Pensioen P1",
+                categorie=CategorieComponent.PENSIOEN_INKOMEN,
+                persoon="P1",
+                bedrag=Decimal("18000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            ),
+            FinancieelComponent(
+                omschrijving="Pensioen P2",
+                categorie=CategorieComponent.PENSIOEN_INKOMEN,
+                persoon="P2",
+                bedrag=Decimal("12000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            ),
+        ],
+    )
+
+    config, aanname = laad_tarieven(2026)
+
+    hoofd = bereken_huishouden(
+        scenario=scenario,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=[],
+        records2=[],
+        jaar_van=2026,
+        jaar_tot=2026,
+        belasting_configs={2026: (config, aanname)},
+    ).jaren[0]
+
+    detail = _bereken_jaar_detail(
+        jaar=2026,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=[],
+        records2=[],
+        scenario=scenario,
+        config=config,
+        aanname=aanname,
+        saldo_begin_jaar=Decimal("0"),
+    )
+
+    assert detail["pensioenbron"] == "scenario_componenten"
+    assert detail["jaar_pen_p1"] == hoofd.bruto_inkomen.p1.pensioen
+    assert detail["jaar_pen_p2"] == hoofd.bruto_inkomen.p2.pensioen
+    assert detail["jaar_pen_p1"] + detail["jaar_pen_p2"] == hoofd.pensioen_bruto
