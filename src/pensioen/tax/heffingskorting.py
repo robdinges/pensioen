@@ -64,10 +64,12 @@ def bereken_ahk_met_aow(
     """
     Bereken AHK inclusief AOW-factor en tijdsevenredige berekening.
 
-    Functioneel contract en systematiek:
-    - AOW-factor werkt op het AHK-maximum (niet op de al afgebouwde uitkomst).
-    - Daarna volgt lineaire afbouw over het inkomen.
+        Functioneel contract en systematiek:
+        - AOW-factor werkt op het AHK-maximum.
+        - De AOW-afbouwsnelheid komt uit de jaarconfig (`ahk_aow_afbouw_pct`) als
+            die beschikbaar is; anders geldt backward-compatible schaling met factor.
     - Bij deeljaar AOW werkt de breuk op het maximum via een gewogen factor.
+            Voor de afbouwsnelheid wordt lineair gewogen tussen niet-AOW en AOW.
     - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
       compositieniveau.
 
@@ -80,18 +82,27 @@ def bereken_ahk_met_aow(
         return _afbouw_korting(inkomen, ahk_config)
 
     factor = config.ahk_aow_factor
+    aow_afbouw_pct = config.ahk_aow_afbouw_pct
+    if aow_afbouw_pct is None:
+        aow_afbouw_pct = ahk_config.afbouw_pct * factor
+
     if aow_breuk == Decimal("1"):
         aangepast_maximum = ahk_config.max_bedrag * factor
+        aangepast_afbouw_pct = aow_afbouw_pct
     else:
         gewogen_factor = ((Decimal("1") - aow_breuk) * Decimal("1")) + (aow_breuk * factor)
         aangepast_maximum = ahk_config.max_bedrag * gewogen_factor
+        aangepast_afbouw_pct = (
+            ((Decimal("1") - aow_breuk) * ahk_config.afbouw_pct)
+            + (aow_breuk * aow_afbouw_pct)
+        )
 
     return _afbouw_korting_met_maximum(
         inkomen=inkomen,
         minimum=ahk_config.minimum,
         maximum=aangepast_maximum,
         afbouw_inkomen_van=ahk_config.afbouw_inkomen_van,
-        afbouw_pct=ahk_config.afbouw_pct,
+        afbouw_pct=aangepast_afbouw_pct,
     )
 
 

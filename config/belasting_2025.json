@@ -6,7 +6,7 @@
   "box1_niet_aow": {
     "_toelichting": "Schijven voor personen onder de AOW-leeftijd. PURE INKOMSTENBELASTING (zonder premies).",
     "schijven": [
-      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB 8,17% (gelijk aan AOW-tarief). Premies worden apart berekend."},
+      {"tot": 40502, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB 8,17% (gelijk aan AOW-tarief). Premies worden apart berekend."},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
@@ -15,7 +15,7 @@
   "box1_aow": {
     "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). PURE INKOMSTENBELASTING.",
     "schijven": [
-      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB zonder AOW-premie (uit aangifte 2025)"},
+      {"tot": 40502, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB zonder AOW-premie (uit aangifte 2025)"},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
@@ -24,7 +24,7 @@
   "premies_volksverzekeringen": {
     "_toelichting": "Premies volksverzekeringen worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).",
     "_bron": "Aangifte 2025 + Belastingdienst",
-    "premiegrens": 38441,
+    "premiegrens": 40502,
     "aow": {
       "_toelichting": "AOW-premie alleen voor niet-AOW-gerechtigden. Te verifiëren: verschil tussen 36,97% en 19,07% = 17,90%?",
       "tarief_niet_aow": 0.1790,
@@ -42,10 +42,11 @@
 
   "algemene_heffingskorting": {
     "_toelichting": "Afbouw van max naar 0 boven de afbouwdrempel",
-    "max": 3362,
-    "afbouw_inkomen_van": 24813,
-    "afbouw_pct": 0.06095,
-    "aow_factor": 0.4568709102,
+    "max": 3068,
+    "afbouw_inkomen_van": 28406,
+    "afbouw_pct": 0.06337,
+    "aow_factor": 0.5006518905,
+    "aow_afbouw_pct": 0.03170,
     "minimum": 0
   },
 

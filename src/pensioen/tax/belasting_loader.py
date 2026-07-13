@@ -112,6 +112,7 @@ class BelastingConfig:
     aow_bedrag: AOWBedragConfig
     premies: PremiesConfig | None  # Nieuw: gescheiden premies (vanaf 2025)
     ahk_aow_factor: Decimal = Decimal("1")
+    ahk_aow_afbouw_pct: Decimal | None = None
     eigen_woning: EigenWoningConfig | None = None  # Eigen woning forfait en aftrek
 
 
@@ -211,6 +212,11 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             minimum=_d(data["algemene_heffingskorting"].get("minimum", 0)),
         ),
         ahk_aow_factor=_d(data["algemene_heffingskorting"].get("aow_factor", 1)),
+        ahk_aow_afbouw_pct=(
+            _d(data["algemene_heffingskorting"]["aow_afbouw_pct"])
+            if "aow_afbouw_pct" in data["algemene_heffingskorting"]
+            else None
+        ),
         arbeidskorting=ArbeidskortingConfig(
             max_bedrag=_d(data["arbeidskorting"]["max"]),
             afbouw_drempel=_d(data["arbeidskorting"]["afbouw_drempel"]),
@@ -335,6 +341,8 @@ def config_naar_tariefwaarden(config: BelastingConfig) -> dict[str, Decimal]:
     waarden["ahk_afbouw_pct"] = config.ahk.afbouw_pct
     waarden["ahk_minimum"] = config.ahk.minimum
     waarden["ahk_aow_factor"] = config.ahk_aow_factor
+    if config.ahk_aow_afbouw_pct is not None:
+        waarden["ahk_aow_afbouw_pct"] = config.ahk_aow_afbouw_pct
 
     waarden["ak_max"] = config.arbeidskorting.max_bedrag
     waarden["ak_afbouw_drempel"] = config.arbeidskorting.afbouw_drempel
@@ -392,6 +400,7 @@ def pas_tariefwaarden_toe_op_config(
             minimum=waarden.get("ahk_minimum", config.ahk.minimum),
         ),
         ahk_aow_factor=waarden.get("ahk_aow_factor", config.ahk_aow_factor),
+        ahk_aow_afbouw_pct=waarden.get("ahk_aow_afbouw_pct", config.ahk_aow_afbouw_pct),
         arbeidskorting=ArbeidskortingConfig(
             max_bedrag=waarden.get("ak_max", config.arbeidskorting.max_bedrag),
             afbouw_drempel=waarden.get("ak_afbouw_drempel", config.arbeidskorting.afbouw_drempel),

@@ -201,6 +201,68 @@ function TariefTable({ title, schijven, pctFormatter, euro }) {
   );
 }
 
+function round2(value) {
+  return Math.round(toNumber(value) * 100) / 100;
+}
+
+function calculateSchijfBreakdown(grondslag, schijven) {
+  if (!Array.isArray(schijven) || schijven.length === 0) {
+    return [];
+  }
+
+  const total = Math.max(0, toNumber(grondslag));
+  let previousLimit = 0;
+
+  return schijven
+    .map((schijf, index) => {
+      const upper = schijf?.tot == null ? Infinity : toNumber(schijf.tot);
+      const rate = toNumber(schijf?.tarief);
+      const taxable = Math.max(0, Math.min(total, upper) - previousLimit);
+      previousLimit = upper;
+
+      return {
+        id: index + 1,
+        taxable: round2(taxable),
+        rate,
+        amount: round2(taxable * rate),
+      };
+    })
+    .filter((row) => row.taxable > 0);
+}
+
+function CalculationBreakdownTable({ title, rows, euro, pctFormatter }) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="table-wrap">
+      <table>
+        <caption>{title}</caption>
+        <thead>
+          <tr>
+            <th>Regel</th>
+            <th>Berekening</th>
+            <th>Bedrag</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${title}-${row.label}`}>
+              <td>{row.label}</td>
+              <td>
+                {row.calculation
+                  || `${pctFormatter(row.rate ?? 0, 3)} van ${euro(row.base ?? 0)}`}
+              </td>
+              <td>{euro(row.amount ?? 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function AccountantYear({ jaarResultaat, euro, posts }) {
   const months = Array.isArray(jaarResultaat?.maanden) ? jaarResultaat.maanden : [];
   if (months.length === 0) {
@@ -217,6 +279,9 @@ function AccountantYear({ jaarResultaat, euro, posts }) {
   const persoon1 = tarieven.persoon1 || {};
   const persoon2 = tarieven.persoon2 || null;
   const box3 = tarieven.box3 || {};
+  const schijvenVoorNarekening = (toNumber(detail.aow_breuk_p1) > 0)
+    ? persoon1.schijven?.box1_aow
+    : persoon1.schijven?.box1_niet_aow;
 
   const brutoP1 = detail.bruto_p1 != null ? toNumber(detail.bruto_p1) : sumMonths(months, (month) => month.arbeid_p1_bruto + month.aow_p1_bruto + month.pensioen_p1_bruto);
   const brutoP2 = detail.bruto_p2 != null ? toNumber(detail.bruto_p2) : sumMonths(months, (month) => month.arbeid_p2_bruto + month.aow_p2_bruto + month.pensioen_p2_bruto);
@@ -276,6 +341,92 @@ function AccountantYear({ jaarResultaat, euro, posts }) {
     { label: "Arbeidskorting", p1: persoon1.arbeidskorting ?? 0, p2: persoon2?.arbeidskorting ?? 0, total: (persoon1.arbeidskorting ?? 0) + (persoon2?.arbeidskorting ?? 0) },
     { label: "Ouderenkorting", p1: persoon1.ouderenkorting ?? 0, p2: persoon2?.ouderenkorting ?? 0, total: (persoon1.ouderenkorting ?? 0) + (persoon2?.ouderenkorting ?? 0) },
     { label: "Alleenstaande ouderenkorting", p1: persoon1.alleenstaandeouderenkorting ?? 0, p2: persoon2?.alleenstaandeouderenkorting ?? 0, total: (persoon1.alleenstaandeouderenkorting ?? 0) + (persoon2?.alleenstaandeouderenkorting ?? 0) },
+  ];
+
+  const ibSchijfRowsP1 = calculateSchijfBreakdown(
+    detail.box1_grondslag_p1 ?? persoon1.grondslagen?.bruto_jaarinkomen ?? brutoP1,
+    schijvenVoorNarekening,
+  ).map((row) => ({
+    label: `IB box 1 schijf ${row.id}`,
+    base: row.taxable,
+    rate: row.rate,
+    amount: row.amount,
+  }));
+
+  const premieGrondslagP1 =
+    persoon1.grondslagen?.premiegrondslag
+    ?? detail.box1_grondslag_p1
+    ?? persoon1.grondslagen?.bruto_jaarinkomen
+    ?? brutoP1;
+  const premieRowsP1 = [
+    {
+      label: "Premie AOW",
+      base: premieGrondslagP1,
+      rate: persoon1.premies_config?.aow_tarief_aow ?? persoon1.premies_config?.aow_tarief_niet_aow ?? 0,
+      amount: detail.premie_aow_p1 ?? persoon1.premie_aow ?? 0,
+    },
+    {
+      label: "Premie Anw",
+      base: premieGrondslagP1,
+      rate: persoon1.premies_config?.anw_tarief ?? 0,
+      amount: detail.premie_anw_p1 ?? persoon1.premie_anw ?? 0,
+    },
+    {
+      label: "Premie Wlz",
+      base: premieGrondslagP1,
+      rate: persoon1.premies_config?.wlz_tarief ?? 0,
+      amount: detail.premie_wlz_p1 ?? persoon1.premie_wlz ?? 0,
+    },
+  ];
+
+  const hkRowsP1 = [
+    {
+      label: "Algemene heffingskorting",
+      calculation: "Uit heffingskorting bouwsteen (AOW-factor en afbouw op verzamelinkomen).",
+      amount: detail.ahk_p1 ?? persoon1.ahk ?? 0,
+    },
+    {
+      label: "Ouderenkorting",
+      calculation: "Uit heffingskorting bouwsteen (AOW-status en inkomensafbouw).",
+      amount: detail.ok_p1 ?? persoon1.ouderenkorting ?? 0,
+    },
+    {
+      label: "Alleenstaandeouderenkorting",
+      calculation: "Uit heffingskorting bouwsteen (alleenstaand + AOW).",
+      amount: detail.aok_p1 ?? persoon1.alleenstaandeouderenkorting ?? 0,
+    },
+  ].filter((row) => toNumber(row.amount) !== 0);
+
+  const totaalRowsP1 = [
+    {
+      label: "Inkomstenbelasting box 1",
+      calculation: "Som van IB-schijven.",
+      amount: detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0,
+    },
+    {
+      label: "Premie volksverzekeringen",
+      calculation: "Premie AOW + Premie Anw + Premie Wlz.",
+      amount: detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0,
+    },
+    {
+      label: "Totaal heffingskortingen",
+      calculation: "AHK + arbeidskorting + ouderenkorting + alleenstaandeouderenkorting.",
+      amount: detail.totale_hk_p1 ?? (persoon1.ahk ?? 0) + (persoon1.arbeidskorting ?? 0) + (persoon1.ouderenkorting ?? 0) + (persoon1.alleenstaandeouderenkorting ?? 0),
+    },
+    {
+      label: "Te betalen na heffingskortingen",
+      calculation: "max(0, inkomstenbelasting + premies - totale heffingskortingen).",
+      amount: Math.max(
+        0,
+        toNumber(detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0)
+          + toNumber(detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0)
+          - Math.min(
+            toNumber(detail.totale_hk_p1 ?? 0),
+            toNumber(detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0)
+              + toNumber(detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0),
+          ),
+      ),
+    },
   ];
 
   const jaaroverzichtSpecificaties = [
@@ -424,6 +575,36 @@ function AccountantYear({ jaarResultaat, euro, posts }) {
         title="Specificatie posten - Heffingskortingen"
         rows={kortingSpecificaties}
       />
+
+      <h3>Narekening IB/PVV/HK (1-op-1)</h3>
+      <CalculationBreakdownTable
+        title="Inkomstenbelasting box 1 (P1)"
+        rows={ibSchijfRowsP1}
+        euro={euro}
+        pctFormatter={pct}
+      />
+      <CalculationBreakdownTable
+        title="Premies volksverzekeringen (P1)"
+        rows={premieRowsP1}
+        euro={euro}
+        pctFormatter={pct}
+      />
+      <CalculationBreakdownTable
+        title="Heffingskortingen (P1)"
+        rows={hkRowsP1}
+        euro={euro}
+        pctFormatter={pct}
+      />
+      <CalculationBreakdownTable
+        title="Totalen (P1)"
+        rows={totaalRowsP1}
+        euro={euro}
+        pctFormatter={pct}
+      />
+      <p className="notice">
+        Deze tabellen tonen exact dezelfde bouwstenen als de engine-output in accountant_detail,
+        zodat je de berekening regel-voor-regel kunt narekenen.
+      </p>
 
       <h3>Specificatie bronposten (actief in dit jaar)</h3>
       <PostSourceTable

@@ -113,6 +113,14 @@ class TestBerekenBox1:
 
         assert resolved.ahk_aow_factor == config.ahk_aow_factor
 
+    def test_resolve_tariefwaarden_behoudt_ahk_aow_afbouw_pct(self) -> None:
+        """Jaarresolutie moet het AOW-AHK-afbouwpercentage behouden."""
+        config, _ = laad_tarieven(2025)
+
+        resolved, _ = resolve_tariefwaarden_voor_jaar(config, 2025, [])
+
+        assert resolved.ahk_aow_afbouw_pct == config.ahk_aow_afbouw_pct
+
 
 class TestNettoUitBruto:
     """Tests voor de volledige netto-uit-bruto berekening."""
@@ -207,27 +215,35 @@ class TestNettoUitBruto:
 class TestHeffingskortingen:
     """Tests voor AHK en AOW-correctie."""
 
-    def test_ahk_aow_heel_jaar_gebruikt_factor_op_maximum(self) -> None:
-        """AOW-factor wordt op AHK-maximum toegepast voor afbouw."""
+    def test_ahk_aow_heel_jaar_gebruikt_factor_op_maximum_en_afbouw(self) -> None:
+        """AOW-factor schaalt zowel AHK-maximum als afbouwsnelheid."""
         config, _ = laad_tarieven(2025)
         inkomen = Decimal("39200")
 
         ahk_config = config.ahk
-        afbouw = max(Decimal("0"), inkomen - ahk_config.afbouw_inkomen_van) * ahk_config.afbouw_pct
+        aangepast_afbouw_pct = config.ahk_aow_afbouw_pct or (
+            ahk_config.afbouw_pct * config.ahk_aow_factor
+        )
+        afbouw = max(Decimal("0"), inkomen - ahk_config.afbouw_inkomen_van) * aangepast_afbouw_pct
         verwacht = max(ahk_config.minimum, (ahk_config.max_bedrag * config.ahk_aow_factor) - afbouw)
 
         berekend = bereken_ahk_met_aow(inkomen, config, Decimal("1"))
         assert float(berekend) == pytest.approx(float(verwacht), rel=1e-9)
 
-    def test_ahk_aow_deeljaar_gebruikt_gewogen_maximum(self) -> None:
-        """Deeljaar AOW gebruikt een gewogen maximum, daarna afbouw."""
+    def test_ahk_aow_deeljaar_gebruikt_gewogen_maximum_en_afbouw(self) -> None:
+        """Deeljaar AOW gebruikt gewogen maximum en gewogen afbouwsnelheid."""
         config, _ = laad_tarieven(2025)
         inkomen = Decimal("39200")
         aow_breuk = Decimal("0.5")
 
         ahk_config = config.ahk
         gewogen_factor = (Decimal("1") - aow_breuk) + (aow_breuk * config.ahk_aow_factor)
-        afbouw = max(Decimal("0"), inkomen - ahk_config.afbouw_inkomen_van) * ahk_config.afbouw_pct
+        aow_afbouw_pct = config.ahk_aow_afbouw_pct or (ahk_config.afbouw_pct * config.ahk_aow_factor)
+        aangepast_afbouw_pct = (
+            ((Decimal("1") - aow_breuk) * ahk_config.afbouw_pct)
+            + (aow_breuk * aow_afbouw_pct)
+        )
+        afbouw = max(Decimal("0"), inkomen - ahk_config.afbouw_inkomen_van) * aangepast_afbouw_pct
         verwacht = max(ahk_config.minimum, (ahk_config.max_bedrag * gewogen_factor) - afbouw)
 
         berekend = bereken_ahk_met_aow(inkomen, config, aow_breuk)

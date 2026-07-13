@@ -6,6 +6,8 @@ cashflowprognose voor een huishouden.
 ## Features
 
 - Bruto-naar-netto berekening voor loon, AOW en pensioen per persoon.
+  - 2025 box-1 schijfgrens en premiegrens zijn geijkt op € 40.502 (AOW- en niet-AOW-schijf 1)
+  - 2025 algemene heffingskorting volgt Belastingdienst-parameters: max € 3.068, afbouw vanaf € 28.406, afbouw 6,337%; voor heel jaar AOW: max € 1.536 en afbouw 3,170%
   - afbouw van de algemene heffingskorting volgt bruto jaarinkomen als toetsingsbasis
   - fiscale bouwstenen (premies, losse heffingskortingen en totaalkorting) hebben directe unit-tests met grenswaarden en afrondingschecks
   - pensioenbron in hoofdengine en accountantdetail is geharmoniseerd op `Scenario.componenten` (`PENSIOEN_INKOMEN`)
@@ -94,6 +96,11 @@ cashflowprognose voor een huishouden.
   - accountantsoverzicht bevat per sectie expliciete post-specificaties (definitie + formule) voor controle en narekening
   - accountantsoverzicht toont per controlejaar ook de exacte actieve bronposten (welke lonen, uitkeringen, pensioenen, etc.) inclusief persoon, bedragtype, frequentie en periode
   - accountantsoverzicht toont jaren standaard ingeklapt; per jaar kan detail op verzoek worden uitgeklapt
+  - accountantsoverzicht bevat een 1-op-1 narekeningstabel voor IB/PVV/HK (P1):
+    * inkomstenbelasting per schijf
+    * premies AOW/Anw/Wlz met grondslag en percentage
+    * heffingskortingen (AHK, ouderenkorting, alleenstaandeouderenkorting)
+    * totaallijn met te betalen bedrag na heffingskortingen
   - tarieffallback per jaar: als een belastingjaar ontbreekt, gebruikt de engine het laatst bekende jaar tot en met dat doeljaar, met expliciete melding in resultaten en accountant-stap
 
 ## Usage
@@ -183,7 +190,13 @@ Om te berekenen in de React UI:
 11. Controleer de jaarblokken, tarieven, grondslagen en maandregels in
   het accountantsoverzicht voor handmatige narekening.
 
-12. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
+12. Gebruik in de accountantstap de sectie `Narekening IB/PVV/HK (1-op-1)`
+  voor regelmatige vergelijking met de Belastingdienst-opbouw:
+  - per schijf: `x% van grondslag = bedrag`
+  - per premie: tarief en premiegrondslag
+  - per heffingskorting: componentbedragen en totaallijn
+
+13. Exporteer uitgebreide accountantdetail-rapporten voor testcases:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py
@@ -198,7 +211,7 @@ PYTHONPATH=src:. .venv312/bin/python tools/export_accountant_details.py tc_2025_
 Output staat standaard in
 `tests/fixtures/belasting_testcases/accountant_exports/`.
 
-13. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
+14. Draai de volledige testcase-validatiepipeline en schrijf het IB 2025-overzicht:
 
 ```bash
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py
@@ -216,10 +229,15 @@ Alleen als je expliciet een single-case rapport wilt schrijven:
 PYTHONPATH=src:. .venv312/bin/python tools/test_validatie_pipeline.py tc_2025_010 --schrijf-rapport
 ```
 
-14. Beheer belastingtarieven in het scherm Instellingen:
+15. Beheer belastingtarieven in het scherm Instellingen:
   - genereer een nieuw `belasting_YYYY.json` bestand op basis van een bestaand jaar
   - sla het bestand direct op naar `config/` vanuit de app of download het als fallback
   - herbereken bestaande resultaten na opslaan om nieuwe tarieven en forfaiten door te voeren
+
+16. Controle voor 2025 AOW + pensioen (Belastingdienst-referentie):
+  - verwachte componenten voor scenario met alleenstaande AOW + €50.000 pensioen liggen rond
+    `IB box 1 ≈ 13.147`, `PVV ≈ 3.948`, `heffingskortingen ≈ 851`
+  - de engine rekent op centniveau en toont daarom soms ±€1 verschil t.o.v. euro-afgeronde Belastingdienstweergave
 
 ## Testing
 

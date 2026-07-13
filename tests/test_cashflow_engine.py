@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
 
@@ -92,6 +92,54 @@ class TestCashflowHuishouden:
         assert Decimal(str(tarieven["ahk"])) == Decimal("1536.00")
         assert Decimal(str(tarieven["ouderenkorting"])) == Decimal("2035.00")
         assert Decimal(str(tarieven["alleenstaandeouderenkorting"])) == Decimal("531.00")
+
+    def test_alleenstaande_aow_met_pensioen_2025_matcht_belastingdienst_1b(self) -> None:
+        """Regressie: scenario 1B (AOW + pensioen) volgt Belastingdienst-opbouw 2025."""
+
+        def _r0(bedrag: Decimal) -> int:
+            return int(bedrag.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+        persoon = Persoon(naam="AOW", geboortedatum=date(1945, 1, 1), heeft_partner=False)
+        scenario = Scenario(
+            naam="AOW + pensioen",
+            spaargeld_start=Decimal("0"),
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Pensioen",
+                    categorie=CategorieComponent.PENSIOEN_INKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("50000"),
+                    bedrag_type=BedragType.BRUTO,
+                    frequentie=Frequentie.JAARLIJKS,
+                )
+            ],
+        )
+        configs = _maak_configs(2025, 2025)
+
+        cashflow = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2025,
+            jaar_tot=2025,
+            belasting_configs=configs,
+        )
+
+        detail = cashflow.jaren[0].accountant_detail
+        ib = Decimal(str(detail["bel_voor_korting_p1"]))
+        pvv = Decimal(str(detail["totaal_premies_p1"]))
+        hk = Decimal(str(detail["totale_hk_p1"]))
+        totaal_voor_korting = ib + pvv
+        hk_verrekend = min(hk, totaal_voor_korting)
+        te_betalen = max(Decimal("0"), totaal_voor_korting - hk_verrekend)
+
+        assert abs(_r0(ib) - 13147) <= 1
+        assert abs(_r0(pvv) - 3948) <= 1
+        assert _r0(hk_verrekend) == 851
+        assert abs(_r0(te_betalen) - 16244) <= 1
 
     def test_netto_groter_dan_nul(
         self,
