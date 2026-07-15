@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 
-
 import streamlit as st
 
 st.set_page_config(
