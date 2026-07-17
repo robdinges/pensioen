@@ -82,6 +82,23 @@ pensioen/
 
 ## Project Conventions
 
+### Veilige Git-werkwijze voor Codex
+- Lees voor iedere wijziging eerst de bestaande architectuur, `AGENTS.md`, de relevante `.github`-instructies en de betrokken bestanden.
+- Werk voor iedere Codex-opdracht op een aparte branch met de naam `codex/<korte-beschrijving>`; wijzig nooit rechtstreeks `main`.
+- Controleer voor iedere wijziging de actieve branch en `git status`. Leg bestaande wijzigingen duidelijk vast en overschrijf ze niet.
+- Werk `main` alleen bij wanneer de werkmap schoon is en dit veilig kan. Voer geen `pull` uit zonder uitdrukkelijke toestemming.
+- Maak nooit automatisch een commit, push, merge of pull request. Doe dit uitsluitend na uitdrukkelijke toestemming.
+- Gebruik geen destructieve Git-commando's, waaronder `git reset --hard`, `git clean -fd`, force-push of het verwijderen van branches, tenzij daar expliciet opdracht voor is gegeven.
+
+### Wijzigingsdiscipline
+- Houd bestaande API-contracten en gegevensmodellen intact, tenzij de opdracht expliciet vraagt deze te wijzigen.
+- Voer alleen wijzigingen uit die noodzakelijk zijn voor de gegeven opdracht en vermijd ongerelateerde refactoring.
+- Pas dependencies niet aan zonder dit vooraf te melden.
+- Voeg waar relevant tests toe of pas bestaande tests aan.
+- Voer na wijzigingen de relevante tests, linters en typecontroles uit en meld duidelijk welke controles niet uitgevoerd konden worden.
+- Toon na iedere opdracht de gewijzigde bestanden, een samenvatting van de wijzigingen, testresultaten, eventuele risico's en de relevante `git diff`.
+- Commit, push en merge uitsluitend na uitdrukkelijke toestemming.
+
 ### Calculation Ownership (Single Source Of Truth)
 - `src/pensioen/calculations/cashflow_engine.py` orkestreert maand/jaar-flow en roept fiscale modules aan.
 - `src/pensioen/tax/belasting_engine.py` bevat box 1/box 3/premie-kernberekeningen.
@@ -149,4 +166,3 @@ pensioen/
 - Dutch pension rules change yearly — parameterize year-dependent constants, don't hardcode
 - AOW-leeftijd is niet vast; altijd ophalen via `aow_engine.bereken_aow_datum()` en `config/aow_leeftijden.json`
 - Box 3: grote disclaimers meesturen; wetgeving is nog in beweging (rechtbankvonnissen Hoge Raad)
-

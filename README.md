@@ -298,3 +298,20 @@ Troubleshooting:
   start de API met `--app-dir src` zoals hierboven.
 - Fout met `dataclass(..., slots=True)` of andere syntax/import issues:
   controleer je interpreter met `python --version` en gebruik Python 3.12+.
+
+## Werken met GitHub Copilot en Codex
+
+Gebruik voor iedere Codex-opdracht een aparte branch en houd bestaand werk gescheiden:
+
+1. Zorg dat bestaand werk is opgeslagen en gecommit.
+2. Ga naar de hoofdbranch: `git switch main`.
+3. Haal na uitdrukkelijke toestemming de laatste wijzigingen veilig op met `git pull --ff-only origin main`.
+4. Maak een aparte branch: `git switch -c codex/<korte-beschrijving>`.
+5. Laat Codex de wijziging uitvoeren.
+6. Controleer de werkmap met `git status` en `git diff`.
+7. Voer de relevante tests uit, bijvoorbeeld `python3 -m pytest tests/ -q`.
+8. Commit pas nadat de wijziging en testresultaten zijn gecontroleerd.
+9. Merge de branch pas wanneer de wijziging is goedgekeurd.
+10. Verwijder de branch alleen na een succesvolle merge.
+
+Codex voert geen commit, push, merge, pull of pull request uit zonder uitdrukkelijke toestemming.
