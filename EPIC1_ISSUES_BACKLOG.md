@@ -316,6 +316,49 @@ Acceptatiecriteria:
 
 - deze afwijking is niet langer impliciete kennis
 
+### Issue 16
+
+Titel:
+
+`Valideer begrenzing van verrekenbare heffingskortingen op verschuldigde IB en premies`
+
+Status:
+
+`OPEN - nog fiscaal te controleren`
+
+Huidige implementatie:
+
+- de engine berekent eerst de totale heffingskortingen
+- de daadwerkelijk verrekende korting is begrensd op de verschuldigde
+  inkomstenbelasting plus premies volksverzekeringen
+- een eventueel restant verlaagt de verschuldigde belasting niet verder dan nul
+  en wordt als niet-benutte heffingskorting in accountantdetail getoond
+
+Open controlevraag:
+
+- klopt deze generieke begrenzing voor iedere ondersteunde korting, in het
+  bijzonder AHK, arbeidskorting, ouderenkorting en alleenstaandeouderenkorting?
+- zijn er uitzonderingen, overdrachtsregels of uitbetalingsregels die per
+  belastingjaar of huishoudsituatie afzonderlijk gemodelleerd moeten worden?
+
+Betrokken bestanden:
+
+- `src/pensioen/tax/belasting_engine.py`
+- `src/pensioen/calculations/cashflow_engine.py`
+- `src/pensioen/calculations/detail_output_engine.py`
+- `frontend-react/src/components/AccountantSection.jsx`
+
+Acceptatiecriteria:
+
+- fiscale regel is geverifieerd tegen een gezaghebbende bron per ondersteund jaar
+- per korting is expliciet vastgelegd of een niet-benut bedrag vervalt, wordt
+  uitbetaald of op andere wijze kan worden verrekend
+- directe tests dekken minimaal: korting lager dan, gelijk aan en hoger dan de
+  verschuldigde IB plus premies
+- accountantdetail toont berekend, daadwerkelijk verrekend en niet-benut bedrag
+- de melding `nog te controleren` wordt pas verwijderd nadat bovenstaande
+  acceptatiecriteria zijn behaald
+
 ## Afhankelijkheden tussen issues
 
 | Issue | Blokkeert |
@@ -326,13 +369,13 @@ Acceptatiecriteria:
 | 4, 5, 6 | 13 |
 | 7, 8, 9, 10, 11, 12 | 13 |
 | 13 | 14 |
-| 14, 15 | Epic 1 afronding |
+| 14, 15, 16 | Epic 1 afronding |
 
 ## Definition of Done voor Epic 1 als geheel
 
 Epic 1 is klaar als:
 
-1. issues 1 tot en met 15 afgerond zijn
+1. issues 1 tot en met 16 afgerond zijn
 2. alle losse fiscale bouwstenen directe unitdekking hebben
 3. grondslagen en afronding expliciet vastliggen
 4. bestaande integratietests en validaties nog aansluiten op de contracten
