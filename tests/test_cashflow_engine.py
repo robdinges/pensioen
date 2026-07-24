@@ -93,6 +93,14 @@ class TestCashflowHuishouden:
         assert Decimal(str(tarieven["ouderenkorting"])) == Decimal("2035.00")
         assert Decimal(str(tarieven["alleenstaandeouderenkorting"])) == Decimal("531.00")
 
+        detail = jaar.accountant_detail
+        assert detail["verrekende_hk_p1"] == min(
+            detail["totale_hk_p1"], detail["totaal_ib_en_premies_p1"]
+        )
+        assert detail["niet_verrekende_hk_p1"] == max(
+            Decimal("0"), detail["totale_hk_p1"] - detail["totaal_ib_en_premies_p1"]
+        )
+
     def test_alleenstaande_aow_met_pensioen_2025_matcht_belastingdienst_1b(self) -> None:
         """Regressie: scenario 1B (AOW + pensioen) volgt Belastingdienst-opbouw 2025."""
 

@@ -1,738 +1,218 @@
 import { useState } from "react";
 
-function toNumber(value) {
+function number(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-const POST_TYPE_LABEL = {
-  loon: "Loon",
-  uitkering: "Uitkering",
-  pensioen: "Pensioen",
-  uitgave: "Uitgave",
-  eenmalige_inkomsten: "Eenmalige inkomsten",
-  eenmalige_uitgaven: "Eenmalige uitgaven",
-  sparen: "Sparen",
-  beleggen: "Beleggen",
-  eigen_woning: "Eigen woning",
-  overige_bezittingen: "Overige bezittingen",
-  hypotheek: "Hypotheek",
-};
-
-function pct(value, digits = 2) {
-  return `${(toNumber(value) * 100).toFixed(digits)}%`;
+function percentage(value, digits = 2) {
+  return `${(number(value) * 100).toFixed(digits)}%`;
 }
 
-function sumMonths(months, selector) {
-  return months.reduce((sum, month) => sum + toNumber(selector(month)), 0);
-}
+function CalculationTable({ rows, euro, hasPartner }) {
+  const visibleRows = rows.filter((row) => !row.optional || row.values.some((value) => number(value) !== 0));
 
-function yearFromIso(value) {
-  if (!value || typeof value !== "string") {
-    return null;
-  }
-  const match = value.match(/^(\d{4})-/);
-  return match ? Number(match[1]) : null;
-}
-
-function isPostActiveInYear(post, year) {
-  const values = post?.values || {};
-  if (post?.type === "eenmalige_inkomsten" || post?.type === "eenmalige_uitgaven") {
-    const datumJaar = yearFromIso(values.datum);
-    return datumJaar === year;
-  }
-
-  const startJaar = yearFromIso(values.startdatum);
-  const eindJaar = yearFromIso(values.einddatum);
-  if (startJaar != null && year < startJaar) {
-    return false;
-  }
-  if (eindJaar != null && year > eindJaar) {
-    return false;
-  }
-  return true;
-}
-
-function formatPeriode(post) {
-  const values = post?.values || {};
-  if (post?.type === "eenmalige_inkomsten" || post?.type === "eenmalige_uitgaven") {
-    return values.datum || "-";
-  }
-  const start = values.startdatum || "-";
-  const eind = values.einddatum || "-";
-  return `${start} t/m ${eind}`;
-}
-
-function formatPostBedrag(post, euro) {
-  const values = post?.values || {};
-  if (values.bedrag !== undefined && values.bedrag !== "") {
-    return euro(values.bedrag);
-  }
-  if (values.beginwaarde !== undefined && values.beginwaarde !== "") {
-    return euro(values.beginwaarde);
-  }
-  return "-";
-}
-
-function PostSourceTable({ title, posts, euro }) {
-  if (!Array.isArray(posts) || posts.length === 0) {
-    return (
-      <p className="notice">{title}: geen actieve bronposten in dit jaar.</p>
-    );
-  }
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Titel</th>
-            <th>Persoon</th>
-            <th>Bedrag</th>
-            <th>Bedragtype</th>
-            <th>Frequentie</th>
-            <th>Periode / datum</th>
-          </tr>
-        </thead>
-        <tbody>
-          {posts.map((post) => (
-            <tr key={`bron-${post.id}`}>
-              <td>{POST_TYPE_LABEL[post.type] || post.type}</td>
-              <td>{post.titel || "-"}</td>
-              <td>{post?.values?.persoon || "Huishouden"}</td>
-              <td>{formatPostBedrag(post, euro)}</td>
-              <td>{post?.values?.bedrag_type || (post.type === "uitgave" ? "netto" : "-")}</td>
-              <td>{post?.values?.frequentie || (post.type.startsWith("eenmalige") ? "eenmalig" : "-")}</td>
-              <td>{formatPeriode(post)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function YearSummaryTable({ rows, euro }) {
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Post</th>
-            <th>P1</th>
-            <th>P2</th>
+            <th>Berekeningsregel</th>
+            <th>Persoon 1</th>
+            {hasPartner ? <th>Persoon 2</th> : null}
             <th>Huishouden</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.label}>
-              <td>{row.label}</td>
-              <td>{row.p1 == null ? "-" : euro(row.p1)}</td>
-              <td>{row.p2 == null ? "-" : euro(row.p2)}</td>
-              <td>{euro(row.total)}</td>
-            </tr>
-          ))}
+          {visibleRows.map((row) => {
+            const p1 = number(row.values[0]);
+            const p2 = number(row.values[1]);
+            const total = row.total == null ? p1 + p2 : number(row.total);
+            return (
+              <tr key={row.label}>
+                <td><strong>{row.label}</strong>{row.note ? <><br /><small>{row.note}</small></> : null}</td>
+                <td>{euro(p1)}</td>
+                {hasPartner ? <td>{euro(p2)}</td> : null}
+                <td><strong>{euro(total)}</strong></td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-function PostSpecificationTable({ title, rows }) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            <th>Post</th>
-            <th>Definitie</th>
-            <th>Specificatie / formule</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${title}-${row.post}`}>
-              <td>{row.post}</td>
-              <td>{row.definitie}</td>
-              <td>{row.formule}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+function DetailNotice({ children }) {
+  return <p className="notice">{children}</p>;
 }
 
-function TariefTable({ title, schijven, pctFormatter, euro }) {
-  if (!Array.isArray(schijven) || schijven.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            <th>Schijf</th>
-            <th>Tot</th>
-            <th>Tarief</th>
-          </tr>
-        </thead>
-        <tbody>
-          {schijven.map((schijf, index) => (
-            <tr key={`${title}-${index}`}>
-              <td>{index + 1}</td>
-              <td>{schijf.tot == null ? "Geen bovengrens" : euro(schijf.tot)}</td>
-              <td>{pctFormatter(schijf.tarief, 3)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function round2(value) {
-  return Math.round(toNumber(value) * 100) / 100;
-}
-
-function calculateSchijfBreakdown(grondslag, schijven) {
-  if (!Array.isArray(schijven) || schijven.length === 0) {
-    return [];
-  }
-
-  const total = Math.max(0, toNumber(grondslag));
-  let previousLimit = 0;
-
-  return schijven
-    .map((schijf, index) => {
-      const upper = schijf?.tot == null ? Infinity : toNumber(schijf.tot);
-      const rate = toNumber(schijf?.tarief);
-      const taxable = Math.max(0, Math.min(total, upper) - previousLimit);
-      previousLimit = upper;
-
-      return {
-        id: index + 1,
-        taxable: round2(taxable),
-        rate,
-        amount: round2(taxable * rate),
-      };
-    })
-    .filter((row) => row.taxable > 0);
-}
-
-function CalculationBreakdownTable({ title, rows, euro, pctFormatter }) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            <th>Regel</th>
-            <th>Berekening</th>
-            <th>Bedrag</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${title}-${row.label}`}>
-              <td>{row.label}</td>
-              <td>
-                {row.calculation
-                  || `${pctFormatter(row.rate ?? 0, 3)} van ${euro(row.base ?? 0)}`}
-              </td>
-              <td>{euro(row.amount ?? 0)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function AccountantYear({ jaarResultaat, euro, posts }) {
-  const months = Array.isArray(jaarResultaat?.maanden) ? jaarResultaat.maanden : [];
-  if (months.length === 0) {
-    return null;
-  }
+function AccountantYear({ jaarResultaat, euro }) {
   const detail = jaarResultaat?.accountant_detail || {};
-  const samenvatting = jaarResultaat?.jaar_samenvatting || {};
-  const controlejaar = Number(jaarResultaat.jaar);
-  const actieveBronposten = Array.isArray(posts)
-    ? posts.filter((post) => isPostActiveInYear(post, controlejaar))
-    : [];
-
+  const months = Array.isArray(jaarResultaat?.maanden) ? jaarResultaat.maanden : [];
   const tarieven = months[0]?.gebruikte_tarieven || {};
-  const persoon1 = tarieven.persoon1 || {};
-  const persoon2 = tarieven.persoon2 || null;
-  const box3 = tarieven.box3 || {};
-  const schijvenVoorNarekening = (toNumber(detail.aow_breuk_p1) > 0)
-    ? persoon1.schijven?.box1_aow
-    : persoon1.schijven?.box1_niet_aow;
+  const hasPartner = Boolean(tarieven.persoon2);
+  const eigenWoningP1 = detail.ew_p1 || {};
+  const eigenWoningP2 = detail.ew_p2 || {};
+  const heeftEigenWoning = Boolean(detail.ew_invoer_gevonden)
+    || [eigenWoningP1, eigenWoningP2].some((woning) => [
+      woning.eigenwoningforfait,
+      woning.aftrekbare_hypotheekrente,
+      woning.box1_mutatie,
+      woning.tariefsaanpassing,
+    ].some((value) => number(value) !== 0));
 
-  const brutoP1 = detail.bruto_p1 != null ? toNumber(detail.bruto_p1) : sumMonths(months, (month) => month.arbeid_p1_bruto + month.aow_p1_bruto + month.pensioen_p1_bruto);
-  const brutoP2 = detail.bruto_p2 != null ? toNumber(detail.bruto_p2) : sumMonths(months, (month) => month.arbeid_p2_bruto + month.aow_p2_bruto + month.pensioen_p2_bruto);
-  const arbeidP1 = detail.jaar_arbeid_p1 != null ? toNumber(detail.jaar_arbeid_p1) : sumMonths(months, (month) => month.arbeid_p1_bruto);
-  const arbeidP2 = detail.jaar_arbeid_p2 != null ? toNumber(detail.jaar_arbeid_p2) : sumMonths(months, (month) => month.arbeid_p2_bruto);
-  const aowP1 = detail.jaar_aow_p1 != null ? toNumber(detail.jaar_aow_p1) : sumMonths(months, (month) => month.aow_p1_bruto);
-  const aowP2 = detail.jaar_aow_p2 != null ? toNumber(detail.jaar_aow_p2) : sumMonths(months, (month) => month.aow_p2_bruto);
-  const pensioenP1 = detail.jaar_pen_p1 != null ? toNumber(detail.jaar_pen_p1) : sumMonths(months, (month) => month.pensioen_p1_bruto);
-  const pensioenP2 = detail.jaar_pen_p2 != null ? toNumber(detail.jaar_pen_p2) : sumMonths(months, (month) => month.pensioen_p2_bruto);
-  const overig = detail.jaar_overig_p1 != null ? toNumber(detail.jaar_overig_p1) : sumMonths(months, (month) => month.overig_bruto);
-  const rente = detail.jaar_rendement != null ? toNumber(detail.jaar_rendement) : sumMonths(months, (month) => month.rente_bruto);
-  const nettoComponenten = detail.jaar_netto_component_inkomen != null ? toNumber(detail.jaar_netto_component_inkomen) : sumMonths(months, (month) => month.inkomen_componenten_netto);
-  const belastingP1 = detail.netto_bel_p1 != null ? toNumber(detail.netto_bel_p1) : sumMonths(months, (month) => month.belasting_p1);
-  const belastingP2 = detail.netto_bel_p2 != null ? toNumber(detail.netto_bel_p2) : sumMonths(months, (month) => month.belasting_p2);
-  const heffingskortingP1 = sumMonths(months, (month) => month.heffingskorting_p1);
-  const heffingskortingP2 = sumMonths(months, (month) => month.heffingskorting_p2);
-  const box3Heffing = detail.box3_heffing != null ? toNumber(detail.box3_heffing) : sumMonths(months, (month) => month.box3_heffing);
-  const inhoudingen = detail.jaar_inhoudingen != null ? toNumber(detail.jaar_inhoudingen) : sumMonths(months, (month) => month.inhoudingen);
-  const uitgaven = detail.jaar_huishoudelijke_uitgaven != null ? toNumber(detail.jaar_huishoudelijke_uitgaven) : sumMonths(months, (month) => month.huishoudelijke_uitgaven);
-  const eenmaligOntvangst = detail.jaar_incidenteel_ontvangst != null ? toNumber(detail.jaar_incidenteel_ontvangst) : sumMonths(months, (month) => month.eenmalig_ontvangst);
-  const eenmaligUitgave = detail.jaar_incidenteel_uitgave != null ? toNumber(detail.jaar_incidenteel_uitgave) : sumMonths(months, (month) => month.eenmalig_uitgave);
-  const netto = samenvatting.netto != null ? toNumber(samenvatting.netto) : sumMonths(months, (month) => month.netto ?? 0);
-  const eindVermogen = samenvatting.vermogen_einde_jaar != null ? toNumber(samenvatting.vermogen_einde_jaar) : toNumber(months[months.length - 1]?.vermogen_einde_maand);
-  const effectiefTarief = brutoP1 + brutoP2 + overig + rente > 0
-    ? Math.max(0, ((belastingP1 + belastingP2 + box3Heffing) - (heffingskortingP1 + heffingskortingP2)) / (brutoP1 + brutoP2 + overig + rente) * 100)
-    : 0;
-
-  const summaryRows = [
-    { label: "Arbeidsinkomen bruto", p1: arbeidP1, p2: arbeidP2, total: arbeidP1 + arbeidP2 },
-    { label: "AOW bruto", p1: aowP1, p2: aowP2, total: aowP1 + aowP2 },
-    { label: "Pensioen bruto", p1: pensioenP1, p2: pensioenP2, total: pensioenP1 + pensioenP2 },
-    { label: "Overig bruto", p1: null, p2: null, total: overig },
-    { label: "Rente / rendement", p1: null, p2: null, total: rente },
-    { label: "Netto componenten", p1: null, p2: null, total: nettoComponenten },
-    { label: "Belasting box 1", p1: belastingP1, p2: belastingP2, total: belastingP1 + belastingP2 },
-    { label: "Heffingskortingen", p1: heffingskortingP1, p2: heffingskortingP2, total: heffingskortingP1 + heffingskortingP2 },
-    { label: "Box 3 heffing", p1: null, p2: null, total: box3Heffing },
-    { label: "Inhoudingen", p1: null, p2: null, total: inhoudingen },
-    { label: "Huishoudelijke uitgaven", p1: null, p2: null, total: uitgaven },
-    { label: "Eenmalige ontvangst", p1: null, p2: null, total: eenmaligOntvangst },
-    { label: "Eenmalige uitgave", p1: null, p2: null, total: eenmaligUitgave },
-    { label: "Netto jaarresultaat", p1: null, p2: null, total: netto },
+  const brutoRows = [
+    { label: "Arbeidsinkomen", values: [detail.jaar_arbeid_p1, detail.jaar_arbeid_p2] },
+    { label: "AOW-uitkering", values: [detail.jaar_aow_p1, detail.jaar_aow_p2] },
+    { label: "Werkgeverspensioen", values: [detail.jaar_pen_p1, detail.jaar_pen_p2] },
+    { label: "Overig belast inkomen", values: [detail.jaar_overig_p1, detail.jaar_overig_p2], optional: true },
+    { label: "Totaal bruto inkomen", values: [detail.bruto_p1, detail.bruto_p2] },
   ];
-
-  const grondslagRows = [
-    { label: "Bruto jaarinkomen", p1: persoon1.grondslagen?.bruto_jaarinkomen ?? brutoP1, p2: persoon2?.grondslagen?.bruto_jaarinkomen ?? brutoP2, total: (persoon1.grondslagen?.bruto_jaarinkomen ?? brutoP1) + (persoon2?.grondslagen?.bruto_jaarinkomen ?? brutoP2) },
-    { label: "Arbeidsinkomen grondslag", p1: persoon1.grondslagen?.arbeidsinkomen ?? arbeidP1, p2: persoon2?.grondslagen?.arbeidsinkomen ?? arbeidP2, total: (persoon1.grondslagen?.arbeidsinkomen ?? arbeidP1) + (persoon2?.grondslagen?.arbeidsinkomen ?? arbeidP2) },
-    { label: "Premiegrondslag", p1: persoon1.grondslagen?.premiegrondslag ?? 0, p2: persoon2?.grondslagen?.premiegrondslag ?? 0, total: (persoon1.grondslagen?.premiegrondslag ?? 0) + (persoon2?.grondslagen?.premiegrondslag ?? 0) },
-    { label: "Box 3 startvermogen", p1: null, p2: null, total: box3.grondslag_start_vermogen ?? 0 },
-    { label: "Box 3 vrijstelling", p1: null, p2: null, total: box3.vrijstelling ?? 0 },
-    { label: "Box 3 belastbaar vermogen", p1: null, p2: null, total: box3.belastbaar_vermogen ?? 0 },
-    { label: "Box 3 fictief rendement", p1: null, p2: null, total: box3.fictief_rendement ?? 0 },
+  const woningRows = [
+    { label: "Eigenwoningforfait", values: [eigenWoningP1.eigenwoningforfait, eigenWoningP2.eigenwoningforfait] },
+    { label: "Af: hypotheekrente", values: [-number(eigenWoningP1.aftrekbare_hypotheekrente), -number(eigenWoningP2.aftrekbare_hypotheekrente)] },
+    { label: "Af: overige aftrekbare kosten", values: [-number(eigenWoningP1.overige_aftrekbare_kosten), -number(eigenWoningP2.overige_aftrekbare_kosten)], optional: true },
+    { label: "Wet Hillen-vermindering", values: [-number(eigenWoningP1.hillen_correctie), -number(eigenWoningP2.hillen_correctie)], optional: true },
+    { label: "Correctie box 1-grondslag", values: [eigenWoningP1.box1_mutatie, eigenWoningP2.box1_mutatie] },
   ];
-
+  const belastingRows = [
+    { label: "Belastbaar inkomen box 1", values: [detail.box1_grondslag_p1, detail.box1_grondslag_p2] },
+    { label: "Inkomstenbelasting vóór kortingen", values: [detail.bel_voor_korting_p1, detail.bel_voor_korting_p2] },
+  ];
+  const premieRows = [
+    { label: "AOW-premie", values: [detail.premie_aow_p1, detail.premie_aow_p2], note: "Alleen verschuldigd vóór de AOW-leeftijd" },
+    { label: "Anw-premie", values: [detail.premie_anw_p1, detail.premie_anw_p2] },
+    { label: "Wlz-premie", values: [detail.premie_wlz_p1, detail.premie_wlz_p2] },
+    { label: "Totaal premies volksverzekeringen", values: [detail.totaal_premies_p1, detail.totaal_premies_p2] },
+  ];
   const kortingRows = [
-    { label: "Algemene heffingskorting", p1: persoon1.ahk ?? 0, p2: persoon2?.ahk ?? 0, total: (persoon1.ahk ?? 0) + (persoon2?.ahk ?? 0) },
-    { label: "Arbeidskorting", p1: persoon1.arbeidskorting ?? 0, p2: persoon2?.arbeidskorting ?? 0, total: (persoon1.arbeidskorting ?? 0) + (persoon2?.arbeidskorting ?? 0) },
-    { label: "Ouderenkorting", p1: persoon1.ouderenkorting ?? 0, p2: persoon2?.ouderenkorting ?? 0, total: (persoon1.ouderenkorting ?? 0) + (persoon2?.ouderenkorting ?? 0) },
-    { label: "Alleenstaande ouderenkorting", p1: persoon1.alleenstaandeouderenkorting ?? 0, p2: persoon2?.alleenstaandeouderenkorting ?? 0, total: (persoon1.alleenstaandeouderenkorting ?? 0) + (persoon2?.alleenstaandeouderenkorting ?? 0) },
+    { label: "Algemene heffingskorting", values: [detail.ahk_p1, detail.ahk_p2], note: "Op basis van belastbaar inkomen en AOW-status" },
+    { label: "Arbeidskorting", values: [detail.ak_p1, detail.ak_p2], note: "Op basis van arbeidsinkomen" },
+    { label: "Ouderenkorting", values: [detail.ok_p1, detail.ok_p2], note: "Alleen bij AOW-status" },
+    { label: "Alleenstaandeouderenkorting", values: [detail.aok_p1, detail.aok_p2], note: "Alleen bij alleenstaand en AOW-status" },
+    { label: "Totaal heffingskortingen", values: [detail.totale_hk_p1, detail.totale_hk_p2] },
   ];
-
-  const ibSchijfRowsP1 = calculateSchijfBreakdown(
-    detail.box1_grondslag_p1 ?? persoon1.grondslagen?.bruto_jaarinkomen ?? brutoP1,
-    schijvenVoorNarekening,
-  ).map((row) => ({
-    label: `IB box 1 schijf ${row.id}`,
-    base: row.taxable,
-    rate: row.rate,
-    amount: row.amount,
-  }));
-
-  const premieGrondslagP1 =
-    persoon1.grondslagen?.premiegrondslag
-    ?? detail.box1_grondslag_p1
-    ?? persoon1.grondslagen?.bruto_jaarinkomen
-    ?? brutoP1;
-  const premieRowsP1 = [
-    {
-      label: "Premie AOW",
-      base: premieGrondslagP1,
-      rate: persoon1.premies_config?.aow_tarief_aow ?? persoon1.premies_config?.aow_tarief_niet_aow ?? 0,
-      amount: detail.premie_aow_p1 ?? persoon1.premie_aow ?? 0,
-    },
-    {
-      label: "Premie Anw",
-      base: premieGrondslagP1,
-      rate: persoon1.premies_config?.anw_tarief ?? 0,
-      amount: detail.premie_anw_p1 ?? persoon1.premie_anw ?? 0,
-    },
-    {
-      label: "Premie Wlz",
-      base: premieGrondslagP1,
-      rate: persoon1.premies_config?.wlz_tarief ?? 0,
-      amount: detail.premie_wlz_p1 ?? persoon1.premie_wlz ?? 0,
-    },
+  const verschuldigdRows = [
+    { label: "Inkomstenbelasting vóór kortingen", values: [detail.bel_voor_korting_p1, detail.bel_voor_korting_p2] },
+    { label: "Premies volksverzekeringen", values: [detail.totaal_premies_p1, detail.totaal_premies_p2] },
+    { label: "Tariefsaanpassing eigen woning", values: [eigenWoningP1.tariefsaanpassing, eigenWoningP2.tariefsaanpassing], optional: true },
+    { label: "Berekende heffingskortingen", values: [detail.totale_hk_p1, detail.totale_hk_p2], note: "Beschikbaar volgens de kortingberekening" },
+    { label: "Maximaal verrekenbaar", values: [detail.totaal_ib_en_premies_p1, detail.totaal_ib_en_premies_p2], note: "Heffingskortingen kunnen de verschuldigde IB en premies niet verder dan nul verlagen" },
+    { label: "Af: daadwerkelijk verrekende heffingskortingen", values: [-number(detail.verrekende_hk_p1), -number(detail.verrekende_hk_p2)] },
+    { label: "Niet-benutte heffingskortingen", values: [detail.niet_verrekende_hk_p1, detail.niet_verrekende_hk_p2], optional: true },
+    { label: "Verschuldigde box 1-belasting", values: [detail.netto_bel_p1, detail.netto_bel_p2] },
   ];
-
-  const hkRowsP1 = [
-    {
-      label: "Algemene heffingskorting",
-      calculation: "Uit heffingskorting bouwsteen (AOW-factor en afbouw op verzamelinkomen).",
-      amount: detail.ahk_p1 ?? persoon1.ahk ?? 0,
-    },
-    {
-      label: "Ouderenkorting",
-      calculation: "Uit heffingskorting bouwsteen (AOW-status en inkomensafbouw).",
-      amount: detail.ok_p1 ?? persoon1.ouderenkorting ?? 0,
-    },
-    {
-      label: "Alleenstaandeouderenkorting",
-      calculation: "Uit heffingskorting bouwsteen (alleenstaand + AOW).",
-      amount: detail.aok_p1 ?? persoon1.alleenstaandeouderenkorting ?? 0,
-    },
-  ].filter((row) => toNumber(row.amount) !== 0);
-
-  const totaalRowsP1 = [
-    {
-      label: "Inkomstenbelasting box 1",
-      calculation: "Som van IB-schijven.",
-      amount: detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0,
-    },
-    {
-      label: "Premie volksverzekeringen",
-      calculation: "Premie AOW + Premie Anw + Premie Wlz.",
-      amount: detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0,
-    },
-    {
-      label: "Totaal heffingskortingen",
-      calculation: "AHK + arbeidskorting + ouderenkorting + alleenstaandeouderenkorting.",
-      amount: detail.totale_hk_p1 ?? (persoon1.ahk ?? 0) + (persoon1.arbeidskorting ?? 0) + (persoon1.ouderenkorting ?? 0) + (persoon1.alleenstaandeouderenkorting ?? 0),
-    },
-    {
-      label: "Te betalen na heffingskortingen",
-      calculation: "max(0, inkomstenbelasting + premies - totale heffingskortingen).",
-      amount: Math.max(
-        0,
-        toNumber(detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0)
-          + toNumber(detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0)
-          - Math.min(
-            toNumber(detail.totale_hk_p1 ?? 0),
-            toNumber(detail.bel_voor_korting_p1 ?? persoon1.inkomstenbelasting ?? 0)
-              + toNumber(detail.totaal_premies_p1 ?? persoon1.totaal_premies ?? 0),
-          ),
-      ),
-    },
-  ];
-
-  const jaaroverzichtSpecificaties = [
-    {
-      post: "Arbeidsinkomen bruto",
-      definitie: "Bruto arbeidsinkomen uit componenten per persoon.",
-      formule: "Som van maandvelden arbeid_p1_bruto en arbeid_p2_bruto over 12 maanden.",
-    },
-    {
-      post: "AOW bruto",
-      definitie: "Automatisch berekende AOW-bedragen per persoon.",
-      formule: "Som van maandvelden aow_p1_bruto en aow_p2_bruto.",
-    },
-    {
-      post: "Pensioen bruto",
-      definitie: "Bruto pensioeninkomen uit pensioencomponenten.",
-      formule: "Som van maandvelden pensioen_p1_bruto en pensioen_p2_bruto.",
-    },
-    {
-      post: "Overig bruto",
-      definitie: "Overige bruto inkomenscomponenten in het huishouden.",
-      formule: "Som van maandveld overig_bruto.",
-    },
-    {
-      post: "Rente / rendement",
-      definitie: "Maandelijkse vermogensopbrengst uit vermogen_engine.",
-      formule: "Som van maandveld rente_bruto.",
-    },
-    {
-      post: "Netto componenten",
-      definitie: "Netto ingevoerde componenten die niet in bruto-belastinggrondslag vallen.",
-      formule: "Som van maandveld inkomen_componenten_netto.",
-    },
-    {
-      post: "Belasting box 1",
-      definitie: "Toegerekende maandbelasting persoon 1 en 2 (jaarbelasting / 12).",
-      formule: "Som van maandvelden belasting_p1 + belasting_p2.",
-    },
-    {
-      post: "Heffingskortingen",
-      definitie: "Toegerekende maandheffingskortingen persoon 1 en 2 (jaarkorting / 12).",
-      formule: "Som van maandvelden heffingskorting_p1 + heffingskorting_p2.",
-    },
-    {
-      post: "Box 3 heffing",
-      definitie: "Toegerekende maandbox-3-heffing op startvermogen van het jaar.",
-      formule: "Som van maandveld box3_heffing.",
-    },
-    {
-      post: "Inhoudingen",
-      definitie: "Periodieke inhoudingen uit scenario-componenten.",
-      formule: "Som van maandveld inhoudingen.",
-    },
-    {
-      post: "Huishoudelijke uitgaven",
-      definitie: "Periodieke uitgaven op huishoudniveau.",
-      formule: "Som van maandveld huishoudelijke_uitgaven.",
-    },
-    {
-      post: "Eenmalige ontvangst / uitgave",
-      definitie: "Incidentele posten op exacte datum in het jaar.",
-      formule: "Som van maandvelden eenmalig_ontvangst en eenmalig_uitgave.",
-    },
-    {
-      post: "Netto jaarresultaat",
-      definitie: "Geaggregeerde netto cashflow van het kalenderjaar.",
-      formule: "Som van maandveld netto over alle maanden.",
-    },
-  ];
-
-  const grondslagSpecificaties = [
-    {
-      post: "Bruto jaarinkomen",
-      definitie: "Belastinggrondslag bruto per persoon uit gebruikte tarievenpayload.",
-      formule: "persoonX.grondslagen.bruto_jaarinkomen (fallback op bruto-som uit maandvelden).",
-    },
-    {
-      post: "Arbeidsinkomen grondslag",
-      definitie: "Arbeidsinkomen dat meetelt voor arbeidskorting en delen van box-1-berekening.",
-      formule: "persoonX.grondslagen.arbeidsinkomen (fallback op arbeid-som uit maandvelden).",
-    },
-    {
-      post: "Premiegrondslag",
-      definitie: "Grondslag voor AOW/Anw/Wlz-premies tot premiegrens.",
-      formule: "persoonX.grondslagen.premiegrondslag.",
-    },
-    {
-      post: "Box 3 grondslagregels",
-      definitie: "Startvermogen, vrijstelling, belastbaar vermogen en fictief rendement.",
-      formule: "box3.grondslag_start_vermogen, box3.vrijstelling, box3.belastbaar_vermogen, box3.fictief_rendement.",
-    },
-  ];
-
-  const kortingSpecificaties = [
-    {
-      post: "Algemene heffingskorting",
-      definitie: "AHK volgens jaarconfig en AOW-breuk.",
-      formule: "persoonX.ahk.",
-    },
-    {
-      post: "Arbeidskorting",
-      definitie: "Arbeidskorting op basis van arbeidsinkomen en afbouwdrempel.",
-      formule: "persoonX.arbeidskorting.",
-    },
-    {
-      post: "Ouderenkorting",
-      definitie: "Ouderenkorting op basis van AOW-status en inkomen.",
-      formule: "persoonX.ouderenkorting.",
-    },
-    {
-      post: "Alleenstaande ouderenkorting",
-      definitie: "Aanvullende korting indien van toepassing op alleenstaande AOW-situatie.",
-      formule: "persoonX.alleenstaandeouderenkorting.",
-    },
+  const nettoRows = [
+    { label: "Bruto inkomen", values: [detail.bruto_p1, detail.bruto_p2] },
+    { label: "Af: verschuldigde box 1-belasting", values: [-number(detail.netto_bel_p1), -number(detail.netto_bel_p2)] },
+    { label: "Netto inkomen", values: [detail.netto_p1, detail.netto_p2], total: detail.totaal_netto_inkomen },
+    { label: "Niet-belaste netto componenten", values: [detail.jaar_arbeid_netto_p1, detail.jaar_arbeid_netto_p2], total: detail.jaar_netto_component_inkomen, optional: true },
   ];
 
   return (
-    <div>
-      <SectionHeaderBlock
-        jaar={jaarResultaat.jaar}
-        tarievenJaar={jaarResultaat.tarieven_jaar}
-        tarievenAanname={jaarResultaat.tarieven_aanname}
-        netto={netto}
-        eindVermogen={eindVermogen}
-        effectiefTarief={effectiefTarief}
-        euro={euro}
-      />
+    <div className="accountant-year-detail">
+      {jaarResultaat.tarieven_aanname ? <DetailNotice>{jaarResultaat.tarieven_aanname}</DetailNotice> : null}
 
-      <h3>Jaaroverzicht</h3>
-      <YearSummaryTable rows={summaryRows} euro={euro} />
-      <PostSpecificationTable
-        title="Specificatie posten - Jaaroverzicht"
-        rows={jaaroverzichtSpecificaties}
-      />
-
-      <h3>Grondslagen en tussentotalen</h3>
-      <YearSummaryTable rows={grondslagRows} euro={euro} />
-      <PostSpecificationTable
-        title="Specificatie posten - Grondslagen"
-        rows={grondslagSpecificaties}
-      />
-
-      <h3>Heffingskortingen</h3>
-      <YearSummaryTable rows={kortingRows} euro={euro} />
-      <PostSpecificationTable
-        title="Specificatie posten - Heffingskortingen"
-        rows={kortingSpecificaties}
-      />
-
-      <h3>Narekening IB/PVV/HK (1-op-1)</h3>
-      <CalculationBreakdownTable
-        title="Inkomstenbelasting box 1 (P1)"
-        rows={ibSchijfRowsP1}
-        euro={euro}
-        pctFormatter={pct}
-      />
-      <CalculationBreakdownTable
-        title="Premies volksverzekeringen (P1)"
-        rows={premieRowsP1}
-        euro={euro}
-        pctFormatter={pct}
-      />
-      <CalculationBreakdownTable
-        title="Heffingskortingen (P1)"
-        rows={hkRowsP1}
-        euro={euro}
-        pctFormatter={pct}
-      />
-      <CalculationBreakdownTable
-        title="Totalen (P1)"
-        rows={totaalRowsP1}
-        euro={euro}
-        pctFormatter={pct}
-      />
-      <p className="notice">
-        Deze tabellen tonen exact dezelfde bouwstenen als de engine-output in accountant_detail,
-        zodat je de berekening regel-voor-regel kunt narekenen.
-      </p>
-
-      <h3>Specificatie bronposten (actief in dit jaar)</h3>
-      <PostSourceTable
-        title={`Bronposten controlejaar ${jaarResultaat.jaar}`}
-        posts={actieveBronposten}
-        euro={euro}
-      />
-
-      <h3>Belastingtarieven en premies</h3>
       <div className="kpis">
-        <div className="kpi"><span>AOW-breuk P1</span><strong>{pct(persoon1.aow_breuk ?? 0, 1)}</strong></div>
-        <div className="kpi"><span>AOW-breuk P2</span><strong>{pct(persoon2?.aow_breuk ?? 0, 1)}</strong></div>
-        <div className="kpi"><span>Inkomstenbelasting P1</span><strong>{euro(persoon1.inkomstenbelasting ?? 0)}</strong></div>
-        <div className="kpi"><span>Inkomstenbelasting P2</span><strong>{euro(persoon2?.inkomstenbelasting ?? 0)}</strong></div>
+        <div className="kpi"><span>Box 1 verschuldigd</span><strong>{euro(number(detail.netto_bel_p1) + number(detail.netto_bel_p2))}</strong></div>
+        <div className="kpi"><span>Netto inkomen</span><strong>{euro(detail.totaal_netto_inkomen)}</strong></div>
+        <div className="kpi"><span>Box 3-heffing</span><strong>{euro(detail.box3_heffing)}</strong></div>
+        <div className="kpi"><span>Vermogen einde jaar</span><strong>{euro(detail.saldo_einde_jaar)}</strong></div>
       </div>
 
-      <TariefTable title="Schijven niet-AOW" schijven={persoon1.schijven?.box1_niet_aow} pctFormatter={pct} euro={euro} />
-      <TariefTable title="Schijven AOW" schijven={persoon1.schijven?.box1_aow} pctFormatter={pct} euro={euro} />
+      <h3>1. Bruto inkomen</h3>
+      <CalculationTable rows={brutoRows} euro={euro} hasPartner={hasPartner} />
 
+      {heeftEigenWoning ? <>
+        <h3>2. Eigen woning: correctie op box 1</h3>
+        <CalculationTable rows={woningRows} euro={euro} hasPartner={hasPartner} />
+      </> : null}
+
+      <h3>3. Belastbaar inkomen en inkomstenbelasting</h3>
+      <CalculationTable rows={belastingRows} euro={euro} hasPartner={hasPartner} />
+      <DetailNotice>
+        AOW-breuk persoon 1: {percentage(detail.aow_breuk_p1, 1)}
+        {hasPartner ? ` · persoon 2: ${percentage(detail.aow_breuk_p2, 1)}` : ""}.
+        De getoonde inkomstenbelasting is exclusief premies volksverzekeringen.
+      </DetailNotice>
+
+      <h3>4. Premies volksverzekeringen</h3>
+      <CalculationTable rows={premieRows} euro={euro} hasPartner={hasPartner} />
+
+      <h3>5. Heffingskortingen</h3>
+      <CalculationTable rows={kortingRows} euro={euro} hasPartner={hasPartner} />
+
+      <h3>6. Verschuldigde box 1-belasting</h3>
+      <CalculationTable rows={verschuldigdRows} euro={euro} hasPartner={hasPartner} />
+      <DetailNotice>
+        <strong>Nog te controleren:</strong> de engine begrenst de verrekening van heffingskortingen op de berekende inkomstenbelasting plus premies. Een eventueel restant wordt niet uitbetaald en staat hierboven als niet-benut. Controleer nog of deze begrenzing voor alle gebruikte heffingskortingen fiscaal juist is.
+      </DetailNotice>
+
+      <h3>7. Netto inkomen</h3>
+      <CalculationTable rows={nettoRows} euro={euro} hasPartner={hasPartner} />
+
+      <h3>8. Box 3-heffing</h3>
       <div className="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>Premie / tarief</th>
-              <th>Waarde</th>
-            </tr>
-          </thead>
           <tbody>
-            <tr><td>Premiegrens</td><td>{euro(persoon1.premies_config?.premiegrens ?? 0)}</td></tr>
-            <tr><td>AOW-premie niet-AOW</td><td>{pct(persoon1.premies_config?.aow_tarief_niet_aow ?? 0, 3)}</td></tr>
-            <tr><td>AOW-premie AOW</td><td>{pct(persoon1.premies_config?.aow_tarief_aow ?? 0, 3)}</td></tr>
-            <tr><td>Anw-premie</td><td>{pct(persoon1.premies_config?.anw_tarief ?? 0, 3)}</td></tr>
-            <tr><td>Wlz-premie</td><td>{pct(persoon1.premies_config?.wlz_tarief ?? 0, 3)}</td></tr>
-            <tr><td>Box 3 forfait spaargeld</td><td>{pct(box3.forfaitair_spaargeld ?? 0, 3)}</td></tr>
-            <tr><td>Box 3 forfait overig</td><td>{pct(box3.forfaitair_overig ?? 0, 3)}</td></tr>
-            <tr><td>Box 3 gewogen forfait</td><td>{pct(box3.gewogen_forfait ?? 0, 3)}</td></tr>
-            <tr><td>Box 3 tarief</td><td>{pct(box3.tarief ?? 0, 3)}</td></tr>
-            <tr><td>Box 3 spaargeldfractie</td><td>{pct(box3.spaargeld_fractie ?? 0, 3)}</td></tr>
+            <tr><td>Vermogen begin jaar</td><td>{euro(detail.saldo_begin_jaar)}</td></tr>
+            <tr><td>Af: vrijstelling</td><td>{euro(-number(detail.box3_vrijstelling))}</td></tr>
+            <tr><td><strong>Belastbaar vermogen</strong></td><td><strong>{euro(detail.box3_belastbaar)}</strong></td></tr>
+            <tr><td>Verdeling</td><td>{percentage(detail.box3_spaargeld_fractie, 1)} spaargeld / {percentage(1 - number(detail.box3_spaargeld_fractie), 1)} overig</td></tr>
+            <tr><td>Forfaitair rendement</td><td>{euro(detail.box3_fictief_rendement)}</td></tr>
+            <tr><td>Box 3-tarief</td><td>{percentage(detail.box3_tarief)}</td></tr>
+            <tr><td><strong>Box 3-heffing</strong></td><td><strong>{euro(detail.box3_heffing)}</strong></td></tr>
           </tbody>
         </table>
       </div>
+      {detail.box3_info ? <DetailNotice>{detail.box3_info}</DetailNotice> : null}
 
-      {jaarResultaat.tarieven_aanname ? <p className="notice">Tariefaanname: {jaarResultaat.tarieven_aanname}</p> : null}
-      {box3.disclaimer ? <p className="notice">Box 3: {box3.disclaimer}</p> : null}
-      {Array.isArray(months[0]?.aannames) && months[0].aannames.length > 0 ? (
-        <div className="notice">
-          <strong>Aannames</strong>
-          <ul>
-            {months[0].aannames.map((aanname) => (
-              <li key={`${jaarResultaat.jaar}-${aanname}`}>{aanname}</li>
-            ))}
-          </ul>
+      <details>
+        <summary>Gebruikte tarieven en aannames</summary>
+        <div className="table-wrap">
+          <table>
+            <tbody>
+              <tr><td>Controlejaar</td><td>{jaarResultaat.jaar}</td></tr>
+              <tr><td>Gebruikt belastingjaar</td><td>{jaarResultaat.tarieven_jaar || jaarResultaat.jaar}</td></tr>
+              <tr><td>Premiegrens</td><td>{euro(tarieven.persoon1?.premies_config?.premiegrens)}</td></tr>
+              <tr><td>Box 3-forfait spaargeld</td><td>{percentage(detail.box3_forfait_spaargeld)}</td></tr>
+              <tr><td>Box 3-forfait overig</td><td>{percentage(detail.box3_forfait_overig)}</td></tr>
+            </tbody>
+          </table>
         </div>
-      ) : null}
-
+      </details>
     </div>
   );
 }
 
-function SectionHeaderBlock({ jaar, tarievenJaar, tarievenAanname, netto, eindVermogen, effectiefTarief, euro }) {
-  const gebruiktTariefjaar = Number(tarievenJaar || jaar);
-  const controlejaar = Number(jaar);
-  const isFallbackTarief = Number.isFinite(gebruiktTariefjaar) && Number.isFinite(controlejaar) && gebruiktTariefjaar !== controlejaar;
-
-  return (
-    <>
-      <div className="section-header">
-        <h3>{`Controlejaar ${jaar}`}</h3>
-        <p>
-          {`Belastingjaar gebruikt: ${tarievenJaar || jaar}`}
-          {isFallbackTarief ? " (fallback op laatstbekend jaar)" : ""}
-          {tarievenAanname ? ` · ${tarievenAanname}` : ""}
-        </p>
-      </div>
-      <div className="kpis">
-        <div className="kpi"><span>Netto jaar</span><strong>{euro(netto)}</strong></div>
-        <div className="kpi"><span>Eindvermogen</span><strong>{euro(eindVermogen)}</strong></div>
-        <div className="kpi"><span>Effectieve belastingdruk</span><strong>{effectiefTarief.toFixed(2)}%</strong></div>
-      </div>
-    </>
-  );
-}
-
-export default function AccountantSection({ SectionHeader, resultaat, euro, posts }) {
+export default function AccountantSection({ SectionHeader, resultaat, euro }) {
   const jaren = Array.isArray(resultaat?.cashflow?.jaren) ? resultaat.cashflow.jaren : [];
-  const [expandedYears, setExpandedYears] = useState({});
-
-  const toggleYear = (jaar) => {
-    setExpandedYears((prev) => ({
-      ...prev,
-      [jaar]: !prev[jaar],
-    }));
-  };
+  const [expandedYears, setExpandedYears] = useState(() => (jaren[0] ? { [jaren[0].jaar]: true } : {}));
 
   return (
     <section className="section">
       <SectionHeader
-        title="Accountant"
-        description="Controle-overzicht met herleidbare jaartotalen, grondslagen, tarieven en tussentotalen per belastingjaar."
+        title="Toelichting berekening"
+        description="Van bruto inkomen naar belasting, netto inkomen en vermogen. Alle bedragen komen rechtstreeks uit de rekenengine."
       />
-      {jaren.length === 0 ? (
-        <p>Voer eerst een berekening uit om de accountantscontrole te tonen.</p>
-      ) : (
-        jaren.map((jaarResultaat) => {
-          const jaar = jaarResultaat.jaar;
-          const isExpanded = Boolean(expandedYears[jaar]);
-
-          return (
-            <article className="section" key={jaar}>
-              <div className="household-controls">
-                <p className="notice">{`Controlejaar ${jaar}`}</p>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => toggleYear(jaar)}
-                >
-                  {isExpanded ? "Inklappen" : "Uitklappen"}
-                </button>
-              </div>
-              {isExpanded ? (
-                <AccountantYear jaarResultaat={jaarResultaat} euro={euro} posts={posts} />
-              ) : (
-                <p className="notice">Jaar is ingeklapt. Klik op Uitklappen voor detail.</p>
-              )}
-            </article>
-          );
-        })
-      )}
+      {jaren.length === 0 ? <p>Voer eerst een berekening uit om de toelichting te tonen.</p> : jaren.map((jaarResultaat) => {
+        const expanded = Boolean(expandedYears[jaarResultaat.jaar]);
+        const detail = jaarResultaat.accountant_detail || {};
+        return (
+          <article className="section" key={jaarResultaat.jaar}>
+            <div className="household-controls">
+              <p className="notice">
+                <strong>{jaarResultaat.jaar}</strong> · box 1 {euro(number(detail.netto_bel_p1) + number(detail.netto_bel_p2))} · netto {euro(detail.totaal_netto_inkomen)} · box 3 {euro(detail.box3_heffing)}
+              </p>
+              <button type="button" className="ghost" onClick={() => setExpandedYears((current) => ({ ...current, [jaarResultaat.jaar]: !expanded }))}>
+                {expanded ? "Inklappen" : "Uitklappen"}
+              </button>
+            </div>
+            {expanded ? <AccountantYear jaarResultaat={jaarResultaat} euro={euro} /> : null}
+          </article>
+        );
+      })}
     </section>
   );
 }

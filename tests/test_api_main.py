@@ -118,6 +118,7 @@ def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
     assert "accountant_detail" in eerste_jaar
     assert "netto" in eerste_jaar["jaar_samenvatting"]
     assert "box3_heffing" in eerste_jaar["accountant_detail"]
+    assert "box3_fictief_rendement" in eerste_jaar["accountant_detail"]
     eerste_maand = data["cashflow"]["jaren"][0]["maanden"][0]
     assert eerste_maand["gebruikte_tarieven"]["persoon1"]["schijven"]["box1_niet_aow"]
     assert "box3" in eerste_maand["gebruikte_tarieven"]
