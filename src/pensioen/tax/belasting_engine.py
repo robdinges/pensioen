@@ -33,6 +33,29 @@ def rond_af(bedrag: Decimal) -> Decimal:
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def begrens_verrekenbare_heffingskorting(
+    berekende_heffingskorting: Decimal,
+    verschuldigde_ib_en_premies: Decimal,
+) -> tuple[Decimal, Decimal]:
+    """
+    Splits de berekende heffingskorting in een verrekend en niet-verrekend deel.
+
+    Functioneel contract:
+    - source of truth voor de stap Heffingskortingen -> Netto inkomen;
+    - verrekening is begrensd op de verschuldigde inkomstenbelasting en premies;
+    - negatieve invoer wordt voor de begrenzing als nul behandeld;
+    - de bedragen worden op eurocenten afgerond.
+
+    Uitbetaling van algemene heffingskorting aan een minstverdienende fiscale
+    partner is een afzonderlijke huishoudregel en valt buiten deze functie.
+    """
+    korting = max(Decimal("0"), rond_af(berekende_heffingskorting))
+    verschuldigd = max(Decimal("0"), rond_af(verschuldigde_ib_en_premies))
+    verrekend = min(korting, verschuldigd)
+    niet_verrekend = korting - verrekend
+    return verrekend, niet_verrekend
+
+
 @dataclass
 class BelastingResultaat:
     """Uitgebreid resultaat van een belastingberekening inclusief transparantie."""
@@ -234,7 +257,11 @@ def netto_uit_bruto(
     )
 
     # Netto belasting (nooit negatief — kortingen kunnen belasting niet overstijgen)
-    netto_verschuldigd = max(Decimal("0"), totaal_belasting_en_premies - totale_korting)
+    verrekende_korting, _ = begrens_verrekenbare_heffingskorting(
+        totale_korting,
+        totaal_belasting_en_premies,
+    )
+    netto_verschuldigd = totaal_belasting_en_premies - verrekende_korting
     netto = rond_af(bruto - netto_verschuldigd)
 
     effectief_tarief = (

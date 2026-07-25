@@ -66,7 +66,7 @@
       "WOZ 800.000 euro, hypotheek 800.000 euro, rente 24.000 euro",
       "Vermogen 200.000 sparen en 300.000 beleggen"
     ],
-    "opmerkingen": "Totaal heffingskortingen bestaat uit AHK, ouderenkorting en alleenstaandeouderenkorting.",
+    "opmerkingen": "Totaal heffingskortingen bestaat uit AHK, ouderenkorting en alleenstaandeouderenkorting. Verrekening is maximaal de verschuldigde IB plus premies; uitbetaling van AHK aan een minstverdienende fiscale partner is in deze alleenstaandencasus niet van toepassing.",
     "data_kwaliteit": "volledig",
     "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
     "_incomplete": false

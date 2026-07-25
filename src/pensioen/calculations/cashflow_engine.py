@@ -121,6 +121,18 @@ def _bouw_accountant_tarieven_payload(
         + (Decimal("1") - spaargeld_fractie_box3) * belasting_config.box3.forfaitair_overig
     )
     fictief_rendement = belastbaar_vermogen * gewogen_forfait
+    verrekende_hk_p1, niet_verrekende_hk_p1 = (
+        belasting_engine.begrens_verrekenbare_heffingskorting(
+            jaar_heffingskorting_p1,
+            jaar_belasting_p1,
+        )
+    )
+    verrekende_hk_p2, niet_verrekende_hk_p2 = (
+        belasting_engine.begrens_verrekenbare_heffingskorting(
+            jaar_heffingskorting_p2,
+            jaar_belasting_p2,
+        )
+    )
 
     return {
         "belastingjaar": belasting_config.jaar,
@@ -220,10 +232,10 @@ def _bouw_accountant_tarieven_payload(
             ),
             "totale_hk_p1": _naar_float(jaar_heffingskorting_p1),
             "totale_hk_p2": _naar_float(jaar_heffingskorting_p2),
-            "verrekende_hk_p1": _naar_float(min(jaar_heffingskorting_p1, jaar_belasting_p1)),
-            "verrekende_hk_p2": _naar_float(min(jaar_heffingskorting_p2, jaar_belasting_p2)),
-            "niet_verrekende_hk_p1": _naar_float(max(Decimal("0"), jaar_heffingskorting_p1 - jaar_belasting_p1)),
-            "niet_verrekende_hk_p2": _naar_float(max(Decimal("0"), jaar_heffingskorting_p2 - jaar_belasting_p2)),
+            "verrekende_hk_p1": _naar_float(verrekende_hk_p1),
+            "verrekende_hk_p2": _naar_float(verrekende_hk_p2),
+            "niet_verrekende_hk_p1": _naar_float(niet_verrekende_hk_p1),
+            "niet_verrekende_hk_p2": _naar_float(niet_verrekende_hk_p2),
             "totaal_ib_en_premies_p1": _naar_float(jaar_belasting_p1),
             "totaal_ib_en_premies_p2": _naar_float(jaar_belasting_p2),
             "netto_bel_p1": _naar_float(max(Decimal("0"), jaar_belasting_p1 - jaar_heffingskorting_p1)),
@@ -830,5 +842,4 @@ def bereken_huishouden(
     cashflow.aannames = sorted(alle_aannames)
 
     return cashflow
-
 

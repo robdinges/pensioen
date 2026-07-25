@@ -324,7 +324,7 @@ Titel:
 
 Status:
 
-`OPEN - nog fiscaal te controleren`
+`AFGEROND - fiscaal gevalideerd voor de ondersteunde individuele verrekening`
 
 Huidige implementatie:
 
@@ -341,6 +341,31 @@ Open controlevraag:
 - zijn er uitzonderingen, overdrachtsregels of uitbetalingsregels die per
   belastingjaar of huishoudsituatie afzonderlijk gemodelleerd moeten worden?
 
+Validatie-uitkomst:
+
+- voor 2025 en 2026 worden AHK, arbeidskorting, ouderenkorting en
+  alleenstaandeouderenkorting verrekend met de verschuldigde inkomstenbelasting
+  en premies volksverzekeringen; het individuele saldo wordt niet negatief
+- niet-benutte arbeidskorting wordt vanaf 2023 niet meer uitbetaald
+- niet-benutte ouderenkorting en alleenstaandeouderenkorting kennen binnen de
+  ondersteunde individuele berekening geen afzonderlijke uitbetalingsregel
+- uitzondering: niet-benutte algemene heffingskorting kan in 2025 en 2026 onder
+  voorwaarden worden uitbetaald aan een minstverdienende fiscale partner die
+  vóór 1963 is geboren; deze huishoudelijke partneroverdracht wordt nog niet
+  gemodelleerd en blijft expliciete migratieschuld
+- de centrale begrenzing staat in
+  `belasting_engine.begrens_verrekenbare_heffingskorting()` en wordt door
+  hoofdengine en accountantdetail gebruikt
+
+Gezaghebbende bronnen:
+
+- Belastingdienst, Fiscale informatie 2025, hoofdstuk 21:
+  `https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/heffingskortingen`
+- Belastingdienst, Fiscale informatie 2026, hoofdstuk 21:
+  `https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/heffingskortingen`
+- Belastingdienst, Heffingskortingen laten uitbetalen:
+  `https://www.belastingdienst.nl/wps/wcm/connect/nl/aftrek-en-kortingen/content/heffingskortingen-laten-uitbetalen`
+
 Betrokken bestanden:
 
 - `src/pensioen/tax/belasting_engine.py`
@@ -356,8 +381,9 @@ Acceptatiecriteria:
 - directe tests dekken minimaal: korting lager dan, gelijk aan en hoger dan de
   verschuldigde IB plus premies
 - accountantdetail toont berekend, daadwerkelijk verrekend en niet-benut bedrag
-- de melding `nog te controleren` wordt pas verwijderd nadat bovenstaande
-  acceptatiecriteria zijn behaald
+- de uitzondering voor partneruitbetaling is als niet-ondersteunde
+  huishoudregel vastgelegd en mag niet stilzwijgend als individueel
+  verrekeningssaldo worden behandeld
 
 ## Afhankelijkheden tussen issues
 

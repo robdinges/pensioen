@@ -11,6 +11,7 @@ import pytest
 
 from pensioen.tax.belasting_engine import (
     BelastingResultaat,
+    begrens_verrekenbare_heffingskorting,
     bereken_box1_belasting,
     bereken_box3_heffing,
     netto_uit_bruto,
@@ -210,6 +211,40 @@ class TestNettoUitBruto:
         )
         assert "belastingjaar" in resultaat.gebruikte_tarieven
         assert "ahk" in resultaat.gebruikte_tarieven
+
+
+class TestBegrensVerrekenbareHeffingskorting:
+    """Directe contracttests voor verrekening met verschuldigde IB en premies."""
+
+    @pytest.mark.parametrize(
+        ("korting", "verschuldigd", "verwacht_verrekend", "verwacht_niet_verrekend"),
+        [
+            (Decimal("750.00"), Decimal("1000.00"), Decimal("750.00"), Decimal("0.00")),
+            (Decimal("1000.00"), Decimal("1000.00"), Decimal("1000.00"), Decimal("0.00")),
+            (Decimal("1250.00"), Decimal("1000.00"), Decimal("1000.00"), Decimal("250.00")),
+        ],
+        ids=["lager", "gelijk", "hoger"],
+    )
+    def test_begrenst_op_verschuldigde_ib_en_premies(
+        self,
+        korting: Decimal,
+        verschuldigd: Decimal,
+        verwacht_verrekend: Decimal,
+        verwacht_niet_verrekend: Decimal,
+    ) -> None:
+        verrekend, niet_verrekend = begrens_verrekenbare_heffingskorting(
+            korting,
+            verschuldigd,
+        )
+
+        assert verrekend == verwacht_verrekend
+        assert niet_verrekend == verwacht_niet_verrekend
+
+    def test_negatieve_invoer_wordt_als_nul_behandeld(self) -> None:
+        assert begrens_verrekenbare_heffingskorting(
+            Decimal("-1"),
+            Decimal("-1"),
+        ) == (Decimal("0.00"), Decimal("0.00"))
 
 
 class TestHeffingskortingen:
