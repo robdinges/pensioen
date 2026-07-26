@@ -633,6 +633,8 @@ Accountantdetail:
 - gebruikt `JaarResultaat.accountant_detail` als centrale resultaatdetailbron
 - wordt puur samengesteld in `detail_output_engine.py`
 - wordt hergebruikt door accountant, Excel, API en testcase-validatie
+- React en API-client reconstrueren geen fiscale jaartotalen uit maanden
+- API-outputcontract versie `1.0` benoemt de toegestane consumptiebronnen
 
 Source of truth:
 

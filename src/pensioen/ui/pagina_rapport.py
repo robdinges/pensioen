@@ -39,6 +39,7 @@ def toon_rapport_pagina() -> None:
         """
         - **Jaaroverzicht**: alle jaren met inkomsten, belasting en vermogen
         - **Maanddetail**: uitgesplitst per kalendermaand
+        - **Accountantdetail**: centrale fiscale detailoutput van de engine
         - **Aannames**: gebruikte tarieven en disclaimers
         - **Vergelijking** *(alleen bij meerdere scenario's)*: scenariovergelijking
         """

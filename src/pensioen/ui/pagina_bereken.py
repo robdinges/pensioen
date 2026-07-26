@@ -6,11 +6,10 @@ from datetime import date
 
 import streamlit as st
 
-from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
-from pensioen.tax.belasting_loader import laad_tarieven_bereik, resolve_tariefwaarden_voor_jaar
 from pensioen.ui.sessie_persistentie import sla_sessie_op
 
 
@@ -56,7 +55,6 @@ def toon_bereken_pagina() -> None:
     if st.button("▶ Berekening uitvoeren", type="primary", key="bereken_btn", use_container_width=True):
         with st.spinner("Bezig met berekenen..."):
             try:
-                configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
                 _voer_berekening_uit(
                     persoon1,
                     persoon2,
@@ -66,7 +64,6 @@ def toon_bereken_pagina() -> None:
                     scenario_lijst,
                     int(jaar_van),
                     int(jaar_tot),
-                    configs,
                 )
                 st.success("✅ Berekening voltooid. Ga naar Resultaten om de grafiek en tabel te zien.")
                 set_huidge_stap(Stap.RESULTATEN, validatie_ok=True)
@@ -104,18 +101,9 @@ def _voer_berekening_uit(
     scenario_lijst,
     jaar_van,
     jaar_tot,
-    configs,
 ):
     """Bereken en sla op in session_state."""
-    configs_override = {
-        y: (
-            resolve_tariefwaarden_voor_jaar(cfg, y, actief_scenario.tarief_periodes)[0],
-            melding,
-        )
-        for y, (cfg, melding) in configs.items()
-    }
-
-    cashflow = bereken_huishouden(
+    cashflow = bereken_resultaten(
         scenario=actief_scenario,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -123,7 +111,7 @@ def _voer_berekening_uit(
         records2=records2,
         jaar_van=jaar_van,
         jaar_tot=jaar_tot,
-        belasting_configs=configs_override,
+        scenario_lijst=scenario_lijst,
     )
     st.session_state["cashflow_hoofd"] = cashflow
 

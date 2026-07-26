@@ -4,7 +4,8 @@ import AppShell from "./components/layout/AppShell";
 import ComponentsSection from "./components/ComponentsSection";
 import ContextTopBar from "./components/layout/ContextTopBar";
 import {
-  aggregateYearRows,
+  selectYearRows,
+  validateCalculationResponse,
   buildRequestPayload,
   buildInputSignature,
   createEmptyValues,
@@ -611,7 +612,7 @@ function AppContent() {
     vermogen: vermogenPosts.map((post) => ({ id: post.id, type: post.type, titel: post.titel, ...post.values })),
   };
 
-  const jaarRows = useMemo(() => aggregateYearRows(resultaat?.cashflow), [resultaat]);
+  const jaarRows = useMemo(() => selectYearRows(resultaat?.cashflow), [resultaat]);
   const calculationInputSignature = useMemo(
     () =>
       buildInputSignature(
@@ -960,8 +961,8 @@ function AppContent() {
         return;
       }
 
-      setResultaat(data);
-  setInputSignatureAtCalculation(requestSignature);
+      setResultaat(validateCalculationResponse(data));
+      setInputSignatureAtCalculation(requestSignature);
       actions.markFresh();
       actions.setActiveStep("resultaten");
     } catch (err) {

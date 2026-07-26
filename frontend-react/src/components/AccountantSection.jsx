@@ -51,7 +51,7 @@ function AccountantYear({ jaarResultaat, euro }) {
   const detail = jaarResultaat?.accountant_detail || {};
   const months = Array.isArray(jaarResultaat?.maanden) ? jaarResultaat.maanden : [];
   const tarieven = months[0]?.gebruikte_tarieven || {};
-  const hasPartner = Boolean(tarieven.persoon2);
+  const hasPartner = Boolean(detail.heeft_partner);
   const eigenWoningP1 = detail.ew_p1 || {};
   const eigenWoningP2 = detail.ew_p2 || {};
   const heeftEigenWoning = Boolean(detail.ew_invoer_gevonden)
@@ -115,7 +115,7 @@ function AccountantYear({ jaarResultaat, euro }) {
       {jaarResultaat.tarieven_aanname ? <DetailNotice>{jaarResultaat.tarieven_aanname}</DetailNotice> : null}
 
       <div className="kpis">
-        <div className="kpi"><span>Box 1 verschuldigd</span><strong>{euro(number(detail.netto_bel_p1) + number(detail.netto_bel_p2))}</strong></div>
+        <div className="kpi"><span>Box 1 verschuldigd</span><strong>{euro(detail.totaal_netto_belasting_box1)}</strong></div>
         <div className="kpi"><span>Netto inkomen</span><strong>{euro(detail.totaal_netto_inkomen)}</strong></div>
         <div className="kpi"><span>Box 3-heffing</span><strong>{euro(detail.box3_heffing)}</strong></div>
         <div className="kpi"><span>Vermogen einde jaar</span><strong>{euro(detail.saldo_einde_jaar)}</strong></div>
@@ -203,7 +203,7 @@ export default function AccountantSection({ SectionHeader, resultaat, euro }) {
           <article className="section" key={jaarResultaat.jaar}>
             <div className="household-controls">
               <p className="notice">
-                <strong>{jaarResultaat.jaar}</strong> · box 1 {euro(number(detail.netto_bel_p1) + number(detail.netto_bel_p2))} · netto {euro(detail.totaal_netto_inkomen)} · box 3 {euro(detail.box3_heffing)}
+                <strong>{jaarResultaat.jaar}</strong> · box 1 {euro(detail.totaal_netto_belasting_box1)} · netto {euro(detail.totaal_netto_inkomen)} · box 3 {euro(detail.box3_heffing)}
               </p>
               <button type="button" className="ghost" onClick={() => setExpandedYears((current) => ({ ...current, [jaarResultaat.jaar]: !expanded }))}>
                 {expanded ? "Inklappen" : "Uitklappen"}

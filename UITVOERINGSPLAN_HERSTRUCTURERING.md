@@ -233,6 +233,11 @@ Maak van de accountantlogica een afnemer van de engine in plaats van een tweede 
 
 ## Epic 5 — UI/API ontkoppeling en presentatiemigratie
 
+Status 2026-07-26: **geïmplementeerd; handmatige UI-validatie open**.
+Streamlit, React en API-client consumeren centrale `jaar_samenvatting`- en
+`accountant_detail`-output. Gedeelde voorbereiding staat in
+`resultaat_service.py`; de API publiceert outputcontract versie `1.0`.
+
 ### Doel Epic 5
 
 Laat UI- en API-lagen uitsluitend nog consumeren.

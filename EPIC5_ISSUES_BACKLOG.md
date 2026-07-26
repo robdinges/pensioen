@@ -22,6 +22,32 @@ post_date: "2026-07-12"
 
 Deze backlog vertaalt Epic 5 naar kleine, uitvoerbare issues.
 
+## Implementatiestatus 2026-07-26
+
+Status: **issues 1-14 geïmplementeerd; functionele UI-validatie open**.
+
+Consumptiecontract:
+
+| Pad | Toegestane bron | Presentatie-afleiding |
+| --- | --- | --- |
+| Streamlit resultaten | `JaarResultaat.jaar_samenvatting` en expliciete enginevelden | formattering, grafiekvorm en koopkrachtlabel |
+| Streamlit accountant | `JaarResultaat.accountant_detail` | formattering en zichtbaarheid van nulregels |
+| Streamlit/Excel rapport | `HuishoudCashflow`, `jaar_samenvatting`, `accountant_detail` | werkblad- en kolomopmaak |
+| React resultaten | `cashflow.jaren[].jaar_samenvatting` | formattering en niet-fiscale KPI-statistiek |
+| React accountant | `cashflow.jaren[].accountant_detail` | formattering en tabelgroepering |
+| `app_api_client.py` | `cashflow.jaren[].jaar_samenvatting` | DataFrame- en grafiekopmaak |
+
+Technische borging:
+
+- API-response bevat outputcontract versie `1.0`.
+- React en de API-client accepteren geen ontbrekende centrale jaarsamenvatting.
+- De maand-naar-jaar fiscale fallbacks zijn verwijderd.
+- `resultaat_service.py` is de gedeelde voorbereidingslaag voor Streamlit en API.
+- Tariefconfiguratie en tariefbronnen worden centraal eenmaal voorbereid.
+- Presentatiecontract- en enginegelijkheidstests bewaken regressie.
+- De bestaande IB-2025-validatiestatus blijft afzonderlijk zichtbaar en wordt
+  niet in deze presentatiemigratie gerebaselined.
+
 Epic 5 draait om één hoofdvraag:
 
 ```text

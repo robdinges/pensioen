@@ -9,11 +9,14 @@ import streamlit as st
 
 from pensioen.calculations.cashflow_engine import (
     bereken_accountant_jaar_detail,
-    bereken_huishouden,
 )
 from pensioen.calculations.detail_output_engine import bouw_accountant_detail
+from pensioen.calculations.resultaat_service import (
+    bereken_resultaten,
+    bouw_resultaat_voorbereiding,
+)
 from pensioen.models.component import is_handmatige_aow_component
-from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
+from pensioen.tax.belasting_loader import BelastingConfig
 from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
@@ -518,19 +521,13 @@ def toon_accountant_pagina() -> None:
         return
 
     st.caption("Overzicht wordt automatisch herberekend bij wijzigingen in personen of scenario.")
-    configs: dict[int, tuple[BelastingConfig, str]] = {}
-    bronnen_per_jaar: dict[int, dict[str, str]] = {}
-    for jaar in range(int(jaar_van), int(jaar_tot) + 1):
-        config_basis, aanname = laad_tarieven(jaar)
-        config, tarief_bronnen = resolve_tariefwaarden_voor_jaar(
-            config_basis,
-            jaar,
-            scenario.tarief_periodes,
-        )
-        configs[jaar] = (config, aanname)
-        bronnen_per_jaar[jaar] = tarief_bronnen
+    voorbereiding = bouw_resultaat_voorbereiding(
+        scenario,
+        int(jaar_van),
+        int(jaar_tot),
+    )
 
-    cashflow = bereken_huishouden(
+    cashflow = bereken_resultaten(
         scenario=scenario,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -538,16 +535,17 @@ def toon_accountant_pagina() -> None:
         records2=records2,
         jaar_van=int(jaar_van),
         jaar_tot=int(jaar_tot),
-        belasting_configs=configs,
+        scenario_lijst=scenario_lijst,
+        voorbereiding=voorbereiding,
     )
 
     for jr in cashflow.jaren:
         jaar = jr.jaar
-        config, aanname = configs[jaar]
+        config, aanname = voorbereiding.configs[jaar]
         d = bouw_accountant_detail(
             jr,
             aanname=aanname,
-            tarief_bronnen=bronnen_per_jaar[jaar],
+            tarief_bronnen=voorbereiding.tarief_bronnen[jaar],
             records_aangeleverd=len(records1) + len(records2),
         )
         d["aow_waarschuwingen"] = _handmatige_aow_componenten(scenario, jaar)

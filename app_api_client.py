@@ -224,41 +224,11 @@ def _format_euro(waarde: Decimal) -> str:
     return f"EUR {float(waarde):,.2f}"
 
 
-def _bereken_maand_netto(maand: dict) -> Decimal:
-    totaal_bruto = (
-        _naar_decimal(maand.get("arbeid_p1_bruto"))
-        + _naar_decimal(maand.get("arbeid_p2_bruto"))
-        + _naar_decimal(maand.get("aow_p1_bruto"))
-        + _naar_decimal(maand.get("aow_p2_bruto"))
-        + _naar_decimal(maand.get("pensioen_p1_bruto"))
-        + _naar_decimal(maand.get("pensioen_p2_bruto"))
-        + _naar_decimal(maand.get("lijfrente_bruto"))
-        + _naar_decimal(maand.get("rente_bruto"))
-        + _naar_decimal(maand.get("overig_bruto"))
-    )
-    totaal_belasting = (
-        _naar_decimal(maand.get("belasting_p1"))
-        + _naar_decimal(maand.get("belasting_p2"))
-        + _naar_decimal(maand.get("box3_heffing"))
-    )
-    totaal_heffingskorting = (
-        _naar_decimal(maand.get("heffingskorting_p1"))
-        + _naar_decimal(maand.get("heffingskorting_p2"))
-    )
-
-    return (
-        totaal_bruto
-        + _naar_decimal(maand.get("inkomen_componenten_netto"))
-        - totaal_belasting
-        + totaal_heffingskorting
-        - _naar_decimal(maand.get("inhoudingen"))
-        - _naar_decimal(maand.get("huishoudelijke_uitgaven"))
-        + _naar_decimal(maand.get("eenmalig_ontvangst"))
-        - _naar_decimal(maand.get("eenmalig_uitgave"))
-    )
-
-
 def _bouw_jaar_dataframe(resultaat: dict) -> pd.DataFrame:
+    contract = resultaat.get("output_contract", {})
+    if contract.get("versie") != "1.0":
+        raise ValueError("Onbekend of ontbrekend API-outputcontract")
+
     jaren = resultaat.get("cashflow", {}).get("jaren", [])
     if not isinstance(jaren, list) or not jaren:
         return pd.DataFrame()
@@ -267,64 +237,15 @@ def _bouw_jaar_dataframe(resultaat: dict) -> pd.DataFrame:
     for jaar_data in jaren:
         jaar = int(jaar_data.get("jaar", 0))
         samenvatting = jaar_data.get("jaar_samenvatting")
-        if isinstance(samenvatting, dict) and samenvatting:
-            bruto_jaar = _naar_decimal(samenvatting.get("bruto"))
-            belasting_jaar = _naar_decimal(samenvatting.get("belasting"))
-            netto_jaar = _naar_decimal(samenvatting.get("netto"))
-            netto_per_maand = _naar_decimal(samenvatting.get("netto_per_maand"))
-            vermogen_einde_jaar = _naar_decimal(samenvatting.get("vermogen_einde_jaar"))
-            rijen.append(
-                {
-                    "jaar": jaar,
-                    "bruto_jaar": float(bruto_jaar),
-                    "belasting_jaar": float(belasting_jaar),
-                    "netto_jaar": float(netto_jaar),
-                    "netto_per_maand": float(netto_per_maand),
-                    "vermogen_einde_jaar": float(vermogen_einde_jaar),
-                    "bruto_jaar_fmt": _format_euro(bruto_jaar),
-                    "belasting_jaar_fmt": _format_euro(belasting_jaar),
-                    "netto_jaar_fmt": _format_euro(netto_jaar),
-                    "netto_per_maand_fmt": _format_euro(netto_per_maand),
-                    "vermogen_einde_jaar_fmt": _format_euro(vermogen_einde_jaar),
-                }
+        if not isinstance(samenvatting, dict) or not samenvatting:
+            raise ValueError(
+                f"API-outputcontract geschonden: jaar_samenvatting ontbreekt voor {jaar}"
             )
-            continue
-
-        maanden = jaar_data.get("maanden", [])
-        if not isinstance(maanden, list):
-            maanden = []
-
-        netto_jaar = sum((_bereken_maand_netto(m) for m in maanden), Decimal("0"))
-        bruto_jaar = sum(
-            (
-                _naar_decimal(m.get("arbeid_p1_bruto"))
-                + _naar_decimal(m.get("arbeid_p2_bruto"))
-                + _naar_decimal(m.get("aow_p1_bruto"))
-                + _naar_decimal(m.get("aow_p2_bruto"))
-                + _naar_decimal(m.get("pensioen_p1_bruto"))
-                + _naar_decimal(m.get("pensioen_p2_bruto"))
-                + _naar_decimal(m.get("lijfrente_bruto"))
-                + _naar_decimal(m.get("rente_bruto"))
-                + _naar_decimal(m.get("overig_bruto"))
-            )
-            for m in maanden
-        )
-        belasting_jaar = sum(
-            (
-                _naar_decimal(m.get("belasting_p1"))
-                + _naar_decimal(m.get("belasting_p2"))
-                + _naar_decimal(m.get("box3_heffing"))
-            )
-            for m in maanden
-        )
-
-        vermogen_einde_jaar = Decimal("0")
-        if maanden:
-            laatste_maand = maanden[-1]
-            if isinstance(laatste_maand, dict):
-                vermogen_einde_jaar = _naar_decimal(laatste_maand.get("vermogen_einde_maand"))
-
-        netto_per_maand = netto_jaar / Decimal(str(len(maanden))) if maanden else Decimal("0")
+        bruto_jaar = _naar_decimal(samenvatting.get("bruto"))
+        belasting_jaar = _naar_decimal(samenvatting.get("belasting"))
+        netto_jaar = _naar_decimal(samenvatting.get("netto"))
+        netto_per_maand = _naar_decimal(samenvatting.get("netto_per_maand"))
+        vermogen_einde_jaar = _naar_decimal(samenvatting.get("vermogen_einde_jaar"))
 
         rijen.append(
             {

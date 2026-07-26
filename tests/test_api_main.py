@@ -111,6 +111,12 @@ def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
     assert response.status_code == 200
     data = response.json()
     assert "cashflow" in data
+    assert data["output_contract"] == {
+        "versie": "1.0",
+        "jaarresultaten": "cashflow.jaren[].jaar_samenvatting",
+        "accountant": "cashflow.jaren[].accountant_detail",
+        "maandresultaten": "cashflow.jaren[].maanden[]",
+    }
     assert data["cashflow"]["scenario_naam"] == scenario_standaard.naam
     assert len(data["cashflow"]["jaren"]) == 3
     eerste_jaar = data["cashflow"]["jaren"][0]
@@ -119,6 +125,8 @@ def test_berekeningen_endpoint_happy_path(persoon1, scenario_standaard) -> None:
     assert "netto" in eerste_jaar["jaar_samenvatting"]
     assert "box3_heffing" in eerste_jaar["accountant_detail"]
     assert "box3_fictief_rendement" in eerste_jaar["accountant_detail"]
+    assert "totaal_netto_belasting_box1" in eerste_jaar["accountant_detail"]
+    assert "heeft_partner" in eerste_jaar["accountant_detail"]
     eerste_maand = data["cashflow"]["jaren"][0]["maanden"][0]
     assert eerste_maand["gebruikte_tarieven"]["persoon1"]["schijven"]["box1_niet_aow"]
     assert "box3" in eerste_maand["gebruikte_tarieven"]

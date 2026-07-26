@@ -18,6 +18,21 @@ post_date: "2026-07-12"
 
 <!-- markdownlint-disable MD041 -->
 
+## Status 2026-07-26
+
+De implementatie is afgerond. De primaire functionele stap is `Resultaten`.
+`JaarResultaat.jaar_samenvatting` en `JaarResultaat.accountant_detail` zijn de
+formele bronnen voor alle presentatiepaden. De API publiceert contractversie
+`1.0`; React en `app_api_client.py` reconstrueren geen jaarbelasting of netto
+inkomen meer uit maandvelden.
+
+Request- en tariefvoorbereiding is gecentraliseerd in
+`calculations/resultaat_service.py`. Alleen formattering, grafiektransformatie
+en expliciet niet-fiscale vergelijkingen blijven in presentatielagen.
+
+De technische poort is groen. Handmatige gelijkheidscontrole van Streamlit en
+React blijft de gebruikersvalidatie voor afsluiting.
+
 ## Doel
 
 Dit document werkt alleen **Epic 5** uit:

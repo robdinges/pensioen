@@ -101,6 +101,7 @@ export const FIELD_META = {
 };
 
 export const DEFAULT_API_BASE = "/api/v1";
+export const OUTPUT_CONTRACT_VERSION = "1.0";
 export const DEFAULT_PERSOON_NAAM = "Jan Jansen";
 export const DEFAULT_GEBOORTEDATUM = "1963-03-15";
 
@@ -540,7 +541,7 @@ export function buildRequestPayload({
   };
 }
 
-export function aggregateYearRows(cashflow) {
+export function selectYearRows(cashflow) {
   const jaren = cashflow?.jaren;
   if (!Array.isArray(jaren)) {
     return [];
@@ -548,64 +549,32 @@ export function aggregateYearRows(cashflow) {
 
   return jaren.map((jaar) => {
     const samenvatting = jaar?.jaar_samenvatting;
-    if (samenvatting && typeof samenvatting === "object") {
-      return {
-        jaar: Number(jaar.jaar),
-        bruto: toAmount(samenvatting.bruto),
-        belasting: toAmount(samenvatting.belasting),
-        netto: toAmount(samenvatting.netto),
-        nettoPerMaand: toAmount(samenvatting.netto_per_maand),
-        vermogenEinde: toAmount(samenvatting.vermogen_einde_jaar),
-      };
+    if (!samenvatting || typeof samenvatting !== "object") {
+      throw new Error(`API-outputcontract geschonden: jaar_samenvatting ontbreekt voor ${jaar?.jaar ?? "onbekend"}`);
     }
-
-    const maanden = Array.isArray(jaar.maanden) ? jaar.maanden : [];
-    let bruto = 0;
-    let belasting = 0;
-    let netto = 0;
-
-    maanden.forEach((m) => {
-      const brutoMaand =
-        toAmount(m.arbeid_p1_bruto) +
-        toAmount(m.arbeid_p2_bruto) +
-        toAmount(m.aow_p1_bruto) +
-        toAmount(m.aow_p2_bruto) +
-        toAmount(m.pensioen_p1_bruto) +
-        toAmount(m.pensioen_p2_bruto) +
-        toAmount(m.lijfrente_bruto) +
-        toAmount(m.rente_bruto) +
-        toAmount(m.overig_bruto);
-
-      const belastingMaand =
-        toAmount(m.belasting_p1) +
-        toAmount(m.belasting_p2) +
-        toAmount(m.box3_heffing);
-
-      const kortingMaand = toAmount(m.heffingskorting_p1) + toAmount(m.heffingskorting_p2);
-      const nettoMaand =
-        brutoMaand +
-        toAmount(m.inkomen_componenten_netto) -
-        belastingMaand +
-        kortingMaand -
-        toAmount(m.inhoudingen) -
-        toAmount(m.huishoudelijke_uitgaven) +
-        toAmount(m.eenmalig_ontvangst) -
-        toAmount(m.eenmalig_uitgave);
-
-      bruto += brutoMaand;
-      belasting += belastingMaand;
-      netto += nettoMaand;
-    });
-
-    const vermogenEinde = maanden.length ? toAmount(maanden[maanden.length - 1].vermogen_einde_maand) : 0;
-
     return {
-      jaar: jaar.jaar,
-      bruto,
-      belasting,
-      netto,
-      nettoPerMaand: maanden.length ? netto / maanden.length : 0,
-      vermogenEinde,
+      jaar: Number(jaar.jaar),
+      bruto: toAmount(samenvatting.bruto),
+      belasting: toAmount(samenvatting.belasting),
+      netto: toAmount(samenvatting.netto),
+      nettoPerMaand: toAmount(samenvatting.netto_per_maand),
+      vermogenEinde: toAmount(samenvatting.vermogen_einde_jaar),
     };
   });
+}
+
+export function validateCalculationResponse(resultaat) {
+  if (resultaat?.output_contract?.versie !== OUTPUT_CONTRACT_VERSION) {
+    throw new Error("Onbekend of ontbrekend API-outputcontract.");
+  }
+  const jaren = resultaat?.cashflow?.jaren;
+  if (!Array.isArray(jaren)) {
+    throw new Error("API-outputcontract geschonden: cashflow.jaren ontbreekt.");
+  }
+  jaren.forEach((jaar) => {
+    if (!jaar?.jaar_samenvatting || !jaar?.accountant_detail) {
+      throw new Error(`API-outputcontract geschonden voor jaar ${jaar?.jaar ?? "onbekend"}.`);
+    }
+  });
+  return resultaat;
 }

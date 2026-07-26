@@ -17,6 +17,7 @@ PRIMAIRE_DETAILVELDEN = frozenset(
     {
         "jaar",
         "config_jaar",
+        "heeft_partner",
         "jaar_arbeid_p1",
         "jaar_arbeid_p2",
         "jaar_overig_p1",
@@ -45,6 +46,7 @@ AFGELEIDE_DETAILVELDEN = frozenset(
         "bruto_p1",
         "bruto_p2",
         "totaal_netto_inkomen",
+        "totaal_netto_belasting_box1",
         "jaar_netto_cashflow",
         "vermogen_rijen",
     }
@@ -221,6 +223,7 @@ def bouw_accountant_detail(
     detail = {
         "jaar": jaar_resultaat.jaar,
         "config_jaar": jaar_resultaat.tarieven_jaar,
+        "heeft_partner": bool(p2_payload),
         "aanname": aanname,
         "pensioenbron": "scenario_componenten",
         "pensioen_records_genegeerd": records_aangeleverd,
@@ -285,6 +288,10 @@ def bouw_accountant_detail(
         "niet_verrekende_hk_p2": _d(box1_payload.get("niet_verrekende_hk_p2")),
         "netto_bel_p1": _d(box1_payload.get("netto_bel_p1")),
         "netto_bel_p2": _d(box1_payload.get("netto_bel_p2")),
+        "totaal_netto_belasting_box1": (
+            _d(box1_payload.get("netto_bel_p1"))
+            + _d(box1_payload.get("netto_bel_p2"))
+        ),
         "netto_p1": _d(box1_payload.get("netto_p1")),
         "netto_p2": _d(box1_payload.get("netto_p2")),
         "totaal_netto_inkomen": _d(box1_payload.get("totaal_netto_inkomen")),

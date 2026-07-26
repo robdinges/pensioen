@@ -209,16 +209,7 @@ def _toon_uitgavengrafiek(cashflow: HuishoudCashflow) -> None:
     # Vind het geselecteerde jaar
     jr = next((j for j in cashflow.jaren if j.jaar == geselecteerd_jaar), cashflow.jaren[0])
     
-    # Bereken beginvermogen van het geselecteerde jaar
-    idx = cashflow.jaren.index(jr)
-    if idx > 0:
-        verm_begin = cashflow.jaren[idx - 1].vermogen_einde_jaar
-    else:
-        # Eerste jaar: gebruik scenario startwaarde
-        # Haal scenario op uit session state
-        scenario_lijst = st.session_state.get("scenario_lijst", [])
-        actief = get_actief_scenario(scenario_lijst)
-        verm_begin = actief.totaal_vermogen_start() if actief else Decimal("0")
+    verm_begin = Decimal(str(jr.accountant_detail.get("saldo_begin_jaar", "0")))
     
     st.caption(
         f"**Jaar {jr.jaar}** — Vermogen begin jaar: €{float(verm_begin):,.0f} | "

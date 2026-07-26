@@ -13,12 +13,11 @@ from fastapi.responses import JSONResponse, Response
 from pensioen.api.referentietabellen import codes_en_labels, input_hints
 from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest
 from pensioen.api.serialisatie import naar_json_compatibel
-from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.calculations.inheritance_engine import validate_inheritance_tree
 from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.reports.rapport_engine import genereer_rapport
-from pensioen.tax.belasting_loader import laad_tarieven_bereik, resolve_tariefwaarden_voor_jaar
 
 app = FastAPI(
     title="Pensioenplanner API",
@@ -39,15 +38,12 @@ def _valideer_inheritance(scenario_lijst: list) -> None:
         )
 
 
-def _bouw_belasting_configs(request: BerekeningRequest):
-    configs = laad_tarieven_bereik(request.jaar_van, request.jaar_tot)
-    return {
-        jaar: (
-            resolve_tariefwaarden_voor_jaar(config, jaar, request.scenario.tarief_periodes)[0],
-            melding,
-        )
-        for jaar, (config, melding) in configs.items()
-    }
+OUTPUT_CONTRACT = {
+    "versie": "1.0",
+    "jaarresultaten": "cashflow.jaren[].jaar_samenvatting",
+    "accountant": "cashflow.jaren[].accountant_detail",
+    "maandresultaten": "cashflow.jaren[].maanden[]",
+}
 
 
 @app.get("/api/v1/health")
@@ -132,7 +128,7 @@ def berekening_endpoint(request: BerekeningRequest) -> JSONResponse:
     _valideer_inheritance(scenario_lijst)
 
     try:
-        cashflow = bereken_huishouden(
+        cashflow = bereken_resultaten(
             scenario=request.scenario,
             persoon1=request.persoon1,
             persoon2=request.persoon2,
@@ -140,7 +136,6 @@ def berekening_endpoint(request: BerekeningRequest) -> JSONResponse:
             records2=request.records2,
             jaar_van=request.jaar_van,
             jaar_tot=request.jaar_tot,
-            belasting_configs=_bouw_belasting_configs(request),
             scenario_lijst=scenario_lijst,
         )
     except ValueError as exc:
@@ -153,6 +148,7 @@ def berekening_endpoint(request: BerekeningRequest) -> JSONResponse:
         {
             "cashflow": naar_json_compatibel(cashflow),
             "aannames": naar_json_compatibel(cashflow.aannames),
+            "output_contract": OUTPUT_CONTRACT,
         }
     )
 
@@ -192,7 +188,7 @@ def rapportage_excel_endpoint(request: RapportageRequest) -> Response:
     scenario_lijst = basis.scenario_lijst or [basis.scenario]
     _valideer_inheritance(scenario_lijst)
 
-    cashflow = bereken_huishouden(
+    cashflow = bereken_resultaten(
         scenario=basis.scenario,
         persoon1=basis.persoon1,
         persoon2=basis.persoon2,
@@ -200,7 +196,6 @@ def rapportage_excel_endpoint(request: RapportageRequest) -> Response:
         records2=basis.records2,
         jaar_van=basis.jaar_van,
         jaar_tot=basis.jaar_tot,
-        belasting_configs=_bouw_belasting_configs(basis),
         scenario_lijst=scenario_lijst,
     )
 

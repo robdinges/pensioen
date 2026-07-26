@@ -13,9 +13,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
-from pensioen.tax.belasting_loader import laad_tarieven_bereik, resolve_tariefwaarden_voor_jaar
 from pensioen.ui.flow_context import (
     STAP_LABELS,
     STAPPEN_VOLGORDE,
@@ -173,16 +172,7 @@ if gekozen_actief != actief_naam:
                     jaar_van = st.session_state.get("jaar_van", date.today().year)
                     jaar_tot = st.session_state.get("jaar_tot", date.today().year + 30)
                     
-                    configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
-                    configs_override = {
-                        y: (
-                            resolve_tariefwaarden_voor_jaar(cfg, y, actief.tarief_periodes)[0],
-                            melding,
-                        )
-                        for y, (cfg, melding) in configs.items()
-                    }
-                    
-                    cashflow = bereken_huishouden(
+                    cashflow = bereken_resultaten(
                         scenario=actief,
                         persoon1=persoon1,
                         persoon2=persoon2,
@@ -190,7 +180,7 @@ if gekozen_actief != actief_naam:
                         records2=[],
                         jaar_van=jaar_van,
                         jaar_tot=jaar_tot,
-                        belasting_configs=configs_override,
+                        scenario_lijst=scenario_lijst,
                     )
                     st.session_state["cashflow_hoofd"] = cashflow
                     
@@ -255,18 +245,7 @@ if st.sidebar.button("▶ Berekenen", key="sidebar_bereken_btn", type="primary",
                 
                 with st.sidebar:
                     with st.spinner("Bezig met berekenen..."):
-                        configs = laad_tarieven_bereik(int(jaar_van), int(jaar_tot))
-                        
-                        # Bereken met tariefoverrides
-                        configs_override = {
-                            y: (
-                                resolve_tariefwaarden_voor_jaar(cfg, y, actief.tarief_periodes)[0],
-                                melding,
-                            )
-                            for y, (cfg, melding) in configs.items()
-                        }
-                        
-                        cashflow = bereken_huishouden(
+                        cashflow = bereken_resultaten(
                             scenario=actief,
                             persoon1=persoon1,
                             persoon2=persoon2,
@@ -274,7 +253,7 @@ if st.sidebar.button("▶ Berekenen", key="sidebar_bereken_btn", type="primary",
                             records2=records2,
                             jaar_van=jaar_van,
                             jaar_tot=jaar_tot,
-                            belasting_configs=configs_override,
+                            scenario_lijst=scenario_lijst,
                         )
                         st.session_state["cashflow_hoofd"] = cashflow
                         
