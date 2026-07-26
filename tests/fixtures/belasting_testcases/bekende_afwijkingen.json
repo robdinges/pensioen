@@ -1,0 +1,48 @@
+{
+  "laatste_validatie": "2026-07-26",
+  "tolerantie_verschil": "0.01",
+  "afwijkingen": {
+    "tc_2025_006": {
+      "status": "WARN",
+      "verschil": "-31.29",
+      "classificatie": "tolerantieverschil",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "bevestig externe componentbron en afrondingsniveau"
+    },
+    "tc_2025_007": {
+      "status": "WARN",
+      "verschil": "-31.49",
+      "classificatie": "tolerantieverschil",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "bevestig externe componentbron en afrondingsniveau"
+    },
+    "tc_2025_008": {
+      "status": "FAIL",
+      "verschil": "-300.32",
+      "classificatie": "referentieschuld",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "valideer AOW-heffingskortingen tegen de primaire bron"
+    },
+    "tc_2025_009": {
+      "status": "FAIL",
+      "verschil": "-60.58",
+      "classificatie": "referentieschuld",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "valideer premie- en box-1-componenten per partner"
+    },
+    "tc_2025_010": {
+      "status": "FAIL",
+      "verschil": "-788.20",
+      "classificatie": "bronconflict",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "kies leidende AOW-bron voor fiscaal partnerschap"
+    },
+    "tc_2025_011": {
+      "status": "FAIL",
+      "verschil": "-1826.06",
+      "classificatie": "referentieschuld",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "valideer AOW-kortingen en premies voor twee gepensioneerden"
+    }
+  }
+}

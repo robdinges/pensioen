@@ -149,6 +149,32 @@ class TestCashflowHuishouden:
         assert _r0(hk_verrekend) == 851
         assert abs(_r0(te_betalen) - 16244) <= 1
 
+    def test_niet_verrekenbare_heffingskorting_is_geen_cashflow(
+        self,
+        persoon1: Persoon,
+        persoon2: Persoon,
+        scenario_standaard: Scenario,
+    ) -> None:
+        """Regressie E6: korting zonder belasting wordt niet uitbetaald."""
+        cashflow = bereken_huishouden(
+            scenario=scenario_standaard,
+            persoon1=persoon1,
+            persoon2=persoon2,
+            records1=[],
+            records2=[],
+            jaar_van=2026,
+            jaar_tot=2026,
+            belasting_configs=_maak_configs(2026, 2026),
+        )
+
+        jaar = cashflow.jaren[0]
+        detail = jaar.accountant_detail
+
+        assert detail["totaal_ib_en_premies_p1"] == Decimal("0")
+        assert detail["totale_hk_p1"] > Decimal("0")
+        assert detail["verrekende_hk_p1"] == Decimal("0")
+        assert sum(maand.heffingskorting_p1 for maand in jaar.maanden) == Decimal("0")
+
     def test_netto_groter_dan_nul(
         self,
         persoon1: Persoon,

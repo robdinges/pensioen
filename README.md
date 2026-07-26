@@ -117,15 +117,17 @@ Actief vervolgwerk:
 - `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
 - `EPIC7_ISSUES_BACKLOG.md`
 
-Technische nulmeting op 26 juli 2026:
+Epic 6-uitvoer op 26 juli 2026:
 
-- Python: 286 tests, waarvan 282 geslaagd en 4 gefaald; 52% line coverage
+- Python: 295 tests, waarvan 293 geslaagd en 2 geregistreerde xfails; 52% line coverage
 - IB-2025-validatie: 2 WARN en 4 FAIL
 - React-productiebouw: geslaagd
+- raw/normalized-driftcontrole: geslaagd
 
-Epic 6 moet deze regressie- en validatiestatus verklaren en borgen. Epic 7
-consolideert daarna de doelarchitectuur en vereist onder meer een expliciete
-keuze over React en Streamlit.
+De technische implementatie van Epic 6 is gereed. De twee xfails en externe
+WARN/FAIL-resultaten zijn expliciet geregistreerd en blokken geen onverwachte
+regressies. Voor de go/no-go naar Epic 7 zijn nog productbesluiten nodig over
+de leidende fiscale bron, toleranties en AOW-bron bij partners.
 
 ## Usage
 

@@ -81,12 +81,13 @@ pensioen/
 └── tests/
     ├── conftest.py                  # Gedeelde fixtures
     ├── fixtures/                    # CSV-testbestanden (mpo_partner1.csv, mpo_partner2.csv)
-    └── test_*.py                    # 286 tests verzameld op 26 juli 2026
+    └── test_*.py                    # 295 tests verzameld op 26 juli 2026
 ```
 
-Nulmeting voor Epic 6 op 26 juli 2026: 282 tests slagen, 4 tests falen en de
-totale line coverage is 52%. Gebruik actuele testuitvoer als bron; aantallen
-kunnen door vervolgwerk wijzigen.
+Epic 6-poort op 26 juli 2026: 293 tests slagen, 2 bekende externe
+API-afwijkingen zijn strikt als `xfail` geregistreerd en de totale line
+coverage is 52%. Gebruik actuele testuitvoer als bron; aantallen kunnen door
+vervolgwerk wijzigen.
 
 ## Project Conventions
 
@@ -133,6 +134,8 @@ kunnen door vervolgwerk wijzigen.
 - Voeg of wijzig eerst directe tests voor de betrokken bouwsteen voordat bredere engine- of UI-aanpassingen worden gedaan, tenzij de taak expliciet alleen analyse/documentatie is.
 - Verwijder geen legacy bron of parallel rekenpad voordat de nieuwe source of truth aantoonbaar dezelfde functionele uitkomst levert en regressietests aanwezig zijn.
 - Bij fiscale bugs moet het eindresultaat van de fix minimaal opleveren: één herleidbare oorzaak, één directe test op de betrokken bouwsteen en één regressietest op het hogere pad dat de bug zichtbaar maakte.
+- Volg voor regressies `docs/REGRESSIEPROTOCOL.md`; registreer bekende externe
+  afwijkingen expliciet en behandel ze nooit stilzwijgend als nieuwe baseline.
 
 ### Definition Of Done (Rekenwijzigingen)
 - Elke wijziging aan berekeningen bevat minimaal:

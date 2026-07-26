@@ -2,30 +2,29 @@
 
 ## Status
 
-**Open — nulmeting uitgevoerd, gereed om te starten.**
+**Technisch afgerond — product-go/no-go open.**
 
-Nulmeting 26 juli 2026: 282/286 pytest-tests groen, 52% line coverage,
-IB-2025-validatie op 2 WARN en 4 FAIL en een geslaagde React-build. De vier
-testfouten worden binnen deze Epic onderzocht; baselines worden niet
-automatisch aangepast.
+Eindpoort 26 juli 2026: 293 tests geslaagd, 2 strikt geregistreerde xfails,
+52% line coverage, geen fixturedrift en een geslaagde React-build. De externe
+IB-2025-validatie blijft bewust zichtbaar op 2 WARN en 4 FAIL.
 
 | Nr. | Issue | Resultaat | Afhankelijk |
 | --- | --- | --- | --- |
-| 1 | Inventariseer alle tests en fixtures | volledige inventarislijst | — |
-| 2 | Classificeer tests per berekenstap | primaire stap per testmodule | 1 |
-| 3 | Publiceer testmatrix | `tests/TESTMATRIX_BEREKENSTAPPEN.md` | 2 |
-| 4 | Registreer ontbrekende en dubbele dekking | geprioriteerde gaps | 3 |
-| 5 | Introduceer pytest-markers | selecteerbare testlagen | 2 |
-| 6 | Schrijf regressieprotocol | verplicht bugfixproces | 3 |
-| 7 | Borg protocol in agentinstructies | automatische uitvoeringsdiscipline | 6 |
-| 8 | Contracteer raw/normalized lifecycle | reproduceerbare fixtures | 1 |
-| 9 | Maak afwijkingenregister | eigenaar en status per mismatch | 8 |
-| 10 | Splits CI in herkenbare poorten | snelle en volledige feedback | 5, 8 |
-| 11 | Voeg normalisatie-driftcheck toe | CI faalt op niet-geregenereerde output | 8, 10 |
-| 12 | Voeg resultaat/detail-gelijkheidstests toe | geen drift tussen outputvormen | 3 |
-| 13 | Borg React/Streamlit/API-contracten | presentatiedrift wordt zichtbaar | 10, 12 |
-| 14 | Genereer validatie-index | één ingang voor bewijs en afwijkingen | 9–13 |
-| 15 | Voer volledige Epic 6-poort uit | onderbouwd go/no-go voor Epic 7 | 14 |
+| 1 | ✅ Inventariseer alle tests en fixtures | volledige inventarislijst | — |
+| 2 | ✅ Classificeer tests per berekenstap | primaire stap per testmodule | 1 |
+| 3 | ✅ Publiceer testmatrix | `tests/TESTMATRIX_BEREKENSTAPPEN.md` | 2 |
+| 4 | ✅ Registreer ontbrekende en dubbele dekking | geprioriteerde gaps | 3 |
+| 5 | ✅ Introduceer pytest-markers | selecteerbare testlagen | 2 |
+| 6 | ✅ Schrijf regressieprotocol | verplicht bugfixproces | 3 |
+| 7 | ✅ Borg protocol in agentinstructies | automatische uitvoeringsdiscipline | 6 |
+| 8 | ✅ Contracteer raw/normalized lifecycle | reproduceerbare fixtures | 1 |
+| 9 | ✅ Maak afwijkingenregister | eigenaar en status per mismatch | 8 |
+| 10 | ✅ Splits CI in herkenbare poorten | snelle en volledige feedback | 5, 8 |
+| 11 | ✅ Voeg normalisatie-driftcheck toe | CI faalt op niet-geregenereerde output | 8, 10 |
+| 12 | ✅ Voeg resultaat/detail-gelijkheidstests toe | geen drift tussen outputvormen | 3 |
+| 13 | ✅ Borg React/Streamlit/API-contracten | presentatiedrift wordt zichtbaar | 10, 12 |
+| 14 | ✅ Genereer validatie-index | één ingang voor bewijs en afwijkingen | 9–13 |
+| 15 | ✅ Voer volledige Epic 6-poort uit | technisch GO; productbesluit open | 14 |
 
 ## Acceptatiecriteria per issue
 

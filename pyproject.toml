@@ -28,6 +28,13 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing -v"
+markers = [
+    "bouwsteen: directe test van één functionele berekenbouwsteen",
+    "engine: samengestelde test van rekenengine of scenarioflow",
+    "contract: API-, DTO- of integratiecontract",
+    "referentie: vergelijking met externe of genormaliseerde referentiedata",
+    "presentatie: contract van UI-, grafiek- of rapportageconsument",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

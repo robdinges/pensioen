@@ -22,6 +22,41 @@ from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import IncidenteelItem, Scenario
 
 
+TESTLAAG_PER_MODULE: dict[str, tuple[str, ...]] = {
+    "test_aow_engine.py": ("bouwsteen",),
+    "test_api_main.py": ("contract",),
+    "test_api_regressie_normalized.py": ("contract", "referentie"),
+    "test_audit.py": ("bouwsteen",),
+    "test_belasting_engine.py": ("bouwsteen",),
+    "test_cashflow_engine.py": ("engine",),
+    "test_eigen_woning_engine.py": ("bouwsteen",),
+    "test_epic4_detailoutput.py": ("engine", "contract"),
+    "test_epic5_consumptiecontract.py": ("contract", "presentatie"),
+    "test_fiscale_bouwstenen.py": ("bouwsteen",),
+    "test_grafiek_consistency.py": ("engine", "presentatie"),
+    "test_grafiek_validator.py": ("presentatie",),
+    "test_inheritance_engine.py": ("engine",),
+    "test_parser_mpo.py": ("bouwsteen", "contract"),
+    "test_pensioen_engine.py": ("bouwsteen",),
+    "test_periodieke_waarde.py": ("bouwsteen",),
+    "test_referentie_governance.py": ("referentie",),
+    "test_regression_bugs.py": ("engine", "referentie"),
+    "test_rendement_split.py": ("engine",),
+    "test_scenario_context.py": ("presentatie",),
+    "test_scenario_engine.py": ("engine",),
+    "test_sessie_persistentie.py": ("contract",),
+    "test_vermogen_engine.py": ("engine",),
+    "test_vermogensitem.py": ("bouwsteen",),
+}
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Ken de vastgelegde Epic 6-testlagen per module toe."""
+    for item in items:
+        for marker in TESTLAAG_PER_MODULE.get(item.path.name, ("engine",)):
+            item.add_marker(getattr(pytest.mark, marker))
+
+
 @pytest.fixture()
 def persoon1() -> Persoon:
     """Persoon geboren 15 maart 1963 (AOW-leeftijd ≥ 67)."""

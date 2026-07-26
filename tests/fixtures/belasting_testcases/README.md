@@ -1,5 +1,16 @@
 # Belasting Testcases
 
+## Governance
+
+- `raw/` is de menselijke of externe bron.
+- `normalized/` wordt uitsluitend uit raw gegenereerd.
+- Controleer drift met
+  `PYTHONPATH=src:. python3 tools/normalize_testcases.py --check`.
+- Bekende externe afwijkingen staan in `bekende_afwijkingen.json` en
+  `AFWIJKINGENREGISTER.md`.
+- Zie `docs/REGRESSIEPROTOCOL.md` voor wijzigingen aan referenties en
+  baselines.
+
 Dit directory bevat testcasebestanden voor validatie van de belastingberekeningen
 in het pensioenmodel.
 

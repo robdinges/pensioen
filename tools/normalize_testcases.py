@@ -15,7 +15,9 @@ Output:
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 from datetime import date, datetime
 from decimal import Decimal
@@ -428,8 +430,19 @@ def generate_report(report: NormalizationReport) -> str:
     return "\n".join(lines)
 
 
-def main():
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="controleer drift tussen raw en normalized zonder bestanden te wijzigen",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
     """Hoofdfunctie: normaliseer alle raw testcases."""
+    args = _parse_args()
     print("=" * 80)
     print("TESTCASE NORMALISATIE")
     print("=" * 80)
@@ -447,8 +460,8 @@ def main():
     print(f"📊 Aantal testcases: {len(json_files)}")
     print()
     
-    # Zorg dat output directory bestaat
-    NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
+    if not args.check:
+        NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
     
     # Normaliseer alle testcases
     report = NormalizationReport()
@@ -458,11 +471,26 @@ def main():
         normalized = normalize_testcase(filepath, report)
         
         if normalized:
-            # Schrijf genormaliseerde JSON
             output_path = NORMALIZED_DIR / f"{normalized['testcase_id']}_normalized.json"
-            with open(output_path, "w") as f:
-                json.dump(normalized, f, indent=2, ensure_ascii=False)
-            print(f"✅ → {output_path.name}")
+            if args.check:
+                if not output_path.exists():
+                    report.add_error(normalized["testcase_id"], f"Ontbreekt: {output_path}")
+                    print("❌ ONTBREEKT")
+                    continue
+                with open(output_path, encoding="utf-8") as bestaand_bestand:
+                    bestaand = json.load(bestaand_bestand)
+                if bestaand != normalized:
+                    report.add_error(
+                        normalized["testcase_id"],
+                        f"Drift tussen {filepath} en {output_path}",
+                    )
+                    print("❌ DRIFT")
+                else:
+                    print("✅ GEEN DRIFT")
+            else:
+                with open(output_path, "w", encoding="utf-8") as output_bestand:
+                    json.dump(normalized, output_bestand, indent=2, ensure_ascii=False)
+                print(f"✅ → {output_path.name}")
         else:
             print("❌ FAILED")
     
@@ -476,21 +504,23 @@ def main():
     print(f"⚠️  Warnings: {len(report.warnings)}")
     print()
     
-    # Genereer rapport
-    report_content = generate_report(report)
-    with open(REPORT_PATH, "w") as f:
-        f.write(report_content)
-    
-    print(f"📝 Rapport opgeslagen: {REPORT_PATH}")
-    print()
+    if not args.check:
+        report_content = generate_report(report)
+        with open(REPORT_PATH, "w", encoding="utf-8") as rapport_bestand:
+            rapport_bestand.write(report_content)
+
+        print(f"📝 Rapport opgeslagen: {REPORT_PATH}")
+        print()
     
     if report.error_count == 0:
         print("✅ Normalisatie succesvol afgerond!")
         print(f"📁 {report.success_count} genormaliseerde testcases in {NORMALIZED_DIR}")
     else:
         print("⚠️  Normalisatie afgerond met errors. Controleer het rapport.")
-    
+
     print()
+    if report.error_count:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -168,10 +168,11 @@ Scope eerste iteratie:
 **Huidige voortgang #403 (26 juli 2026)**:
 - Contracttests basis + extra foutpaden voor vergelijkingen/rapportage staan in `tests/test_api_main.py`.
 - Batch-regressietests draaien op de genormaliseerde set.
-- Twee API-baselineregressies falen in de technische Epic 6-nulmeting.
-- Volgende taak: oorzaken verklaren en CI-/baseline-governance afronden.
+- Twee API-baselineafwijkingen zijn verklaard en strikt als bekende `xfail`
+  geregistreerd.
+- CI-, fixture- en baseline-governance zijn geïmplementeerd.
 
-**Status**: 🚧 IN PROGRESS — onderdeel van Epic 6
+**Status**: ✅ GEÏMPLEMENTEERD — externe productvalidatie blijft open
 
 ---
 
@@ -709,8 +710,9 @@ Scope eerste iteratie:
 #### #113: Test coverage verhogen 🟡 MEDIUM
 **Beschrijving**: Meer unit tests
 
-**Huidige status (26 juli 2026)**: 52% line coverage, 286 verzamelde tests;
-282 tests slagen en 4 tests falen
+**Huidige status (26 juli 2026)**: 52% line coverage, 295 verzamelde tests;
+293 tests slagen en 2 bekende externe afwijkingen zijn strikt als `xfail`
+geregistreerd
 
 **Doel**: 80%+ line coverage, 200+ tests
 

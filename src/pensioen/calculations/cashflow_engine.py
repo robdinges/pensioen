@@ -592,15 +592,25 @@ def _bereken_jaar(
             }
         )
 
-    # Maandelijkse belasting = jaarbelasting / 12
+    verrekende_hk_p1, _ = belasting_engine.begrens_verrekenbare_heffingskorting(
+        jaar_heffingskorting_p1,
+        jaar_belasting_p1,
+    )
+    verrekende_hk_p2, _ = belasting_engine.begrens_verrekenbare_heffingskorting(
+        jaar_heffingskorting_p2,
+        jaar_belasting_p2,
+    )
+
+    # Maandelijkse belasting en uitsluitend verrekenbare heffingskorting.
+    # Niet-verrekenbare korting is geen uitbetaalbare huishoudcashflow.
     maand_bel_p1 = _rond_af(jaar_belasting_p1 / Decimal("12"))
-    maand_hk_p1 = _rond_af(jaar_heffingskorting_p1 / Decimal("12"))
+    maand_hk_p1 = _rond_af(verrekende_hk_p1 / Decimal("12"))
     maand_bel_p2 = (
         _rond_af(jaar_belasting_p2 / Decimal("12"))
         if belasting_p2_resultaat else Decimal("0")
     )
     maand_hk_p2 = (
-        _rond_af(jaar_heffingskorting_p2 / Decimal("12"))
+        _rond_af(verrekende_hk_p2 / Decimal("12"))
         if belasting_p2_resultaat else Decimal("0")
     )
 

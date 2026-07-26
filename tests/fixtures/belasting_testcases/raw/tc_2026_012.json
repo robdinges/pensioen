@@ -1,0 +1,59 @@
+{
+  "testcase_id": "tc_2026_012",
+  "naam": "Regressie - niet-verrekenbare heffingskorting zonder inkomen",
+  "jaar": 2026,
+  "datum_aangeleverd": "2026-07-26",
+  "bron_formaat": "interne_regressiecase",
+  "huishouden": {
+    "type": "PAAR",
+    "aantal_personen": 2,
+    "is_gehuwd": true,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Persoon zonder inkomen",
+      "geboortedatum": "1963-03-15",
+      "bruto_arbeid": 0,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    },
+    {
+      "naam": "Werkende partner",
+      "geboortedatum": "1965-06-22",
+      "bruto_arbeid": 40000,
+      "bruto_pensioen": 0,
+      "bruto_aow": 0,
+      "bruto_overig": 0,
+      "is_aow_heel_jaar": false
+    }
+  ],
+  "vermogen": {
+    "totaal": 0,
+    "spaargeld_fractie": 0.4,
+    "spaargeld": 0,
+    "beleggingen": 0,
+    "verdeling_personen": {
+      "p1": 0.5,
+      "p2": 0.5
+    }
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": 6225.38,
+    "totaal_verschuldigd_p1": 0,
+    "totaal_verschuldigd_p2": 6225.38
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Interne regressiecase voor de wettelijke begrenzing van heffingskortingen",
+      "P1 heeft geen belastbaar inkomen en geen verschuldigde box-1-belasting",
+      "Niet-verrekenbare heffingskorting is geen uitbetaalbare cashflow"
+    ],
+    "opmerkingen": "Borgt de Epic 6-fix op het samengestelde belasting- en cashflowpad.",
+    "data_kwaliteit": "gedeeltelijk",
+    "bron": "Interne regressiereferentie op basis van begrens_verrekenbare_heffingskorting",
+    "_incomplete": false
+  }
+}

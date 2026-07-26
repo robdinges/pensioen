@@ -268,9 +268,10 @@ Laat UI- en API-lagen uitsluitend nog consumeren.
 
 ## Epic 6 — Regressie, validatie en governance
 
-**Status: ACTIEF STARTPUNT — nulmeting uitgevoerd op 26 juli 2026.**
-De volledige suite staat op 282/286 groen met 52% line coverage. De strikte
-IB-2025-validatie staat op 2 WARN en 4 FAIL; de React-productiebouw is groen.
+**Status: TECHNISCHE IMPLEMENTATIE GEREED — PRODUCTVALIDATIE OPEN.**
+De volledige suite staat op 293 geslaagd en 2 geregistreerde xfails van 295
+tests, met 52% line coverage. Raw/normalized-driftcontrole en React-build zijn
+groen. De strikte IB-2025-validatie staat zichtbaar op 2 WARN en 4 FAIL.
 
 Actieve uitwerking:
 

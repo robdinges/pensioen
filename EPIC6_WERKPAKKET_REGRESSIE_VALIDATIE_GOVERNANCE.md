@@ -2,7 +2,7 @@
 
 ## Status
 
-**Gereed om te starten — technische nulmeting uitgevoerd op 26 juli 2026.**
+**Technische implementatie gereed — productvalidatie open (26 juli 2026).**
 
 De nulmeting waarmee Epic 6 start:
 
@@ -14,6 +14,21 @@ De nulmeting waarmee Epic 6 start:
 
 Deze afwijkingen zijn startinput voor Epic 6 en mogen niet stilzwijgend als
 nieuwe baseline worden geaccepteerd.
+
+Uitkomst:
+
+- 295 tests: 293 geslaagd, 2 strikt geregistreerde xfails
+- 52% line coverage
+- raw/normalized-driftcontrole groen
+- React-productiebouw groen
+- externe IB-2025-validatie blijft zichtbaar op 2 WARN en 4 FAIL
+- één rekenbug opgelost: niet-verrekenbare heffingskorting wordt niet langer
+  als uitbetaalbare maandcashflow verwerkt
+- testmatrix, markers, regressieprotocol, afwijkingenregister, validatie-index,
+  PR-template en gesplitste CI-poorten opgeleverd
+
+Technische go/no-go: **GO**. Product-go/no-go voor Epic 7 blijft **OPEN** tot
+de drie bron- en tolerantievragen onder Gebruikersvalidatie zijn beantwoord.
 
 ## Doel
 

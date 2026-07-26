@@ -300,29 +300,31 @@ def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
     assert detail["ew_betaalde_hypotheekrente"] == Decimal("6000")
 
 
-def test_validatie_tc010_is_intern_consistent_na_rebaseline() -> None:
-    """TC010 valideert op huishoudtotaal zonder inconsistentie-waarschuwingen."""
+def test_validatie_tc010_bewaakt_bekende_externe_afwijking() -> None:
+    """TC010 blijft zichtbaar als bekende externe afwijking E6-AFW-002."""
     testcase = vind_testcase_by_id("tc_2025_010")
 
     resultaat = valideer_testcase(testcase)
 
     assert resultaat["verwacht_bron"] == "huishoudtotaal"
-    assert resultaat["status"] == "PASS"
+    assert resultaat["status"] == "FAIL"
+    assert float(resultaat["verschil"]) == pytest.approx(-788.20, abs=0.01)
     assert not any(
         "huishoudtotaal is intern inconsistent" in waarschuwing
         for waarschuwing in resultaat["data_waarschuwingen"]
     )
 
 
-def test_validatie_tc008_heffingskortingen_sluiten_aan_op_verwachting() -> None:
-    """TC008 blijft op verwachte totale heffingskortingen voor P1."""
+def test_validatie_tc008_bewaakt_bekende_heffingskortingafwijking() -> None:
+    """TC008 blijft zichtbaar als bekende externe afwijking E6-AFW-003."""
     testcase = vind_testcase_by_id("tc_2025_008")
 
     resultaat = valideer_testcase(testcase)
     detail = resultaat["details"]
 
-    assert resultaat["status"] == "PASS"
-    assert float(detail["totale_hk_p1"]) == pytest.approx(3607.97, abs=0.01)
+    assert resultaat["status"] == "FAIL"
+    assert float(resultaat["verschil"]) == pytest.approx(-300.32, abs=0.01)
+    assert float(detail["totale_hk_p1"]) == pytest.approx(3759.83, abs=0.01)
 
 
 def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> None:

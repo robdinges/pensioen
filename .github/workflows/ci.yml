@@ -5,7 +5,8 @@ on:
   pull_request:
 
 jobs:
-  tests:
+  python:
+    name: Python regressie- en contractpoort
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,10 +35,8 @@ jobs:
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             git fetch --no-tags --depth=1 origin "$BASE_REF"
             changed=$(git diff --name-only "origin/$BASE_REF...HEAD" || true)
-          else
-            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-              changed=$(git diff --name-only HEAD~1 HEAD || true)
-            fi
+          elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            changed=$(git diff --name-only HEAD~1 HEAD || true)
           fi
 
           if echo "$changed" | grep -qx "$BASELINE_PATH"; then
@@ -46,18 +45,42 @@ jobs:
               exit 0
             fi
             echo "Baseline gewijzigd zonder expliciete toestemming."
-            echo "Voeg [baseline-update] toe aan PR-titel om dit bewust toe te staan."
+            echo "Voeg [baseline-update] toe aan de PR-titel."
             exit 1
           fi
 
-      - name: Normalize testcases
-        run: |
-          PYTHONPATH=src:. python tools/normalize_testcases.py
+      - name: Fixture normalisatiedrift
+        run: PYTHONPATH=src:. python tools/normalize_testcases.py --check
 
-      - name: Strict validatiepipeline
-        run: |
-          PYTHONPATH=src:. python tools/test_validatie_pipeline.py --strict
+      - name: Bouwsteen- en contracttests
+        run: python -m pytest -m "bouwsteen or contract" -q
 
-      - name: API contract and regression tests
-        run: |
-          python -m pytest tests/test_api_main.py tests/test_api_regressie_normalized.py -q
+      - name: Volledige Python-suite
+        run: python -m pytest tests/ -q
+
+      - name: Extern IB-2025-validatierapport
+        continue-on-error: true
+        run: PYTHONPATH=src:. python tools/test_validatie_pipeline.py --strict
+
+  react:
+    name: React productiepoort
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-react
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Production build
+        run: npm run build

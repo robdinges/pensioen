@@ -80,3 +80,50 @@ def test_excel_accountantdetail_consumeert_engine_output(
     assert werkblad["A2"].value == 2026
     assert Decimal(str(werkblad["B2"].value)) == detail["bruto_p1"]
     assert Decimal(str(werkblad["I2"].value)) == detail["box3_heffing"]
+
+
+def test_jaarresultaat_en_accountantdetail_blijven_rekenkundig_consistent(
+    persoon1,
+    persoon2,
+    scenario_standaard,
+) -> None:
+    """Samenvatting, maandregels en detailoutput volgen dezelfde engine-uitkomst."""
+    cashflow = bereken_huishouden(
+        scenario=scenario_standaard,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=[],
+        records2=[],
+        jaar_van=2026,
+        jaar_tot=2026,
+        belasting_configs=laad_tarieven_bereik(2026, 2026),
+    )
+
+    jaar = cashflow.jaren[0]
+    detail = jaar.accountant_detail
+    belasting_uit_maanden = sum(
+        (
+            maand.belasting_p1
+            + maand.belasting_p2
+            + maand.box3_heffing
+        )
+        for maand in jaar.maanden
+    )
+    netto_belasting_uit_detail = (
+        detail["netto_bel_p1"]
+        + detail["netto_bel_p2"]
+        + detail["box3_heffing"]
+    )
+    netto_belasting_uit_maanden = sum(
+        (
+            maand.belasting_p1
+            + maand.belasting_p2
+            + maand.box3_heffing
+            - maand.heffingskorting_p1
+            - maand.heffingskorting_p2
+        )
+        for maand in jaar.maanden
+    )
+
+    assert Decimal(str(jaar.jaar_samenvatting["belasting"])) == belasting_uit_maanden
+    assert abs(netto_belasting_uit_detail - netto_belasting_uit_maanden) <= Decimal("0.12")

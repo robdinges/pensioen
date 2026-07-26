@@ -1,11 +1,11 @@
 # Normalization Report
 
-**Datum**: 2026-07-26 10:59
+**Datum**: 2026-07-26 12:40
 
 ## Samenvatting
 
-- **Totaal testcases verwerkt**: 6
-- **✅ Succesvol genormaliseerd**: 6
+- **Totaal testcases verwerkt**: 7
+- **✅ Succesvol genormaliseerd**: 7
 - **❌ Errors**: 0
 - **⚠️  Warnings**: 5
 
@@ -17,6 +17,7 @@
 - ✅ tc_2025_009
 - ✅ tc_2025_010
 - ✅ tc_2025_011
+- ✅ tc_2026_012
 
 ## Warnings
 
