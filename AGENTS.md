@@ -7,7 +7,7 @@ Professionele Nederlandse pensioenplanner: dag-nauwkeurige cashflowprognoses voo
 
 - **Taal / Language**: Dutch voor domain-code, variabelenamen en comments; Engels voor infrastructure/tests
 - **Domain**: Dutch pension rules (AOW, werkgeverspensioen, Box 1/3, heffingskortingen)
-- **UI**: Streamlit (`streamlit run app.py`)
+- **UI**: Streamlit (`streamlit run app.py`) en React (`frontend-react/`)
 
 ## Tech Stack
 - **Python 3.12+** — type hints overal
@@ -40,6 +40,8 @@ pytest tests/ --cov=src --cov-report=term-missing
 ```
 pensioen/
 ├── app.py                          # Streamlit entrypunt
+├── app_api_client.py               # Eenvoudige Streamlit API-client
+├── frontend-react/                 # React/Vite frontend
 ├── pyproject.toml                  # Pakketdefinitie (build-backend: setuptools.build_meta)
 ├── config/
 │   ├── belasting_YYYY.json         # Belastingtarieven per jaar
@@ -61,6 +63,7 @@ pensioen/
 │   ├── validators/
 │   │   └── validator.py            # valideer_records() → ValidationResultaat
 │   ├── calculations/
+│   │   ├── detail_output_engine.py # Centrale accountant-detailoutput
 │   │   ├── pensioen_engine.py      # Pro-rata maandberekeningen (pensioen/AOW/arbeid)
 │   │   ├── vermogen_engine.py      # Vermogensontwikkeling met maandrendement; ondersteunt sparen/beleggen split
 │   │   ├── cashflow_engine.py      # bereken_huishouden() — hoofdengine; doet rendement_sparen/beleggen door
@@ -74,11 +77,16 @@ pensioen/
 │       ├── pagina_resultaten.py     # Streamlit: grafieken + tabel
 │       ├── pagina_instellingen.py   # Streamlit: tarieven inzien
 │       └── pagina_rapport.py        # Streamlit: rapport downloaden
+├── tools/                          # Validatie-, export- en debughulpmiddelen
 └── tests/
     ├── conftest.py                  # Gedeelde fixtures
     ├── fixtures/                    # CSV-testbestanden (mpo_partner1.csv, mpo_partner2.csv)
-    └── test_*.py                    # 77 tests, 60% coverage
+    └── test_*.py                    # 286 tests verzameld op 26 juli 2026
 ```
+
+Nulmeting voor Epic 6 op 26 juli 2026: 282 tests slagen, 4 tests falen en de
+totale line coverage is 52%. Gebruik actuele testuitvoer als bron; aantallen
+kunnen door vervolgwerk wijzigen.
 
 ## Project Conventions
 
@@ -114,7 +122,11 @@ pensioen/
 - Als een taak niet eenduidig op één berekenstap past, is de taak nog niet scherp genoeg en moet eerst het contract worden verduidelijkt.
 - Nieuwe of aangepaste UI-, API- of rapportagelogica mag geen zelfstandige fiscale herberekening introduceren.
 - Accountantoutput moet uiteindelijk volledig uit engine-output worden opgebouwd; tijdelijke afwijkingen moeten expliciet als migratieschuld benoemd blijven.
-- Gebruik de documenten `MASTERPLAN_PENSIOENAPPLICATIE.md`, `UITVOERINGSPLAN_HERSTRUCTURERING.md` en `EPIC1_WERKPAKKET_FISCALE_BOUWSTENEN.md` als leidraad voor calculation-affecting werk.
+- Gebruik `MASTERPLAN_PENSIOENAPPLICATIE.md` en
+  `UITVOERINGSPLAN_HERSTRUCTURERING.md` als blijvende leidraad.
+- Gebruik voor actief vervolgwerk de werkpakketten van Epic 6 en 7. Afgeronde
+  Epic 1–5-documentatie staat alleen voor herleidbaarheid in
+  `docs/archive/epics/`.
 
 ### Delivery Discipline For Calculation Work
 - Werk bij calculation-affecting changes in kleine slices per bouwsteen of berekenstap, niet in brede refactors over meerdere domeinstappen tegelijk.

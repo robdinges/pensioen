@@ -14,6 +14,7 @@ tags:
 ai_note: "AI-assisted calculation-path analysis based on repository inspection; no application code was modified."
 summary: "Fase 1 analyse van de rekenengine: inhoudelijke rekenboom, call graph, parallelle rekenpaden, grondslagen en tussenresultaten."
 post_date: "2026-07-12"
+archived: true
 ---
 
 <!-- markdownlint-disable MD041 -->

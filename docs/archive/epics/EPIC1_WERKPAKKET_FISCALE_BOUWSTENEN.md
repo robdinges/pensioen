@@ -1,4 +1,5 @@
 ---
+archived: true
 post_title: "Epic 1 Werkpakket Fiscale Bouwstenen"
 author1: "GitHub Copilot"
 post_slug: "epic-1-werkpakket-fiscale-bouwstenen"

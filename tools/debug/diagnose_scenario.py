@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 # Zoek sessiebestand
+project_root = Path(__file__).resolve().parents[2]
 mogelijke_paden = [
-    Path(".sessie.json"),
-    Path("/Users/robvandererve/Documents/python_projects/.sessie.json"),
-    Path(__file__).parent / ".sessie.json",
+    project_root / ".sessie.json",
+    Path.cwd() / ".sessie.json",
 ]
 
 sessie_pad = None

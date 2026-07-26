@@ -1,6 +1,11 @@
 # BACKLOG - Pensioenplanner Feature & Improvement Backlog
 
-## 📋 HUIDIGE ONDERSTEUNING (v1.0)
+> Statuscontrole 26 juli 2026: dit is de brede productbacklog en bevat ook
+> historische planning en nog niet opnieuw gevalideerde statussen. Voor de
+> actuele herstructurering zijn `UITVOERINGSPLAN_HERSTRUCTURERING.md`,
+> `EPIC6_ISSUES_BACKLOG.md` en `EPIC7_ISSUES_BACKLOG.md` leidend.
+
+## 📋 GEREGISTREERDE PRODUCTSCOPE (v1.0)
 
 ### ✅ Werkende Use Cases
 
@@ -51,14 +56,14 @@
 
 ## 🚀 STRATEGISCHE EPICS (juli 2026)
 
-### Prioriteitsvolgorde (huidige uitvoeringslijn)
+### Historische prioriteitsvolgorde
 1. Rond #401 volledig af (API-contracten en stabiele endpoints).
 2. Start direct daarna #403 als verplichte kwaliteitspoort in CI.
 3. Plan #405 pas na stabiele regressiebasis vanuit #403.
 
-### Uitvoeringsplan (komende stappen)
+### Historisch uitvoeringsplan
 
-#### Stap A: #403 Kwaliteitspoort activeren (nu)
+#### Stap A: #403 Kwaliteitspoort activeren
 Doel:
 - API-contracten en regressietests verplicht maken voor merges.
 
@@ -99,7 +104,8 @@ Scope eerste iteratie:
 #### #401: Epic 1 - API-laag + simpele API-UI 🔴 HIGH
 > Let op: dit is de API-roadmap. Dit is niet **Epic 1 — Fiscale bouwstenen
 > isoleren** uit `UITVOERINGSPLAN_HERSTRUCTURERING.md`; die fiscale Epic 1 is
-> afgerond en wordt bijgehouden in `EPIC1_ISSUES_BACKLOG.md`.
+> afgerond en gearchiveerd in
+> `docs/archive/epics/EPIC1_ISSUES_BACKLOG.md`.
 
 **Beschrijving**: Stateless API-first MVP bovenop de bestaande rekenengine.
 
@@ -117,7 +123,7 @@ Scope eerste iteratie:
 - `app_api_client.py`
 - `tests/test_api_main.py`
 
-**Status**: 🚧 IN PROGRESS
+**Status**: ✅ GEÏMPLEMENTEERD — functionele validatie loopt via Epic 5/6
 
 ---
 
@@ -131,7 +137,7 @@ Scope eerste iteratie:
 
 **Afhankelijkheden**: #401
 
-**Status**: 📝 PLANNED
+**Status**: ✅ GEÏMPLEMENTEERD — beheer en governance worden in Epic 6 geborgd
 
 ---
 
@@ -159,11 +165,13 @@ Scope eerste iteratie:
 - CI workflow uitbreiden met verplichte stap: normalize -> validatiepipeline -> API-regressie.
 - Merge policy: blokkeren bij regressieafwijking buiten tolerantie.
 
-**Huidige voortgang #403**:
+**Huidige voortgang #403 (26 juli 2026)**:
 - Contracttests basis + extra foutpaden voor vergelijkingen/rapportage staan in `tests/test_api_main.py`.
-- Volgende taak: batch-regressietest op volledige normalized set.
+- Batch-regressietests draaien op de genormaliseerde set.
+- Twee API-baselineregressies falen in de technische Epic 6-nulmeting.
+- Volgende taak: oorzaken verklaren en CI-/baseline-governance afronden.
 
-**Status**: 📝 PLANNED
+**Status**: 🚧 IN PROGRESS — onderdeel van Epic 6
 
 ---
 
@@ -701,7 +709,8 @@ Scope eerste iteratie:
 #### #113: Test coverage verhogen 🟡 MEDIUM
 **Beschrijving**: Meer unit tests
 
-**Huidige status**: 37% line coverage, 115 tests
+**Huidige status (26 juli 2026)**: 52% line coverage, 286 verzamelde tests;
+282 tests slagen en 4 tests falen
 
 **Doel**: 80%+ line coverage, 200+ tests
 
@@ -909,7 +918,12 @@ en toon na opslaan een melding dat herstart nodig is.
 
 ## 🎯 ROADMAP
 
-### Q2 2026 (nu - juni 2026)
+### Historische roadmap (opgesteld vóór 26 juli 2026)
+
+Onderstaande kwartaalindeling is planningshistorie. De actuele prioriteit is
+Epic 6, gevolgd door Epic 7.
+
+### Q2 2026 (afgelopen)
 - ✅ Sparen & beleggen split implementatie (DONE)
 - ✅ Tests voor sparen/beleggen functionaliteit (DONE)
 - #114: Refactor vermogen_engine voor meerdere types
@@ -976,5 +990,5 @@ Voor het oppakken van items uit deze backlog:
 
 ---
 
-*Laatste update: 1 juli 2026*
-*Versie: 1.2 - Start Epic 1 API-first en strategische epics #401-#408 toegevoegd*
+*Laatste statuscontrole: 26 juli 2026*
+*Versie: 1.3 - actuele herstructureringsbron en Epic 6-nulmeting toegevoegd*

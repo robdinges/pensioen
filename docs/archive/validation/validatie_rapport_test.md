@@ -1,5 +1,8 @@
 # Belastingvergelijking: dutch_tax vs pensioen-app
 
+> Historisch validatierapport uit 2026-05-25; niet gebruiken als actuele
+> teststatus.
+
 **Huishouden**: TestCase_Alleenstaand_Simpel
 **Submission jaar**: 2025
 **Berekening jaar**: 2026

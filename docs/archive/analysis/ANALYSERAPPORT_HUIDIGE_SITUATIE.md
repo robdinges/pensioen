@@ -15,6 +15,7 @@ tags:
 ai_note: "AI-assisted codebase analysis based on repository inspection; no application code was modified."
 summary: "Volledige analyse van de huidige pensioen- en belastingapplicatie: architectuur, rekenketen, data, tarieven, tests, UI, risico's en refactor-kansen."
 post_date: "2026-07-12"
+archived: true
 ---
 
 <!-- markdownlint-disable MD041 MD060 -->

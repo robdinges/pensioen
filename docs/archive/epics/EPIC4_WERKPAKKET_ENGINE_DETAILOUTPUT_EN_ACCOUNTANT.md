@@ -1,4 +1,5 @@
 ---
+archived: true
 post_title: "Epic 4 Werkpakket Engine Detailoutput en Accountant"
 author1: "GitHub Copilot"
 post_slug: "epic-4-werkpakket-engine-detailoutput-en-accountant"

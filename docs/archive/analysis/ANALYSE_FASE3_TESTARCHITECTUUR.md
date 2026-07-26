@@ -14,6 +14,7 @@ tags:
 ai_note: "AI-assisted test architecture analysis based on repository inspection; no application code was modified."
 summary: "Fase 3 analyse van testdekking per berekening, inclusief directe tests, indirecte dekking, regressies en ontbrekende tests."
 post_date: "2026-07-12"
+archived: true
 ---
 
 <!-- markdownlint-disable MD041 -->

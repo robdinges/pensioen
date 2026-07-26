@@ -18,6 +18,11 @@ post_date: "2026-07-12"
 
 <!-- markdownlint-disable MD041 -->
 
+> Status: richtinggevend doelarchitectuurdocument. Dit document beschrijft de
+> gewenste eindsituatie en is geen actuele oplever- of teststatus. Gebruik
+> `UITVOERINGSPLAN_HERSTRUCTURERING.md` en de actieve Epic 6/7-documenten voor
+> voortgang.
+
 ## Doel
 
 Dit document is geen softwarearchitectuurdocument in klassieke zin.

@@ -1,4 +1,5 @@
 ---
+archived: true
 post_title: "Epic 1 Implementatievolgorde Per Testbestand"
 author1: "GitHub Copilot"
 post_slug: "epic-1-implementatievolgorde-per-testbestand"

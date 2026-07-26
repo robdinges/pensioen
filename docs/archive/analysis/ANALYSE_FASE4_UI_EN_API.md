@@ -15,6 +15,7 @@ tags:
 ai_note: "AI-assisted UI and API analysis based on repository inspection; no application code was modified."
 summary: "Fase 4 analyse van Streamlit, React, API en accountantspagina met focus op dubbele berekeningen, afwijkende logica en verschillende databronnen."
 post_date: "2026-07-12"
+archived: true
 ---
 
 <!-- markdownlint-disable MD041 -->

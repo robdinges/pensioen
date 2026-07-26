@@ -15,19 +15,25 @@ summary: "Uitgebreid overdrachtsdocument voor de Pensioenplanner met processen, 
 post_date: "2026-06-27"
 ---
 
+> Status: functionele overdracht op basis van de codebasis van 27 juni 2026.
+> Raadpleeg voor actuele implementatie- en validatiestatus het
+> `UITVOERINGSPLAN_HERSTRUCTURERING.md` in de projectroot en de actieve Epic
+> 6/7-documenten.
+
 ## Doel En Reikwijdte
 
 Dit document is de volledige functionele overdracht van de Pensioenplanner aan
 een opvolgend functioneel beheerder. Deze overdracht is gebaseerd op
-[README.md](README.md), [BACKLOG.md](BACKLOG.md), [app.py](app.py),
-[src/pensioen/calculations/cashflow_engine.py](src/pensioen/calculations/cashflow_engine.py),
-[src/pensioen/tax/belasting_engine.py](src/pensioen/tax/belasting_engine.py),
-[src/pensioen/tax/eigen_woning_engine.py](src/pensioen/tax/eigen_woning_engine.py),
-[src/pensioen/models/scenario.py](src/pensioen/models/scenario.py),
-[src/pensioen/models/vermogensitem.py](src/pensioen/models/vermogensitem.py),
-[src/pensioen/parsers/parser_mpo.py](src/pensioen/parsers/parser_mpo.py),
-[src/pensioen/reports/rapport_engine.py](src/pensioen/reports/rapport_engine.py) en
-[src/pensioen/ui/pagina_accountant.py](src/pensioen/ui/pagina_accountant.py).
+[README.md](../../README.md), [BACKLOG.md](../../BACKLOG.md),
+[app.py](../../app.py),
+[src/pensioen/calculations/cashflow_engine.py](../../src/pensioen/calculations/cashflow_engine.py),
+[src/pensioen/tax/belasting_engine.py](../../src/pensioen/tax/belasting_engine.py),
+[src/pensioen/tax/eigen_woning_engine.py](../../src/pensioen/tax/eigen_woning_engine.py),
+[src/pensioen/models/scenario.py](../../src/pensioen/models/scenario.py),
+[src/pensioen/models/vermogensitem.py](../../src/pensioen/models/vermogensitem.py),
+[src/pensioen/parsers/parser_mpo.py](../../src/pensioen/parsers/parser_mpo.py),
+[src/pensioen/reports/rapport_engine.py](../../src/pensioen/reports/rapport_engine.py)
+en [src/pensioen/ui/pagina_accountant.py](../../src/pensioen/ui/pagina_accountant.py).
 
 Het document beschrijft:
 
@@ -60,17 +66,17 @@ Het domein is expliciet Nederlands belastinggedreven:
 De oplossing volgt een duidelijke lagenstructuur:
 
 - UI-laag: Streamlit schermen en flow in
-  [app.py](app.py) en de modules onder
-  [src/pensioen/ui](src/pensioen/ui).
+  [app.py](../../app.py) en de modules onder
+  [src/pensioen/ui](../../src/pensioen/ui).
 - Domeinmodellen: Pydantic datamodellen onder
-  [src/pensioen/models](src/pensioen/models).
+  [src/pensioen/models](../../src/pensioen/models).
 - Rekenengines: businessregels onder
-  [src/pensioen/calculations](src/pensioen/calculations).
+  [src/pensioen/calculations](../../src/pensioen/calculations).
 - Fiscaliteit: belasting, AOW en eigen woning onder
-  [src/pensioen/tax](src/pensioen/tax).
+  [src/pensioen/tax](../../src/pensioen/tax).
 - Import/export: MPO parsing en rapportages onder
-  [src/pensioen/parsers](src/pensioen/parsers) en
-  [src/pensioen/reports](src/pensioen/reports).
+  [src/pensioen/parsers](../../src/pensioen/parsers) en
+  [src/pensioen/reports](../../src/pensioen/reports).
 
 Belangrijk functioneel principe:
 
@@ -436,7 +442,7 @@ Onderstaand is functioneel relevant samengevat uit backlog en code-notities.
 - #113 Testcoverage verhogen (backlog vermeldt hoger doel).
 - #115 Logging en monitoring structureren.
 - Bekende TODO in box 3 validatie-adapter:
-  [validatie/belasting_vergelijking/pensioen_adapter.py](validatie/belasting_vergelijking/pensioen_adapter.py)
+  [validatie/belasting_vergelijking/pensioen_adapter.py](../../validatie/belasting_vergelijking/pensioen_adapter.py)
   over dividend-aftrek in box 3 vergelijking.
 
 ## Bekende Functionele Aandachtspunten
@@ -489,7 +495,7 @@ Aanpak:
 2. controleer componentcategorie, bedrag_type en datumbereik.
 3. controleer box 1/box 3 aannames in rapport en accountantsoverzicht.
 4. vergelijk met validatiemodules onder
-   [validatie](validatie).
+   [validatie](../../validatie).
 5. documenteer root cause en voeg regressietest toe.
 
 ## Beheerrisico's En Mitigaties
@@ -512,15 +518,15 @@ Mitigaties:
 
 Startvolgorde voor een nieuwe beheerder:
 
-1. lees [README.md](README.md) voor operationele start.
-2. lees [BACKLOG.md](BACKLOG.md) voor scope en prioriteiten.
+1. lees [README.md](../../README.md) voor operationele start.
+2. lees [BACKLOG.md](../../BACKLOG.md) voor scope en prioriteiten.
 3. doorloop de flow in de app met 1 eenvoudig en 1 complex scenario.
 4. valideer accountantsoverzicht en Excel-export met bekende testcase.
 5. bestudeer de engines in deze volgorde:
-   - [src/pensioen/calculations/cashflow_engine.py](src/pensioen/calculations/cashflow_engine.py)
-   - [src/pensioen/tax/belasting_engine.py](src/pensioen/tax/belasting_engine.py)
-   - [src/pensioen/tax/eigen_woning_engine.py](src/pensioen/tax/eigen_woning_engine.py)
-   - [src/pensioen/models/scenario.py](src/pensioen/models/scenario.py)
+   - [src/pensioen/calculations/cashflow_engine.py](../../src/pensioen/calculations/cashflow_engine.py)
+   - [src/pensioen/tax/belasting_engine.py](../../src/pensioen/tax/belasting_engine.py)
+   - [src/pensioen/tax/eigen_woning_engine.py](../../src/pensioen/tax/eigen_woning_engine.py)
+   - [src/pensioen/models/scenario.py](../../src/pensioen/models/scenario.py)
 
 ## Beslisregels Voor Functioneel Beheer
 

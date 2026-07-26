@@ -76,8 +76,9 @@ When using this skill, produce these decisions explicitly before implementation:
 
 - `MASTERPLAN_PENSIOENAPPLICATIE.md`
 - `UITVOERINGSPLAN_HERSTRUCTURERING.md`
-- `EPIC1_WERKPAKKET_FISCALE_BOUWSTENEN.md`
-- `EPIC1_ISSUES_BACKLOG.md`
+- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
+- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
+- `docs/archive/epics/` voor historische Epic 1–5-besluiten
 
 ## Done Gate
 

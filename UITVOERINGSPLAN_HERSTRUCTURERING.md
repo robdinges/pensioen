@@ -86,7 +86,8 @@ Maak de functionele berekenarchitectuur operationeel als wijzigingscontract.
 
 ## Epic 1 — Fiscale bouwstenen isoleren
 
-**Status: ✅ AFGEROND (26 juli 2026).** Zie `EPIC1_ISSUES_BACKLOG.md` voor de
+**Status: ✅ AFGEROND (26 juli 2026).** Zie
+`docs/archive/epics/EPIC1_ISSUES_BACKLOG.md` voor de
 status per issue en de uitgevoerde regressiepoort.
 
 ### Doel Epic 1
@@ -123,7 +124,7 @@ Maak de pure fiscale functies volledig zelfstandig testbaar en expliciet.
 ## Epic 2 — Pensioen en inkomensbronnen harmoniseren
 
 **Status: 🟡 IMPLEMENTATIE AFGEROND — GO/NO-GO-VALIDATIE OPEN.** Zie
-`EPIC2_ISSUES_BACKLOG.md`.
+`docs/archive/epics/EPIC2_ISSUES_BACKLOG.md`.
 
 ### Doel Epic 2
 
@@ -158,7 +159,7 @@ Maak pensioen en bruto-inkomensopbouw eenduidig.
 ## Epic 3 — Eigen woning en vermogen harmoniseren
 
 **Status: 🟡 IMPLEMENTATIE AFGEROND — FUNCTIONELE VALIDATIE OPEN.** Zie
-`EPIC3_ISSUES_BACKLOG.md`.
+`docs/archive/epics/EPIC3_ISSUES_BACKLOG.md`.
 
 ### Doel Epic 3
 
@@ -267,6 +268,15 @@ Laat UI- en API-lagen uitsluitend nog consumeren.
 
 ## Epic 6 — Regressie, validatie en governance
 
+**Status: ACTIEF STARTPUNT — nulmeting uitgevoerd op 26 juli 2026.**
+De volledige suite staat op 282/286 groen met 52% line coverage. De strikte
+IB-2025-validatie staat op 2 WARN en 4 FAIL; de React-productiebouw is groen.
+
+Actieve uitwerking:
+
+- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
+- `EPIC6_ISSUES_BACKLOG.md`
+
 ### Doel Epic 6
 
 Veranker correctheid en wijzigingsdiscipline.
@@ -295,6 +305,11 @@ Veranker correctheid en wijzigingsdiscipline.
 - validatiepipeline sluit aan op de functionele berekenarchitectuur
 
 ## Epic 7 — Opschoning en doelarchitectuur consolideren
+
+Actieve uitwerking:
+
+- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
+- `EPIC7_ISSUES_BACKLOG.md`
 
 ### Doel Epic 7
 
@@ -395,9 +410,11 @@ De herstructurering is pas gereed als alle onderstaande stellingen waar zijn:
 6. Epic 6
 7. Epic 7
 
-## Praktische eerste backlogitems
+## Historische eerste backlogitems
 
-De eerste concrete backlogitems die direct opgepakt kunnen worden zijn:
+Onderstaande items vormden bij aanvang de eerste backlog. De implementatie is
+inmiddels grotendeels uitgevoerd; gebruik voor actueel werk de Epic 6- en
+Epic 7-backlogs:
 
 1. Schrijf directe unit-tests voor `bereken_premies_volksverzekeringen()`.
 2. Schrijf directe unit-tests voor alle losse heffingskortingfuncties.

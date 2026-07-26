@@ -1,4 +1,5 @@
 ---
+archived: true
 post_title: "Epic 3 Werkpakket Eigen Woning en Vermogen"
 author1: "GitHub Copilot"
 post_slug: "epic-3-werkpakket-eigen-woning-en-vermogen"

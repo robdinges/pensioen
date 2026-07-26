@@ -14,6 +14,7 @@ tags:
 ai_note: "AI-assisted tariff and dataset analysis based on repository inspection; no application code was modified."
 summary: "Fase 2 analyse van belastingtabellen, AOW, heffingskortingen, box 3, eigen woning, inflatie en tariefoverrides."
 post_date: "2026-07-12"
+archived: true
 ---
 
 <!-- markdownlint-disable MD041 -->

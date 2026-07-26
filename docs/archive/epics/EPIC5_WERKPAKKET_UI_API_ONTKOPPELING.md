@@ -1,4 +1,5 @@
 ---
+archived: true
 post_title: "Epic 5 Werkpakket UI API Ontkoppeling"
 author1: "GitHub Copilot"
 post_slug: "epic-5-werkpakket-ui-api-ontkoppeling"

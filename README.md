@@ -71,7 +71,7 @@ cashflowprognose voor een huishouden.
   - uitgebreid jaarresultaten-dashboard met KPI's, jaartabel en trendgrafieken
   - jaarresultaten in tabellen worden primair uit engineveld `jaar_samenvatting` opgebouwd
   - aparte tab voor ruwe API JSON-output
-- Nieuwe React UI (experimenteel, aparte branch `feature/react-frontend-redesign-wizard`):
+- React UI (`frontend-react/`, opgenomen in `main`):
   - sectie **Inkomsten / Uitgaven** met tegel-cards voor loon, uitkering, pensioen en eenmalige posten
   - periodieke **Uitgave**-card in dezelfde sectie; wordt als negatieve cashflow verwerkt (buiten box 1/box 3)
   - sectie **Vermogen** met tegel-cards voor sparen, beleggen, eigen woning, overige bezittingen en hypotheek
@@ -102,6 +102,30 @@ cashflowprognose voor een huishouden.
     * heffingskortingen (AHK, ouderenkorting, alleenstaandeouderenkorting)
     * totaallijn met te betalen bedrag na heffingskortingen
   - tarieffallback per jaar: als een belastingjaar ontbreekt, gebruikt de engine het laatst bekende jaar tot en met dat doeljaar, met expliciete melding in resultaten en accountant-stap
+
+## Actuele herstructurering
+
+De implementatiedocumentatie van Epic 1–5 staat in `docs/archive/epics/`.
+Epic 1 is afgerond; voor Epic 2–5 staat nog expliciete functionele of
+handmatige validatie open. Een overzicht van operationele, referentie- en
+archiefdocumentatie staat in `docs/README.md`.
+
+Actief vervolgwerk:
+
+- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
+- `EPIC6_ISSUES_BACKLOG.md`
+- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
+- `EPIC7_ISSUES_BACKLOG.md`
+
+Technische nulmeting op 26 juli 2026:
+
+- Python: 286 tests, waarvan 282 geslaagd en 4 gefaald; 52% line coverage
+- IB-2025-validatie: 2 WARN en 4 FAIL
+- React-productiebouw: geslaagd
+
+Epic 6 moet deze regressie- en validatiestatus verklaren en borgen. Epic 7
+consolideert daarna de doelarchitectuur en vereist onder meer een expliciete
+keuze over React en Streamlit.
 
 ## Usage
 
@@ -140,7 +164,7 @@ streamlit run app_api_client.py
 De API-client toont berekeningen primair op jaarbasis in de tab
 `Resultaten op Jaarbasis`.
 
-6. Start de nieuwe React UI (op aparte branch):
+6. Start de React UI:
 
 ```bash
 cd frontend-react
