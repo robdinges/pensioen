@@ -85,5 +85,6 @@ def test_financieel_component_groei_start_per_periode_opnieuw() -> None:
         ],
     )
 
-    assert component.bedrag_per_maand_actief(2026, 1) == Decimal("110")
-    assert component.bedrag_per_maand_actief(2031, 1) == Decimal("220")
+    assert component.bedrag_per_maand_actief(2026, 1) == Decimal("1320")
+    assert component.bedrag_per_maand_actief(2026, 2) == Decimal("0")
+    assert component.bedrag_per_maand_actief(2031, 1) == Decimal("2640")

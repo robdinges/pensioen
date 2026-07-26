@@ -129,11 +129,11 @@ class FinancieelComponent(BaseModel):
         """
         Maandelijks equivalent bedrag inclusief groei, of Decimal('0') als niet actief.
 
-        Periodieke bedragen worden gelijkmatig over maanden gespreid:
+        Periodieke bedragen worden volgens hun betaalmoment verwerkt:
         - Maandelijks: bedrag × 1
         - Kwartaal: bedrag / 3
         - Halfjaarlijks: bedrag / 6
-        - Jaarlijks: bedrag / 12
+        - Jaarlijks: volledig bedrag in de startmaand, of januari zonder startdatum
         - Eenmalig: het volledige bedrag in de maand van begindatum
         """
         peildatum = date(jaar, maand, 1)
@@ -158,6 +158,17 @@ class FinancieelComponent(BaseModel):
 
         if self.frequentie == Frequentie.EENMALIG:
             return basis_bedrag * groeifactor
+
+        if self.frequentie == Frequentie.JAARLIJKS:
+            if self.waarde_periodes:
+                betaalmaand = (
+                    periode.startdatum.month
+                    if periode.startdatum is not None
+                    else 1
+                )
+            else:
+                betaalmaand = self.begindatum.month if self.begindatum else 1
+            return basis_bedrag * groeifactor if maand == betaalmaand else Decimal("0")
 
         return (basis_bedrag * groeifactor) / Decimal(str(self.frequentie.maanden_per_periode()))
 

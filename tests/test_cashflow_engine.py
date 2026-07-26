@@ -544,6 +544,95 @@ class TestCashflowHuishouden:
         assert vermogen_einde < Decimal("50000")
         assert vermogen_einde > Decimal("30000")
 
+    def test_tekort_zonder_startvermogen_wordt_negatief_vermogen(self) -> None:
+        """Een tekort verdwijnt niet wanneer geen liquide startbuffer aanwezig is."""
+        persoon = Persoon(naam="Tekorthuishouden", geboortedatum=date(1965, 1, 1))
+        scenario = Scenario(
+            naam="Negatief vermogen",
+            spaargeld_start=Decimal("0"),
+            rendement_pct=Decimal("0"),
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Huishoudelijke uitgaven",
+                    categorie=CategorieComponent.UITGAVE,
+                    persoon="Huishouden",
+                    bedrag=Decimal("1000"),
+                    frequentie=Frequentie.MAANDELIJKS,
+                )
+            ],
+        )
+
+        cashflow = bereken_huishouden(
+            scenario, persoon, None, [], [], 2027, 2027, _maak_configs(2027, 2027)
+        )
+
+        assert cashflow.jaren[0].netto == Decimal("-12000")
+        assert cashflow.jaren[0].vermogen_einde_jaar == Decimal("-12000")
+
+    def test_jaaroverzicht_scheidt_netto_inkomen_en_vrije_cashflow(self) -> None:
+        """Positief netto inkomen blijft positief bij hogere huishoudelijke uitgaven."""
+        persoon = Persoon(naam="Inkomen", geboortedatum=date(1980, 1, 1))
+        scenario = Scenario(
+            naam="Inkomen versus cashflow",
+            rendement_pct=Decimal("0"),
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Bruto loon",
+                    categorie=CategorieComponent.ARBEIDSINKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("50000"),
+                    frequentie=Frequentie.JAARLIJKS,
+                ),
+                FinancieelComponent(
+                    omschrijving="Uitgaven",
+                    categorie=CategorieComponent.UITGAVE,
+                    persoon="Huishouden",
+                    bedrag=Decimal("60000"),
+                    frequentie=Frequentie.JAARLIJKS,
+                ),
+            ],
+        )
+
+        cashflow = bereken_huishouden(
+            scenario, persoon, None, [], [], 2027, 2027, _maak_configs(2027, 2027)
+        )
+        samenvatting = cashflow.jaren[0].jaar_samenvatting
+
+        assert samenvatting["netto_inkomen"] > Decimal("0")
+        assert samenvatting["netto_cashflow"] < Decimal("0")
+
+    def test_jaarlijks_p1_inkomen_blijft_jaarbedrag_in_accountantoutput(self) -> None:
+        """€ 12.000 jaarlijks wordt niet als € 12.000 per maand geboekt."""
+        persoon = Persoon(naam="P1", geboortedatum=date(1980, 1, 1))
+        scenario = Scenario(
+            naam="Jaarfrequentie",
+            box3_meenemen=False,
+            componenten=[
+                FinancieelComponent(
+                    omschrijving="Jaarinkomen P1",
+                    categorie=CategorieComponent.ARBEIDSINKOMEN,
+                    persoon="P1",
+                    bedrag=Decimal("12000"),
+                    frequentie=Frequentie.JAARLIJKS,
+                    begindatum=date(2027, 10, 15),
+                )
+            ],
+        )
+
+        cashflow = bereken_huishouden(
+            scenario, persoon, None, [], [], 2027, 2027, _maak_configs(2027, 2027)
+        )
+        detail = cashflow.jaren[0].accountant_detail
+
+        assert detail["jaar_arbeid_p1"] == Decimal("12000")
+        assert len(detail["maand_data"]) == 12
+        assert detail["maand_data"][9]["arbeid_p1"] == Decimal("12000")
+        assert sum(
+            maand["arbeid_p1"] for maand in detail["maand_data"]
+        ) == Decimal("12000")
+
     def test_jaarresultaat_heeft_expliciete_bruto_opbouw_per_persoon(self) -> None:
         """JaarResultaat vult bruto_inkomen expliciet per persoon en huishouden."""
         persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True)

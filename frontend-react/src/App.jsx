@@ -94,6 +94,7 @@ function AppContent() {
   const [importWarningsP2, setImportWarningsP2] = useState([]);
   const [importStatsP1, setImportStatsP1] = useState(null);
   const [importStatsP2, setImportStatsP2] = useState(null);
+  const [pendingImports, setPendingImports] = useState({ P1: null, P2: null });
   const [resultaat, setResultaat] = useState(null);
   const [inputSignatureAtCalculation, setInputSignatureAtCalculation] = useState("");
   const [compareScenarioId, setCompareScenarioId] = useState("");
@@ -361,6 +362,7 @@ function AppContent() {
     };
 
     setHouseholdSnapshots(updatedSnapshots);
+    setPendingImports({ P1: null, P2: null });
     setHouseholdPreferences(updatedPreferences);
     setActiveHouseholdId(nextHouseholdId);
     hydrateFromSnapshot(nextSnapshot);
@@ -373,6 +375,7 @@ function AppContent() {
     const snapshot = createInitialHouseholdSnapshot({ scenarioNaam: "Basisscenario" });
 
     setHouseholds((prev) => [...prev, { id: nextHouseholdId, name: label }]);
+    setPendingImports({ P1: null, P2: null });
     setHouseholdSnapshots((prev) => ({
       ...prev,
       [activeHouseholdId]: buildCurrentSnapshot(),
@@ -399,6 +402,7 @@ function AppContent() {
     const nextSnapshot = householdSnapshots[nextActiveId] || null;
 
     setHouseholds(remaining);
+    setPendingImports({ P1: null, P2: null });
     setHouseholdSnapshots((prev) => {
       const clone = { ...prev };
       delete clone[activeHouseholdId];
@@ -426,6 +430,7 @@ function AppContent() {
     const label = newScenarioName.trim() || `Scenario ${scenarios.length + 1}`;
     const nextId = crypto.randomUUID();
     const currentScenarioData = buildCurrentScenarioSnapshot();
+    setPendingImports({ P1: null, P2: null });
     setScenarios((prev) => [...prev, { id: nextId, naam: label }]);
     const clonedData = JSON.parse(JSON.stringify(currentScenarioData));
     clonedData.resultaat = null;
@@ -455,6 +460,7 @@ function AppContent() {
       updatedSnapshots[nextScenarioId] || JSON.parse(JSON.stringify(createDefaultScenarioData()));
 
     setScenarioSnapshots(updatedSnapshots);
+    setPendingImports({ P1: null, P2: null });
     setActiveScenarioId(nextScenarioId);
     hydrateFromScenarioSnapshot(targetSnapshot);
   };
@@ -464,6 +470,7 @@ function AppContent() {
       return;
     }
     const remaining = scenarios.filter((scenario) => scenario.id !== activeScenarioId);
+    setPendingImports({ P1: null, P2: null });
     setScenarios(remaining);
     const nextId = remaining[0].id;
     const nextSnapshot = scenarioSnapshots[nextId] || createDefaultScenarioData();
@@ -622,50 +629,65 @@ function AppContent() {
       }));
       const importedPosts = analyse.posts;
 
-      if (importedPosts.length === 0) {
-        if (persoonCode === "P1") {
-          setImportWarningsP1(analyse.warnings);
-          setImportStatsP1(analyse.stats);
-          setImportPreviewP1(preview);
-        } else {
-          setImportWarningsP2(analyse.warnings);
-          setImportStatsP2(analyse.stats);
-          setImportPreviewP2(preview);
-        }
-        setImportInfoFor(persoonCode, `Geen bruikbare pensioenregels gevonden in ${file.name}.`);
-        return;
-      }
-
-      setPosts((prev) => {
-        const withoutOldMpoForPerson = prev.filter(
-          (post) => !(post.type === "pensioen" && post.source === "mpo" && post.values?.persoon === persoonCode),
-        );
-        return [...withoutOldMpoForPerson, ...importedPosts];
-      });
-
       if (persoonCode === "P1") {
-        setImportBestandP1Naam(file.name);
         setImportPreviewP1(preview);
         setImportWarningsP1(analyse.warnings);
         setImportStatsP1(analyse.stats);
       } else {
-        setImportBestandP2Naam(file.name);
         setImportPreviewP2(preview);
         setImportWarningsP2(analyse.warnings);
         setImportStatsP2(analyse.stats);
       }
 
+      if (importedPosts.length === 0) {
+        setPendingImports((prev) => ({ ...prev, [persoonCode]: null }));
+        setImportInfoFor(persoonCode, `Geen bruikbare pensioenregels gevonden in ${file.name}.`);
+        return;
+      }
+
+      setPendingImports((prev) => ({
+        ...prev,
+        [persoonCode]: { fileName: file.name, posts: importedPosts },
+      }));
       setImportInfoFor(
         persoonCode,
-        `${importedPosts.length} pensioenregel(s) geïmporteerd voor ${persoonCode} (bronregels: ${analyse.stats.bronregels}).`,
+        `Controleer de preview. Er wordt nog niets toegevoegd totdat je bevestigt.`,
       );
-      setErrorMessage("");
     } catch (err) {
       setImportInfoFor(persoonCode, "");
       setImportErrorFor(persoonCode, err instanceof Error ? err.message : "Onbekende fout bij import.");
     } finally {
       setImportingFor(persoonCode, false);
     }
+  };
+
+  const confirmMpoImport = (persoonCode) => {
+    const pending = pendingImports[persoonCode];
+    if (!pending) {
+      return;
+    }
+    setPosts((prev) => {
+      const withoutOldMpoForPerson = prev.filter(
+        (post) => !(post.type === "pensioen" && post.source === "mpo" && post.values?.persoon === persoonCode),
+      );
+      return [...withoutOldMpoForPerson, ...pending.posts];
+    });
+    if (persoonCode === "P1") {
+      setImportBestandP1Naam(pending.fileName);
+    } else {
+      setImportBestandP2Naam(pending.fileName);
+    }
+    setPendingImports((prev) => ({ ...prev, [persoonCode]: null }));
+    setImportInfoFor(
+      persoonCode,
+      `${pending.posts.length} pensioenregel(s) toegevoegd voor ${persoonCode}.`,
+    );
+    setErrorMessage("");
+  };
+
+  const cancelMpoImport = (persoonCode) => {
+    setPendingImports((prev) => ({ ...prev, [persoonCode]: null }));
+    setImportInfoFor(persoonCode, "Import geannuleerd; er zijn geen componenten gewijzigd.");
   };
 
   const payloadPreview = {
@@ -1324,7 +1346,10 @@ function AppContent() {
           importWarningsP2={importWarningsP2}
           importInfoMessages={importInfoMessages}
           importErrorMessages={importErrorMessages}
+          pendingImports={pendingImports}
           onImportFile={importMpoFileForPersoon}
+          onConfirmImport={confirmMpoImport}
+          onCancelImport={cancelMpoImport}
           SectionHeader={SectionHeader}
         />
       );

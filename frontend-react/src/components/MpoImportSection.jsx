@@ -88,6 +88,9 @@ function ImportPersoonBlok({
   infoMessage,
   errorMessage,
   onImportFile,
+  pendingImport,
+  onConfirmImport,
+  onCancelImport,
 }) {
   return (
     <>
@@ -120,6 +123,16 @@ function ImportPersoonBlok({
       <ImportWarningsPanel persoonCode={persoonCode} warnings={warnings} />
       {infoMessage ? <p className="notice">{infoMessage}</p> : null}
       {errorMessage ? <p className="error">{errorMessage}</p> : null}
+      {pendingImport ? (
+        <div className="import-confirm-actions" role="group" aria-label={`Import bevestigen voor ${persoonCode}`}>
+          <button type="button" onClick={() => onConfirmImport(persoonCode)}>
+            {pendingImport.posts.length} pensioenregel(s) toevoegen
+          </button>
+          <button type="button" className="ghost" onClick={() => onCancelImport(persoonCode)}>
+            Annuleren
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -138,7 +151,10 @@ export default function MpoImportSection({
   importWarningsP2,
   importInfoMessages,
   importErrorMessages,
+  pendingImports,
   onImportFile,
+  onConfirmImport,
+  onCancelImport,
   SectionHeader,
 }) {
   return (
@@ -163,6 +179,9 @@ export default function MpoImportSection({
         infoMessage={importInfoMessages.P1}
         errorMessage={importErrorMessages.P1}
         onImportFile={onImportFile}
+        pendingImport={pendingImports.P1}
+        onConfirmImport={onConfirmImport}
+        onCancelImport={onCancelImport}
       />
 
       {heeftPartner ? (
@@ -177,6 +196,9 @@ export default function MpoImportSection({
           infoMessage={importInfoMessages.P2}
           errorMessage={importErrorMessages.P2}
           onImportFile={onImportFile}
+          pendingImport={pendingImports.P2}
+          onConfirmImport={onConfirmImport}
+          onCancelImport={onCancelImport}
         />
       ) : (
         <p className="notice">Partner staat uit. Schakel P2 in op de stap Personen om voor P2 te importeren.</p>

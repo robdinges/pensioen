@@ -80,22 +80,32 @@ def bouw_jaar_samenvatting(jaar_resultaat: JaarResultaat) -> dict[str, Decimal |
             "bruto": Decimal("0"),
             "belasting": Decimal("0"),
             "netto": Decimal("0"),
+            "netto_inkomen": Decimal("0"),
+            "netto_cashflow": Decimal("0"),
             "netto_per_maand": Decimal("0"),
+            "netto_inkomen_per_maand": Decimal("0"),
             "vermogen_einde_jaar": Decimal("0"),
         }
 
     bruto = _som_maanden(maanden, lambda m: m.totaal_bruto)
     belasting = _som_maanden(maanden, lambda m: m.totaal_belasting)
-    netto = _som_maanden(maanden, lambda m: m.netto)
-    netto_per_maand = (netto / Decimal(str(len(maanden)))).quantize(CENT)
+    netto_cashflow = _som_maanden(maanden, lambda m: m.netto)
+    netto_inkomen = _som_maanden(maanden, lambda m: m.netto_inkomen)
+    netto_per_maand = (netto_cashflow / Decimal(str(len(maanden)))).quantize(CENT)
+    netto_inkomen_per_maand = (
+        netto_inkomen / Decimal(str(len(maanden)))
+    ).quantize(CENT)
     vermogen_einde_jaar = _d(maanden[-1].vermogen_einde_maand)
 
     return {
         "jaar": jaar_resultaat.jaar,
         "bruto": bruto,
         "belasting": belasting,
-        "netto": netto,
+        "netto": netto_cashflow,
+        "netto_inkomen": netto_inkomen,
+        "netto_cashflow": netto_cashflow,
         "netto_per_maand": netto_per_maand,
+        "netto_inkomen_per_maand": netto_inkomen_per_maand,
         "vermogen_einde_jaar": vermogen_einde_jaar,
         "arbeid_p1": _som_maanden(maanden, lambda m: m.arbeid_p1_bruto),
         "arbeid_p2": _som_maanden(maanden, lambda m: m.arbeid_p2_bruto),
@@ -171,8 +181,8 @@ def bouw_accountant_detail(
     jaar_incidenteel_ontvangst = _som_maanden(maanden, lambda m: m.eenmalig_ontvangst)
     jaar_incidenteel_uitgave = _som_maanden(maanden, lambda m: m.eenmalig_uitgave)
 
-    bruto_p1 = jaar_arbeid_p1 + jaar_aow_p1 + jaar_pen_p1
-    bruto_p2 = jaar_arbeid_p2 + jaar_aow_p2 + jaar_pen_p2
+    bruto_p1 = jaar_arbeid_p1 + jaar_aow_p1 + jaar_pen_p1 + jaar_overig_p1
+    bruto_p2 = jaar_arbeid_p2 + jaar_aow_p2 + jaar_pen_p2 + jaar_overig_p2
 
     ew_p1 = _bouw_eigen_woning_resultaat(ew_payload.get("p1"))
     ew_p2_data = ew_payload.get("p2")
@@ -294,7 +304,7 @@ def bouw_accountant_detail(
         ),
         "netto_p1": _d(box1_payload.get("netto_p1")),
         "netto_p2": _d(box1_payload.get("netto_p2")),
-        "totaal_netto_inkomen": _d(box1_payload.get("totaal_netto_inkomen")),
+        "totaal_netto_inkomen": _som_maanden(maanden, lambda m: m.netto_inkomen),
         "jaar_netto_component_inkomen": jaar_arbeid_netto,
         "jaar_incidenteel_ontvangst": jaar_incidenteel_ontvangst,
         "jaar_incidenteel_uitgave": jaar_incidenteel_uitgave,

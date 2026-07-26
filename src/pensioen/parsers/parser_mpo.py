@@ -152,6 +152,87 @@ def _leeftijd_blok_naar_datum(blok: dict, geboortedatum: date | None) -> date | 
     return date(doeljaar, doelmaand, 1)
 
 
+def _kies_pensioeningangsdatum(
+    bestaand: date | None,
+    kandidaat: date | None,
+    peildatum: date | None,
+) -> date | None:
+    """Kies bij tijdvakken eerst de vroegste toekomstige pensioendatum."""
+    if bestaand is None:
+        return kandidaat
+    if kandidaat is None:
+        return bestaand
+    if peildatum is None:
+        return min(bestaand, kandidaat)
+
+    bestaand_toekomstig = bestaand >= peildatum
+    kandidaat_toekomstig = kandidaat >= peildatum
+    if bestaand_toekomstig != kandidaat_toekomstig:
+        return bestaand if bestaand_toekomstig else kandidaat
+    return min(bestaand, kandidaat) if bestaand_toekomstig else max(bestaand, kandidaat)
+
+
+def _pensioenstart_uit_tijdvak(
+    startdatum: date | None,
+    einddatum: date | None,
+    peildatum: date | None,
+) -> date | None:
+    """Gebruik het toekomstige tijdvakeinde als een historisch Van-blok doorloopt."""
+    if (
+        peildatum is not None
+        and startdatum is not None
+        and startdatum < peildatum
+        and einddatum is not None
+        and einddatum >= peildatum
+    ):
+        return einddatum
+    return startdatum
+
+
+def _itemwaarde(item: dict, *namen: str):
+    """Lees een MPO-itemveld hoofdletterongevoelig."""
+    gewenste_namen = {naam.lower() for naam in namen}
+    for sleutel, waarde in item.items():
+        if str(sleutel).lower() in gewenste_namen:
+            return waarde
+    return None
+
+
+def _datum_uit_item(
+    item: dict,
+    geboortedatum: date | None,
+    *,
+    vanaf: bool,
+) -> date | None:
+    datum_namen = (
+        ("vanafDatum", "ingangsdatum", "pensioenIngangsdatum")
+        if vanaf
+        else ("totDatum", "einddatum")
+    )
+    expliciete_datum = _parse_datum(_itemwaarde(item, *datum_namen))
+    if expliciete_datum is not None:
+        return expliciete_datum
+
+    jaren_namen = (
+        ("vanafLeeftijdJaren", "pensioenIngangsLeeftijdJaren")
+        if vanaf
+        else ("totLeeftijdJaren",)
+    )
+    maanden_namen = (
+        ("vanafLeeftijdMaanden", "pensioenIngangsLeeftijdMaanden")
+        if vanaf
+        else ("totLeeftijdMaanden",)
+    )
+    jaren = _itemwaarde(item, *jaren_namen)
+    if jaren is None:
+        return None
+    maanden = _itemwaarde(item, *maanden_namen) or 0
+    return _leeftijd_blok_naar_datum(
+        {"Leeftijd": {"Jaren": int(jaren), "Maanden": int(maanden)}},
+        geboortedatum,
+    )
+
+
 def pensioenrecord_naar_component(
     record: PensioenRecord, persoon: str = "P1"
 ) -> FinancieelComponent:
@@ -315,7 +396,8 @@ class MPOParser:
 
         Het JSON-formaat bevat tijdvakken per leeftijdsperiode. Per uitvoerder en
         regelingscode worden records gedupeerd tot één PensioenRecord per aanspraak:
-        - ingangsdatum: afgeleid van de vroegste Van.Leeftijd (vereist geboortedatum).
+        - ingangsdatum: afgeleid uit Van.Leeftijd; bij meerdere tijdvakken heeft
+          de vroegste toekomstige pensioendatum voorrang op historische tijdvakken.
         - bruto_per_jaar: TeBereiken uit het laatste (hoogste leeftijd) tijdvak.
         - einddatum: None als het tijdvak eindigt met 'Overlijden'.
 
@@ -347,8 +429,8 @@ class MPOParser:
         details = data.get("Details", {})
 
         # --- Ouderdomspensioen ---
-        # Dedupliceer per (HerkenningsNummer, type_sleutel): neem de vroegste ingangsdatum
-        # en het TeBereiken-bedrag uit het laatste (meest volledige) tijdvak.
+        # Dedupliceer per (HerkenningsNummer, type_sleutel): kies de relevante
+        # toekomstige ingangsdatum en het TeBereiken-bedrag uit het laatste tijdvak.
         ouderdoms_tijdvakken = (
             details.get("OuderdomsPensioenDetails", {}).get("OuderdomsPensioen", []) or []
         )
@@ -380,17 +462,44 @@ class MPOParser:
                 for item in tijdvak.get(type_sleutel, []) or []:
                     herkenning = item.get("HerkenningsNummer", "")
                     sleutel = (herkenning, type_sleutel)
+                    stand_per = item.get("StandPer")
+                    tijdvak_peildatum = peildatum
+                    if stand_per:
+                        try:
+                            tijdvak_peildatum = date.fromisoformat(str(stand_per)[:10])
+                        except ValueError:
+                            pass
+                    tijdvak_ingangsdatum = _pensioenstart_uit_tijdvak(
+                        ingangsdatum,
+                        einddatum,
+                        tijdvak_peildatum,
+                    )
+                    expliciete_ingangsdatum = _datum_uit_item(
+                        item, geboortedatum, vanaf=True
+                    )
+                    expliciete_einddatum = _datum_uit_item(
+                        item, geboortedatum, vanaf=False
+                    )
+                    tijdvak_ingangsdatum = (
+                        expliciete_ingangsdatum or tijdvak_ingangsdatum
+                    )
+                    effectieve_einddatum = expliciete_einddatum or (
+                        None if tijdvak_ingangsdatum == einddatum else einddatum
+                    )
 
                     if sleutel not in ouderdoms_map:
-                        # Eerste (vroegste) tijdvak: sla ingangsdatum op
                         ouderdoms_map[sleutel] = {
-                            "ingangsdatum": ingangsdatum,
-                            "einddatum": einddatum,
+                            "ingangsdatum": tijdvak_ingangsdatum,
+                            "einddatum": effectieve_einddatum,
                             "item": item,
                         }
                     else:
-                        # Later tijdvak: werk einddatum en item (TeBereiken) bij
-                        ouderdoms_map[sleutel]["einddatum"] = einddatum
+                        ouderdoms_map[sleutel]["ingangsdatum"] = _kies_pensioeningangsdatum(
+                            ouderdoms_map[sleutel]["ingangsdatum"],
+                            tijdvak_ingangsdatum,
+                            tijdvak_peildatum,
+                        )
+                        ouderdoms_map[sleutel]["einddatum"] = effectieve_einddatum
                         ouderdoms_map[sleutel]["item"] = item
 
         for (herkenning, type_sleutel), entry in ouderdoms_map.items():

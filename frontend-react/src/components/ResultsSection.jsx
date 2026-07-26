@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 function TrendChart({ title, rows, series, euro }) {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
   const width = 900;
   const height = 250;
   const padding = { top: 24, right: 24, bottom: 38, left: 72 };
@@ -35,11 +38,34 @@ function TrendChart({ title, rows, series, euro }) {
           return (
             <g key={item.key}>
               <polyline points={points} fill="none" stroke={item.color} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
-              {rows.map((row, index) => (
-                <circle key={`${item.key}-${row.jaar}`} cx={x(index)} cy={y(Number(row[item.key]) || 0)} r="4" fill={item.color}>
-                  <title>{`${row.jaar} · ${item.label}: ${euro(row[item.key])}`}</title>
-                </circle>
-              ))}
+              {rows.map((row, index) => {
+                const point = {
+                  x: x(index),
+                  y: y(Number(row[item.key]) || 0),
+                  jaar: row.jaar,
+                  label: item.label,
+                  value: row[item.key],
+                  color: item.color,
+                };
+                return (
+                  <g key={`${item.key}-${row.jaar}`}>
+                    <circle cx={point.x} cy={point.y} r="4" fill={item.color} />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="14"
+                      fill="transparent"
+                      className="chart-hit-area"
+                      tabIndex="0"
+                      aria-label={`${row.jaar}, ${item.label}: ${euro(row[item.key])}`}
+                      onMouseEnter={() => setHoveredPoint(point)}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                      onFocus={() => setHoveredPoint(point)}
+                      onBlur={() => setHoveredPoint(null)}
+                    />
+                  </g>
+                );
+              })}
             </g>
           );
         })}
@@ -48,6 +74,30 @@ function TrendChart({ title, rows, series, euro }) {
             {rows[index].jaar}
           </text>
         ))}
+        {hoveredPoint ? (
+          <g className="chart-tooltip" pointerEvents="none">
+            <rect
+              x={Math.min(width - 238, Math.max(padding.left, hoveredPoint.x - 110))}
+              y={Math.max(4, hoveredPoint.y - 62)}
+              width="220"
+              height="48"
+              rx="8"
+            />
+            <text
+              x={Math.min(width - 228, Math.max(padding.left + 10, hoveredPoint.x - 100))}
+              y={Math.max(22, hoveredPoint.y - 43)}
+            >
+              <tspan fontWeight="700">{hoveredPoint.jaar} · {hoveredPoint.label}</tspan>
+              <tspan
+                x={Math.min(width - 228, Math.max(padding.left + 10, hoveredPoint.x - 100))}
+                dy="18"
+                fill={hoveredPoint.color}
+              >
+                {euro(hoveredPoint.value)}
+              </tspan>
+            </text>
+          </g>
+        ) : null}
       </svg>
     </article>
   );
@@ -74,6 +124,7 @@ export default function ResultsSection({ SectionHeader, jaarRows, euro }) {
               series={[
                 { key: "bruto", label: "Bruto inkomen", color: "#557c3e" },
                 { key: "netto", label: "Netto inkomen", color: "#165d48" },
+                { key: "cashflow", label: "Vrije cashflow", color: "#b54f3f" },
               ]}
             />
             <TrendChart
@@ -88,12 +139,12 @@ export default function ResultsSection({ SectionHeader, jaarRows, euro }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Jaar</th><th>Bruto</th><th>Belasting</th><th>Netto</th><th>Vermogen einde jaar</th></tr>
+                <tr><th>Jaar</th><th>Bruto</th><th>Belasting</th><th>Netto inkomen</th><th>Vrije cashflow</th><th>Vermogen einde jaar</th></tr>
               </thead>
               <tbody>
                 {jaarRows.map((row) => (
                   <tr key={row.jaar}>
-                    <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.vermogenEinde)}</td>
+                    <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.cashflow)}</td><td>{euro(row.vermogenEinde)}</td>
                   </tr>
                 ))}
               </tbody>

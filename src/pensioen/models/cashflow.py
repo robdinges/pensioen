@@ -72,6 +72,7 @@ class MaandResultaat:
 
     @property
     def netto(self) -> Decimal:
+        """Vrije cashflow na belasting, uitgaven en incidentele posten."""
         return (
             self.totaal_bruto
             + self.inkomen_componenten_netto
@@ -81,6 +82,18 @@ class MaandResultaat:
             - self.huishoudelijke_uitgaven
             + self.eenmalig_ontvangst
             - self.eenmalig_uitgave
+        )
+
+    @property
+    def netto_inkomen(self) -> Decimal:
+        """Netto inkomen vóór box 3, huishoudelijke en incidentele uitgaven."""
+        return (
+            self.totaal_bruto
+            + self.inkomen_componenten_netto
+            - self.belasting_p1
+            - self.belasting_p2
+            + self.totaal_heffingskorting
+            - self.inhoudingen
         )
 
 
@@ -226,6 +239,10 @@ class JaarResultaat:
     @property
     def netto(self) -> Decimal:
         return sum(m.netto for m in self.maanden)
+
+    @property
+    def netto_inkomen(self) -> Decimal:
+        return sum(m.netto_inkomen for m in self.maanden)
 
     @property
     def netto_per_maand(self) -> Decimal:

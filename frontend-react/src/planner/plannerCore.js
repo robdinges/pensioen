@@ -576,8 +576,9 @@ export function selectYearRows(cashflow) {
       jaar: Number(jaar.jaar),
       bruto: toAmount(samenvatting.bruto),
       belasting: toAmount(samenvatting.belasting),
-      netto: toAmount(samenvatting.netto),
-      nettoPerMaand: toAmount(samenvatting.netto_per_maand),
+      netto: toAmount(samenvatting.netto_inkomen ?? samenvatting.netto),
+      cashflow: toAmount(samenvatting.netto_cashflow ?? samenvatting.netto),
+      nettoPerMaand: toAmount(samenvatting.netto_inkomen_per_maand ?? samenvatting.netto_per_maand),
       vermogenEinde: toAmount(samenvatting.vermogen_einde_jaar),
     };
   });

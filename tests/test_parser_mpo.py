@@ -436,6 +436,94 @@ class TestMPOParserJSON:
         assert len(aegon) == 1
         assert aegon[0].einddatum is None  # eindigt bij overlijden
 
+    def test_parse_json_verkiest_toekomstige_pensioenstart(self, tmp_path: Path) -> None:
+        """Een historisch opbouwtijdvak mag de toekomstige pensioenstart niet vervangen."""
+        data = self._minimale_json()
+        pensioen = {
+            "TeBereiken": 12000,
+            "Opgebouwd": 8000,
+            "PensioenUitvoerder": "Testfonds",
+            "HerkenningsNummer": "REG-TOEKOMST",
+            "StandPer": "2026-03-01",
+        }
+        data["Details"]["OuderdomsPensioenDetails"]["OuderdomsPensioen"] = [
+            {
+                "Van": {"Leeftijd": {"Jaren": 47, "Maanden": 0}},
+                "Tot": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                "Pensioen": [pensioen],
+            },
+            {
+                "Van": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                "Tot": {"OuderdomsPensioenEvent": "Overlijden"},
+                "Pensioen": [pensioen],
+            },
+        ]
+
+        bestand = self._schrijf_mpo_json(tmp_path, data)
+        records = MPOParser.parse_json(bestand, geboortedatum=date(1960, 3, 15))
+
+        assert len(records) == 1
+        assert records[0].ingangsdatum == date(2028, 3, 1)
+
+    def test_parse_json_enkel_tijdvak_gebruikt_toekomstige_tot_datum(
+        self, tmp_path: Path
+    ) -> None:
+        """Een historisch Van met toekomstig Tot gebruikt Tot als pensioenmoment."""
+        data = self._minimale_json()
+        data["Details"]["OuderdomsPensioenDetails"]["OuderdomsPensioen"] = [
+            {
+                "Van": {"Leeftijd": {"Jaren": 47, "Maanden": 0}},
+                "Tot": {"Leeftijd": {"Jaren": 68, "Maanden": 0}},
+                "Pensioen": [
+                    {
+                        "TeBereiken": 12000,
+                        "Opgebouwd": 8000,
+                        "PensioenUitvoerder": "Testfonds",
+                        "HerkenningsNummer": "REG-ENKEL",
+                        "StandPer": "2026-03-01",
+                    }
+                ],
+            }
+        ]
+
+        bestand = self._schrijf_mpo_json(tmp_path, data)
+        records = MPOParser.parse_json(bestand, geboortedatum=date(1960, 3, 15))
+
+        assert len(records) == 1
+        assert records[0].ingangsdatum == date(2028, 3, 1)
+
+    def test_parse_json_expliciete_vanafdatum_heeft_voorrang(
+        self, tmp_path: Path
+    ) -> None:
+        """De item-vanafDatum is leidend boven een historisch buitenste tijdvak."""
+        data = self._minimale_json()
+        data["Details"]["OuderdomsPensioenDetails"]["OuderdomsPensioen"] = [
+            {
+                "Van": {"Leeftijd": {"Jaren": 47, "Maanden": 0}},
+                "Tot": {"OuderdomsPensioenEvent": "Overlijden"},
+                "Pensioen": [
+                    {
+                        "TeBereiken": 12000,
+                        "Opgebouwd": 8000,
+                        "PensioenUitvoerder": "Testfonds",
+                        "HerkenningsNummer": "REG-EXPLICIET",
+                        "StandPer": "2026-03-01",
+                        "vanafDatum": "2040-04-19",
+                        "vanafLeeftijdJaren": 68,
+                        "vanafLeeftijdMaanden": 0,
+                        "totOverlijden": True,
+                    }
+                ],
+            }
+        ]
+
+        bestand = self._schrijf_mpo_json(tmp_path, data)
+        records = MPOParser.parse_json(bestand, geboortedatum=date(1972, 4, 19))
+
+        assert len(records) == 1
+        assert records[0].ingangsdatum == date(2040, 4, 19)
+        assert records[0].einddatum is None
+
     def test_parse_json_peildatum_uit_bericht(self, tmp_path: Path) -> None:
         """Peildatum wordt afgeleid uit TijdstipAanmakenBericht."""
         bestand = self._schrijf_mpo_json(tmp_path, self._minimale_json())

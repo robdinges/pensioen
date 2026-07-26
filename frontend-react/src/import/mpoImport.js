@@ -16,6 +16,15 @@ function normalizeHeader(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function getCaseInsensitive(source, names) {
+  if (!source || typeof source !== "object") {
+    return undefined;
+  }
+  const wanted = new Set(names.map((name) => name.toLowerCase()));
+  const entry = Object.entries(source).find(([key]) => wanted.has(key.toLowerCase()));
+  return entry?.[1];
+}
+
 function isoDateFromParts(year, month, day) {
   const candidate = new Date(Date.UTC(year, month - 1, day));
   if (
@@ -131,6 +140,40 @@ function chooseEarliestIsoDate(left, right) {
   return left <= right ? left : right;
 }
 
+function choosePensionStartDate(left, right, referenceDate) {
+  if (!left) {
+    return right || "";
+  }
+  if (!right) {
+    return left;
+  }
+  if (!referenceDate) {
+    return chooseEarliestIsoDate(left, right);
+  }
+
+  const leftIsFuture = left >= referenceDate;
+  const rightIsFuture = right >= referenceDate;
+  if (leftIsFuture !== rightIsFuture) {
+    return leftIsFuture ? left : right;
+  }
+  return leftIsFuture
+    ? chooseEarliestIsoDate(left, right)
+    : chooseLatestIsoDate(left, right);
+}
+
+function pensionStartFromPeriod(startDate, endDate, referenceDate) {
+  if (
+    referenceDate
+    && startDate
+    && startDate < referenceDate
+    && endDate
+    && endDate >= referenceDate
+  ) {
+    return endDate;
+  }
+  return startDate;
+}
+
 function chooseLatestIsoDate(left, right) {
   if (!left) {
     return right || "";
@@ -155,6 +198,49 @@ function leeftijdBlokNaarIso(blok, geboortedatum) {
   }
 
   return formatDateToIso(new Date(geboorte.getFullYear() + jaren, geboorte.getMonth() + maanden, 1));
+}
+
+function pensioenitemIngangsdatum(item, geboortedatum) {
+  const explicieteDatum = normalizeMpoDate(getCaseInsensitive(item, [
+    "vanafDatum",
+    "ingangsdatum",
+    "pensioenIngangsdatum",
+  ]));
+  if (explicieteDatum) {
+    return explicieteDatum;
+  }
+
+  const jaren = getCaseInsensitive(item, [
+    "vanafLeeftijdJaren",
+    "pensioenIngangsLeeftijdJaren",
+  ]);
+  if (jaren === undefined || jaren === null || jaren === "") {
+    return "";
+  }
+  const maanden = getCaseInsensitive(item, [
+    "vanafLeeftijdMaanden",
+    "pensioenIngangsLeeftijdMaanden",
+  ]) || 0;
+  return leeftijdBlokNaarIso(
+    { Leeftijd: { Jaren: Number(jaren), Maanden: Number(maanden) } },
+    geboortedatum,
+  );
+}
+
+function pensioenitemEinddatum(item, geboortedatum) {
+  const explicieteDatum = normalizeMpoDate(getCaseInsensitive(item, ["totDatum", "einddatum"]));
+  if (explicieteDatum) {
+    return explicieteDatum;
+  }
+  const jaren = getCaseInsensitive(item, ["totLeeftijdJaren"]);
+  if (jaren === undefined || jaren === null || jaren === "") {
+    return "";
+  }
+  const maanden = getCaseInsensitive(item, ["totLeeftijdMaanden"]) || 0;
+  return leeftijdBlokNaarIso(
+    { Leeftijd: { Jaren: Number(jaren), Maanden: Number(maanden) } },
+    geboortedatum,
+  );
 }
 
 function standPerNaarIso(item) {
@@ -197,13 +283,23 @@ function normalizeStructuredMpoJson(parsed, options = {}) {
         const sleutel = `${herkenningsNummer || uitvoerder || "onbekend"}|${typeSleutel}`;
         const bestaande = pensioenMap.get(sleutel);
         const standPerIso = standPerNaarIso(item);
-        const volgendeIngang = chooseEarliestIsoDate(
+        const berichtDatum = normalizeMpoDate(parsed?.TijdstipAanmakenBericht);
+        const referentieDatum = standPerIso || berichtDatum;
+        const explicietePensioenstart = pensioenitemIngangsdatum(item, options.geboortedatum);
+        const explicietPensioeneinde = pensioenitemEinddatum(item, options.geboortedatum);
+        const tijdvakPensioenstart = explicietePensioenstart || pensionStartFromPeriod(
+          ingangsdatum, einddatum, referentieDatum,
+        );
+        const effectieveEinddatum = explicietPensioeneinde
+          || (tijdvakPensioenstart === einddatum ? "" : einddatum);
+        const volgendeIngang = choosePensionStartDate(
           bestaande?.ingangsdatum || "",
-          ingangsdatum || standPerIso,
+          tijdvakPensioenstart || standPerIso,
+          referentieDatum,
         );
         const volgendeEinde = chooseLatestIsoDate(
           bestaande?.einddatum || "",
-          einddatum,
+          effectieveEinddatum,
         );
         const volgende = {
           herkenningsNummer,
@@ -332,7 +428,7 @@ export async function parseExcelBuffer(buffer) {
 }
 
 export function rowsToPreview(rows) {
-  return rows.slice(0, 8).map((row) => ({
+  return rows.map((row) => ({
     uitvoerder: String(row.uitvoerder || "").trim(),
     regeling: String(row.regeling || "").trim(),
     type: String(row.type_pensioen || "").trim(),

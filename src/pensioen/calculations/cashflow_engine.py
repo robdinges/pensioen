@@ -706,7 +706,7 @@ def _bereken_jaar(
             + rente
             + inleg_per_maand
         )
-        saldo = max(Decimal("0"), _rond_af(saldo + netto_cashflow))
+        saldo = _rond_af(saldo + netto_cashflow)
 
         resultaat = MaandResultaat(
             jaar=jaar,

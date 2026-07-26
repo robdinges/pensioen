@@ -478,6 +478,13 @@ details[open] > summary .chevron {
   margin-top: 0.8rem;
 }
 
+.import-confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
 .import-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -636,6 +643,28 @@ pre {
 
 .chart-axis-label {
   fill: #627269;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.chart-hit-area {
+  cursor: crosshair;
+  outline: none;
+}
+
+.chart-hit-area:focus {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.chart-tooltip rect {
+  fill: #fffdf7;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-tooltip text {
+  fill: var(--ink);
   font-family: inherit;
   font-size: 12px;
 }
