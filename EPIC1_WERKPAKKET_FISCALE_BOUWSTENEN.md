@@ -36,6 +36,9 @@ fiscale bouwstenen:
 
 Epic 1 is daarmee de eerste echte implementatiefase na de analyse.
 
+**Status: ✅ AFGEROND (26 juli 2026).** De actuele status per issue en de
+verificatie-uitkomst staan in `EPIC1_ISSUES_BACKLOG.md`.
+
 ## Scope
 
 Epic 1 omvat alleen de volgende functies:

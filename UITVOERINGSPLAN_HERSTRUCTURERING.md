@@ -86,6 +86,9 @@ Maak de functionele berekenarchitectuur operationeel als wijzigingscontract.
 
 ## Epic 1 — Fiscale bouwstenen isoleren
 
+**Status: ✅ AFGEROND (26 juli 2026).** Zie `EPIC1_ISSUES_BACKLOG.md` voor de
+status per issue en de uitgevoerde regressiepoort.
+
 ### Doel Epic 1
 
 Maak de pure fiscale functies volledig zelfstandig testbaar en expliciet.

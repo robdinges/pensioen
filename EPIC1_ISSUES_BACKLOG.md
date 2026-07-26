@@ -22,6 +22,30 @@ post_date: "2026-07-12"
 
 Deze backlog vertaalt Epic 1 naar kleine, uitvoerbare issues.
 
+## Status
+
+**Epicstatus: ✅ AFGEROND (26 juli 2026)**
+
+Dit betreft **Epic 1 — Fiscale bouwstenen isoleren** uit
+`UITVOERINGSPLAN_HERSTRUCTURERING.md`. Dit is niet dezelfde Epic 1 als de
+API-laag en API-UI uit `BACKLOG.md`.
+
+Alle issues 1 tot en met 16 zijn afgerond. De gerichte regressiepoort is op
+26 juli 2026 opnieuw uitgevoerd:
+
+```text
+61 passed
+```
+
+Uitgevoerd met:
+
+```bash
+PYTHONPATH=src .venv312/bin/python -m pytest \
+  tests/test_fiscale_bouwstenen.py \
+  tests/test_belasting_engine.py \
+  tests/validatie_aangifte_2025.py -q
+```
+
 De issues zijn bewust klein gehouden, zodat:
 
 - iedere wijziging één fiscale bouwsteen raakt
@@ -41,6 +65,8 @@ De aanbevolen uitvoervolgorde is:
 ## Epic 1-A — Contractbasis fiscale bouwstenen
 
 ### Issue 1
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -63,6 +89,8 @@ Acceptatiecriteria:
 - afrondingsmoment per premiecomponent is expliciet
 
 ### Issue 2
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -89,6 +117,8 @@ Acceptatiecriteria:
 
 ### Issue 3
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg functioneel contract vast voor totale heffingskorting`
@@ -109,6 +139,8 @@ Acceptatiecriteria:
 ## Epic 1-B — Premieberekening direct testen
 
 ### Issue 4
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -132,6 +164,8 @@ Acceptatiecriteria:
 
 ### Issue 5
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg directe unit-tests toe voor AOW-effect in premieberekening`
@@ -152,6 +186,8 @@ Acceptatiecriteria:
 
 ### Issue 6
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg directe afrondingstests toe voor premieberekening`
@@ -167,6 +203,8 @@ Acceptatiecriteria:
 ## Epic 1-C — Losse heffingskortingen direct testen
 
 ### Issue 7
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -185,6 +223,8 @@ Acceptatiecriteria:
 
 ### Issue 8
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg directe unit-tests toe voor bereken_arbeidskorting grenswaarden`
@@ -202,6 +242,8 @@ Acceptatiecriteria:
 
 ### Issue 9
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg directe unit-tests toe voor bereken_ouderenkorting grenswaarden`
@@ -218,6 +260,8 @@ Acceptatiecriteria:
 - ouderenkorting is direct afgedekt zonder `netto_uit_bruto()`
 
 ### Issue 10
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -239,6 +283,8 @@ Acceptatiecriteria:
 
 ### Issue 11
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg directe unit-tests toe voor bereken_totale_heffingskortingen basisscenario's`
@@ -255,6 +301,8 @@ Acceptatiecriteria:
 - totale korting is direct getest in representatieve functionele scenario’s
 
 ### Issue 12
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -273,6 +321,8 @@ Acceptatiecriteria:
 
 ### Issue 13
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Verifieer aansluiting van nieuwe directe tests op netto_uit_bruto`
@@ -289,6 +339,8 @@ Acceptatiecriteria:
 
 ### Issue 14
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Verifieer aansluiting van Epic 1 op validatie_aangifte_2025`
@@ -302,6 +354,8 @@ Acceptatiecriteria:
 - verschillen zijn expliciet verklaard of afwezig
 
 ### Issue 15
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -318,13 +372,11 @@ Acceptatiecriteria:
 
 ### Issue 16
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Valideer begrenzing van verrekenbare heffingskortingen op verschuldigde IB en premies`
-
-Status:
-
-`AFGEROND - fiscaal gevalideerd voor de ondersteunde individuele verrekening`
 
 Huidige implementatie:
 

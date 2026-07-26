@@ -97,6 +97,10 @@ Scope eerste iteratie:
 - Eenduidige foutmeldingen gekoppeld aan API-validatiecodes.
 
 #### #401: Epic 1 - API-laag + simpele API-UI 🔴 HIGH
+> Let op: dit is de API-roadmap. Dit is niet **Epic 1 — Fiscale bouwstenen
+> isoleren** uit `UITVOERINGSPLAN_HERSTRUCTURERING.md`; die fiscale Epic 1 is
+> afgerond en wordt bijgehouden in `EPIC1_ISSUES_BACKLOG.md`.
+
 **Beschrijving**: Stateless API-first MVP bovenop de bestaande rekenengine.
 
 **In scope (MVP)**:
