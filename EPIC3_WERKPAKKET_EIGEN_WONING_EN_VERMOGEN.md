@@ -33,6 +33,11 @@ Het doel van Epic 3 is om vast te leggen en daarna technisch af te dwingen dat:
   komen
 - box 1, box 3 en vermogensopbouw functioneel op consistente grondslagen draaien
 
+**Status: 🟡 IMPLEMENTATIE AFGEROND — FUNCTIONELE VALIDATIE OPEN.** Zie
+`EPIC3_ISSUES_BACKLOG.md` voor de status per issue en het open beslispunt over
+de verdeling van toekomstige netto cashflow over belast en vrijgesteld
+liquide vermogen.
+
 ## Functionele stap
 
 Primary step:

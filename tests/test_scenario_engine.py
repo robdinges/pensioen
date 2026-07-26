@@ -134,6 +134,30 @@ class TestScenarioModel:
         assert startwaarden["box3_grondslag"] == Decimal("100000")
         assert startwaarden["box3_spaargeld_fractie"] == Decimal("0.8")
 
+    def test_box3_belast_vast_item_voorkomt_legacy_fallback(self) -> None:
+        """Een niet-liquide box-3-item is zelfstandig een formele vermogensbron."""
+        scenario = Scenario(
+            naam="Vaste box 3-bron",
+            spaargeld_start=Decimal("999999"),
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Kunstcollectie",
+                    type=VermogensType.KUNST,
+                    aanschafwaarde=Decimal("75000"),
+                    box3_belast=True,
+                )
+            ],
+        )
+
+        startwaarden = scenario.bepaal_vermogen_startwaarden(date(2026, 1, 1))
+
+        assert startwaarden["bron"] == "vermogensitems"
+        assert startwaarden["liquide_startvermogen"] == Decimal("0")
+        assert startwaarden["box3_liquide_grondslag"] == Decimal("0")
+        assert startwaarden["box3_vaste_grondslag"] == Decimal("75000")
+        assert startwaarden["box3_grondslag"] == Decimal("75000")
+        assert startwaarden["box3_spaargeld_fractie"] == Decimal("0")
+
 
 class TestVergelijkScenarios:
     """Tests voor de scenariovergelijkingsfunctie."""

@@ -376,8 +376,8 @@ Functies:
 
 Gebruikte data:
 
-- `Scenario.eigen_woning`
-- `vermogensitems` woning/hypotheek
+- primaire bron: `vermogensitems` woning/hypotheek
+- legacy fallback: `Scenario.eigen_woning`
 
 Gebruikte tarieven:
 
@@ -391,7 +391,7 @@ Tests:
 
 Accountantdetail:
 
-- gebruikt deze stap wel expliciet
+- consumeert het `EigenWoningResultaat` uit engine-output
 
 Afhankelijkheden:
 
@@ -399,12 +399,15 @@ Afhankelijkheden:
 
 Source of truth:
 
-- **nee**
+- **ja**, `vermogensitems` via
+  `Scenario.verzamel_fiscale_eigen_woning_invoer()` en
+  `bereken_eigen_woning()`
 
-Probleem:
+Migratiecontract:
 
-- hoofdengine gebruikt eigen woning niet als fiscale kernstap
-- accountantpad wel
+- `Scenario.eigen_woning` wordt alleen gebruikt als er geen relevante
+  woning- of hypotheekitems bestaan
+- de UI rekent het woningeffect niet zelfstandig opnieuw uit
 
 ### 3.8 Box 1
 
@@ -530,7 +533,8 @@ Functies:
 
 Gebruikte data:
 
-- saldo begin jaar
+- box-3-grondslag per 1 januari
+- uitgesplitst liquide belast deel en vaste box-3-items
 - partnerstatus
 - spaargeldfractie
 
@@ -545,18 +549,24 @@ Tests:
 
 - `tests/test_belasting_engine.py`
 - `tests/validatie_aangifte_2025.py`
+- `tests/test_cashflow_engine.py`
+- `tests/test_regression_bugs.py`
 
 Accountantdetail:
 
-- expliciet zichtbaar en uitgesplitst
+- consumeert grondslag, bron en uitsplitsing uit engine-output
 
 Source of truth:
 
-- **bijna ja**
+- **ja**, `Scenario.bepaal_vermogen_startwaarden()` plus
+  `bereken_box3_heffing()`
 
-Maar:
+Prognosecontract:
 
-- box 3 gebruikt startjaarsfractie, rendement gebruikt dynamische maandfractie
+- de belastbare fractie van liquide vermogensitems blijft tijdens de prognose
+  gelijk; toekomstige netto cashflow volgt die fractie
+- vaste box-3-items worden per volgende peildatum opnieuw gewaardeerd
+- box 3 en maandrendement houden bewust verschillende grondslagen
 
 ### 3.12 Vermogen
 
@@ -584,15 +594,17 @@ Tests:
 
 Accountantdetail:
 
-- rekent saldo-opbouw opnieuw uit
+- consumeert maandelijkse saldo-opbouw uit engine-output
 
 Source of truth:
 
-- **gedeeltelijk**
+- **ja**, saldo-opbouw in `_bereken_jaar()`
 
-Probleem:
+Bewust onderscheid:
 
-- twee paden rekenen de vermogensopbouw opnieuw uit
+- rendement gebruikt het volledige liquide saldo begin maand en de dynamische
+  sparen/beleggen-fractie
+- box 3 gebruikt de fiscale peildatumgrondslag
 
 ### 3.13 Resultaten
 
@@ -630,15 +642,15 @@ Source of truth:
 | --- | --- | --- |
 | Scenario-resolutie | `resolve_scenario()` | goed |
 | Persoonsgegevens/AOW-leeftijd | `aow_engine` | goed |
-| Pensioen | componenten in hoofdpad, records in accountantpad | fout / dubbel |
+| Pensioen | getransformeerde scenario-componenten | goed |
 | Arbeid | componenten | goed |
-| Bruto inkomen | afgeleid, maar pensioenbron verschilt | instabiel |
-| Eigen woning | accountantpad + dubbele bron | fout / dubbel |
+| Bruto inkomen | `JaarResultaat.bruto_inkomen` | goed |
+| Eigen woning | `vermogensitems` via engine-readmodel | goed |
 | Box 1 | `netto_uit_bruto()` plus accountantvariant | dubbel |
 | Heffingskortingen | `heffingskorting.py` plus accountantspecial case | dubbel |
 | Netto inkomen | hoofdpad + accountantopbouw | dubbel |
-| Box 3 | `bereken_box3_heffing()` | redelijk goed |
-| Vermogen | hoofdpad + accountantopbouw | dubbel |
+| Box 3 | formele peildatumgrondslag + `bereken_box3_heffing()` | goed |
+| Vermogen | saldo-opbouw in hoofdengine | goed |
 | Resultaatdetail | geen uniforme detail-DTO | ontbreekt |
 
 ## 5. Gewenste functionele doeltoestand

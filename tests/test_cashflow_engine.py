@@ -704,3 +704,67 @@ class TestCashflowHuishouden:
 
         aannames_join = " | ".join(jaar.maanden[0].aannames)
         assert "Eigen woning stap actief" in aannames_join
+
+    def test_meerjarige_box3_grondslag_bewaart_formele_uitsplitsing(self) -> None:
+        """Prognosejaar 2 stelt box 3 niet stil gelijk aan het rendementsaldo."""
+        persoon = Persoon(
+            naam="Box3 meerjarig",
+            geboortedatum=date(1980, 1, 1),
+            heeft_partner=False,
+        )
+        scenario = Scenario(
+            naam="Box3 uitsplitsing",
+            box3_meenemen=False,
+            rendement_pct=Decimal("0"),
+            vermogensitems=[
+                VermogensItem(
+                    omschrijving="Belast spaargeld",
+                    type=VermogensType.SPAARGELD,
+                    aanschafwaarde=Decimal("50000"),
+                    box3_belast=True,
+                ),
+                VermogensItem(
+                    omschrijving="Vrijgesteld spaargeld",
+                    type=VermogensType.SPAARGELD,
+                    aanschafwaarde=Decimal("50000"),
+                    box3_belast=False,
+                ),
+                VermogensItem(
+                    omschrijving="Kunst",
+                    type=VermogensType.KUNST,
+                    aanschafwaarde=Decimal("20000"),
+                    box3_belast=True,
+                ),
+            ],
+        )
+
+        jaren = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon,
+            persoon2=None,
+            records1=[],
+            records2=[],
+            jaar_van=2027,
+            jaar_tot=2028,
+            belasting_configs=_maak_configs(2027, 2028),
+        ).jaren
+
+        box3_jaar1 = jaren[0].maanden[0].gebruikte_tarieven["box3"]
+        box3_jaar2 = jaren[1].maanden[0].gebruikte_tarieven["box3"]
+
+        assert box3_jaar1["grondslag_start_vermogen"] == 70000.0
+        assert box3_jaar1["rendement_grondslag_start"] == 100000.0
+        assert box3_jaar1["spaargeld_fractie"] == pytest.approx(
+            50000 / 70000,
+            abs=1e-9,
+        )
+        assert box3_jaar2["grondslag_bron"] == "vermogensitems_prognose"
+        assert box3_jaar2["grondslag_liquide_deel"] == pytest.approx(
+            box3_jaar2["rendement_grondslag_start"] * 0.5,
+            abs=0.01,
+        )
+        assert box3_jaar2["grondslag_vaste_items"] == 20000.0
+        assert box3_jaar2["grondslag_start_vermogen"] == pytest.approx(
+            box3_jaar2["grondslag_liquide_deel"] + 20000.0,
+            abs=0.01,
+        )

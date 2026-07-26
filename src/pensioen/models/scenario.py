@@ -156,17 +156,19 @@ class Scenario(BaseModel):
             peildatum = date.today()
 
         box3_spaargeld = Decimal("0")
-        box3_beleggingen = Decimal("0")
+        box3_overig = Decimal("0")
         for item in self.vermogensitems:
             if not item.box3_belast or not item.is_actief_op(peildatum):
+                continue
+            if item.type in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
                 continue
             waarde = item.waarde_op_datum(peildatum)
             if item.type == VermogensType.SPAARGELD:
                 box3_spaargeld += waarde
-            elif item.type == VermogensType.BELEGGINGEN:
-                box3_beleggingen += waarde
+            else:
+                box3_overig += waarde
 
-        totaal_items = box3_spaargeld + box3_beleggingen
+        totaal_items = box3_spaargeld + box3_overig
         if totaal_items > Decimal("0"):
             return max(
                 Decimal("0"),
@@ -191,12 +193,15 @@ class Scenario(BaseModel):
     def bepaal_vermogen_startwaarden(self, peildatum: date) -> dict[str, Decimal | str]:
         """Bepaal startwaarden voor vermogen- en box3-stappen op peildatum.
 
-        `vermogensitems` zijn leidend zodra er actieve SPAARGELD/BELEGGINGEN-items zijn.
-        Bij afwezigheid daarvan geldt legacy fallback op spaargeld_start/beleggingen_start.
+        `vermogensitems` zijn leidend zodra er actieve liquide items of andere
+        box-3-belaste items zijn. De box-3-grondslag wordt uitgesplitst in een
+        liquide deel en vaste overige items. Bij afwezigheid van een formele
+        vermogensbron geldt de legacy fallback.
         """
         liquide_spaargeld = Decimal("0")
         liquide_beleggingen = Decimal("0")
-        box3_grondslag = Decimal("0")
+        box3_liquide_grondslag = Decimal("0")
+        box3_vaste_grondslag = Decimal("0")
 
         for item in self.vermogensitems:
             if not item.is_actief_op(peildatum):
@@ -208,16 +213,26 @@ class Scenario(BaseModel):
             elif item.type == VermogensType.BELEGGINGEN:
                 liquide_beleggingen += waarde
 
-            if item.box3_belast and item.type not in (VermogensType.EIGEN_WONING, VermogensType.HYPOTHEEK):
-                box3_grondslag += waarde
+            if not item.box3_belast or item.type in (
+                VermogensType.EIGEN_WONING,
+                VermogensType.HYPOTHEEK,
+            ):
+                continue
+            if item.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
+                box3_liquide_grondslag += waarde
+            else:
+                box3_vaste_grondslag += waarde
 
         liquide_totaal = liquide_spaargeld + liquide_beleggingen
-        if liquide_totaal > Decimal("0"):
+        box3_grondslag = box3_liquide_grondslag + box3_vaste_grondslag
+        if liquide_totaal > Decimal("0") or box3_grondslag > Decimal("0"):
             spaargeld_fractie = self.bereken_spaargeld_fractie_startvermogen(peildatum)
             return {
                 "bron": "vermogensitems",
                 "liquide_startvermogen": liquide_totaal,
                 "box3_grondslag": box3_grondslag,
+                "box3_liquide_grondslag": box3_liquide_grondslag,
+                "box3_vaste_grondslag": box3_vaste_grondslag,
                 "box3_spaargeld_fractie": spaargeld_fractie,
             }
 
@@ -228,6 +243,8 @@ class Scenario(BaseModel):
             "bron": "legacy",
             "liquide_startvermogen": legacy_totaal,
             "box3_grondslag": legacy_totaal,
+            "box3_liquide_grondslag": legacy_totaal,
+            "box3_vaste_grondslag": Decimal("0"),
             "box3_spaargeld_fractie": self.bereken_spaargeld_fractie_startvermogen(peildatum),
         }
     
@@ -465,11 +482,10 @@ class Scenario(BaseModel):
         }
 
     def sync_eigen_woning_uit_vermogensitems(self, jaar: int | None = None) -> EigenWoningData:
-        """Haal eigen-woninggegevens uit vermogensitems voor de fiscale berekening.
+        """Synchroniseer het legacy read model vanuit vermogensitems.
 
-        De vermogensitems blijven de invoerbron in de UI, maar de accountant gebruikt
-        nog steeds Scenario.eigen_woning als fiscale rekenbron. Deze helper vult die
-        rekenbron afgeleid aan vanuit eigen woning- en hypotheekitems.
+        De vermogensitems zijn de fiscale bron. ``Scenario.eigen_woning`` blijft
+        alleen beschikbaar voor backward compatibility met opgeslagen scenario's.
         """
         invoer = self.verzamel_eigen_woning_invoer_uit_vermogensitems(jaar)
         if not invoer["heeft_invoer"]:
@@ -607,4 +623,3 @@ class Scenario(BaseModel):
         """
         self.overrides.pop(field_path, None)
         self.laatst_gewijzigd_op = datetime.now()
-

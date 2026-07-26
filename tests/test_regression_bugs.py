@@ -642,5 +642,10 @@ def test_accountant_en_hoofdengine_alignen_op_eigen_woning_en_box3_bron() -> Non
     assert detail["ew_bron"] == "vermogensitems"
     assert detail["ew_woz_waarde"] == Decimal("500000")
     assert detail["ew_betaalde_hypotheekrente"] == Decimal("6000")
+    assert detail["box3_grondslag_bron"] == "vermogensitems"
+    assert detail["box3_grondslag"] == Decimal("120000")
+    assert detail["box3_grondslag_liquide"] == Decimal("120000")
+    assert detail["box3_grondslag_vaste_items"] == Decimal("0")
+    assert detail["rendement_grondslag_start"] == Decimal("120000")
     assert payload_box3["grondslag_bron"] == "vermogensitems"
     assert payload_box3["grondslag_start_vermogen"] == 120000.0

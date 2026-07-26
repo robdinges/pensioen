@@ -96,7 +96,7 @@
       "Eigen woning van 800.000 euro met hypotheek 800.000 euro en rente 24.000 euro",
       "Vermogen 500.000 euro met 50/50 verdeling tussen partners"
     ],
-    "opmerkingen": "TC4 volgens bevestigde keuze met eigen woning. Box 3 heffing p1 en p2 zijn elk 2.821 euro.",
+    "opmerkingen": "TC4 volgens bevestigde keuze met eigen woning. Box 3 heffing p1 en p2 zijn elk 2.821 euro. Epic 3-validatie: eigen woning en box 3 worden herleid uit vermogensitems; de rendementsgrondslag blijft afzonderlijk zichtbaar.",
     "data_kwaliteit": "volledig",
     "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
     "_incomplete": false

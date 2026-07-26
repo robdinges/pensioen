@@ -22,6 +22,35 @@ post_date: "2026-07-12"
 
 Deze backlog vertaalt Epic 3 naar kleine, uitvoerbare issues.
 
+## Status
+
+**Epicstatus: 🟡 IMPLEMENTATIE AFGEROND — FUNCTIONELE VALIDATIE OPEN**
+
+Alle issues 1 tot en met 13 zijn geïmplementeerd. De gekozen contracten zijn:
+
+- woning en hypotheek: `vermogensitems` via het fiscale read model
+- startvermogen: actieve liquide `vermogensitems`; legacyvelden zijn alleen
+  fallback wanneer geen formele vermogensbron bestaat
+- box 3: afzonderlijke peildatumgrondslag met liquide en vaste component
+- rendement: volledig liquide saldo begin maand
+- presentatie: consumeert engine-output en herberekent eigen woning niet
+
+Open functioneel validatiepunt:
+
+- toekomstige netto cashflow wordt tijdens de prognose verdeeld volgens de
+  belastbare fractie van het liquide startvermogen; wanneer bij aanvang alleen
+  vaste box-3-items bestaan, wordt nieuwe liquide cashflow als belast vermogen
+  behandeld
+
+Na bevestiging van deze prognoseaanname en afronding van de reeds open fiscale
+referentievalidatie kan Epic 3 op `✅ AFGEROND`.
+
+Verificatie op 26 juli 2026:
+
+- Epic 3-gerichte suite: 76 geslaagd, 2 bestaande fiscale validatiefouten
+- volledige suite: 277 geslaagd, 4 bestaande fiscale/API-referentiefouten
+- fixture-normalisatie: 6 verwerkt, 0 fouten, 5 bestaande waarschuwingen
+
 Epic 3 draait om grondslagen:
 
 - welke woning- en hypotheekbron leidend is
@@ -42,6 +71,8 @@ De aanbevolen uitvoervolgorde is:
 
 ### Issue 1
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg leidende bron voor eigen woning en hypotheek formeel vast`
@@ -56,6 +87,8 @@ Acceptatiecriteria:
 - de leidende woning/hypotheekbron is formeel vastgelegd
 
 ### Issue 2
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -72,6 +105,8 @@ Acceptatiecriteria:
 ## Epic 3-B — Eigen woning als engine-stap
 
 ### Issue 3
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -98,6 +133,8 @@ Acceptatiecriteria:
 
 ### Issue 4
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Maak eigen woning een expliciete stap tussen bruto inkomen en box 1`
@@ -119,6 +156,8 @@ Acceptatiecriteria:
 
 ### Issue 5
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Definieer formeel hoe startvermogen in de engine wordt opgebouwd`
@@ -132,6 +171,8 @@ Acceptatiecriteria:
 - startvermogen is niet langer impliciet of dubbelzinnig
 
 ### Issue 6
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -154,6 +195,8 @@ Acceptatiecriteria:
 
 ### Issue 7
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg formeel vast welke grondslag box 3 gebruikt`
@@ -170,6 +213,8 @@ Acceptatiecriteria:
 
 ### Issue 8
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg formeel vast welke grondslag maandrendement gebruikt`
@@ -184,6 +229,8 @@ Acceptatiecriteria:
 - rendementsgrondslag is expliciet en herleidbaar
 
 ### Issue 9
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -200,6 +247,8 @@ Acceptatiecriteria:
 ## Epic 3-E — Regressie- en vergelijkingstests
 
 ### Issue 10
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -221,6 +270,8 @@ Acceptatiecriteria:
 
 ### Issue 11
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg tests toe voor gekozen vermogensbron en startvermogenopbouw`
@@ -240,6 +291,8 @@ Acceptatiecriteria:
 - startvermogenbron is testmatig vastgezet
 
 ### Issue 12
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -263,6 +316,8 @@ Acceptatiecriteria:
 ## Epic 3-F — Integratiepoort
 
 ### Issue 13
+
+Status: `✅ AFGEROND`
 
 Titel:
 

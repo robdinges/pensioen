@@ -12,7 +12,7 @@ from pensioen.calculations.detail_output_engine import bouw_accountant_detail
 from pensioen.models.component import BedragType, CategorieComponent, is_handmatige_aow_component
 from pensioen.tax import belasting_engine
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
-from pensioen.tax.eigen_woning_engine import EigenWoningInvoer, EigenWoningResultaat, bereken_eigen_woning
+from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 from pensioen.ui.flow_context import Stap, set_huidge_stap
 from pensioen.ui.scenario_context import get_actief_scenario
 
@@ -56,51 +56,6 @@ def _heeft_eigen_woning_effect(resultaat: EigenWoningResultaat | None) -> bool:
             resultaat.tariefsaanpassing,
         )
     )
-
-
-def _bereken_eigen_woning_voor_weergave(
-    d: dict,
-    heeft_partner: bool,
-    config: BelastingConfig,
-) -> tuple[EigenWoningResultaat, EigenWoningResultaat | None]:
-    """Bereken eigen-woningregels direct uit de bronwaarden voor de accountantstabel."""
-    ew_invoer_p1 = d.get("ew_invoer_p1")
-    ew_invoer_p2 = d.get("ew_invoer_p2")
-    if ew_invoer_p1 is None:
-        factor_p1 = Decimal("0.5") if heeft_partner else Decimal("1")
-        ew_invoer_p1 = EigenWoningInvoer(
-            woz_waarde=d.get("ew_woz_waarde", Decimal("0")) * factor_p1,
-            betaalde_hypotheekrente=d.get("ew_betaalde_hypotheekrente", Decimal("0")) * factor_p1,
-            overige_aftrekbare_kosten=Decimal("0") * factor_p1,
-            eigenwoningschuld_begin=d.get("ew_schuld_begin", Decimal("0")) * factor_p1,
-            eigenwoningschuld_eind=d.get("ew_schuld_begin", Decimal("0")) * factor_p1,
-            bruto_inkomen_box1=d.get("bruto_p1", Decimal("0")),
-        )
-
-    ew_p1 = bereken_eigen_woning(
-        ew_invoer_p1,
-        config,
-    )
-
-    if not heeft_partner:
-        return ew_p1, None
-
-    if ew_invoer_p2 is None:
-        factor_p2 = Decimal("0.5")
-        ew_invoer_p2 = EigenWoningInvoer(
-            woz_waarde=d.get("ew_woz_waarde", Decimal("0")) * factor_p2,
-            betaalde_hypotheekrente=d.get("ew_betaalde_hypotheekrente", Decimal("0")) * factor_p2,
-            overige_aftrekbare_kosten=Decimal("0") * factor_p2,
-            eigenwoningschuld_begin=d.get("ew_schuld_begin", Decimal("0")) * factor_p2,
-            eigenwoningschuld_eind=d.get("ew_schuld_begin", Decimal("0")) * factor_p2,
-            bruto_inkomen_box1=d.get("bruto_p2", Decimal("0")),
-        )
-
-    ew_p2 = bereken_eigen_woning(
-        ew_invoer_p2,
-        config,
-    )
-    return ew_p1, ew_p2
 
 
 def _component_som_maand(scenario, categorie, persoon, jaar: int, maand: int, bedrag_type: BedragType | None = None) -> Decimal:
@@ -204,8 +159,6 @@ def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: Bel
     # B.0 Eigen woning (optioneel)
     ew1: EigenWoningResultaat = d.get("ew_p1")
     ew2: EigenWoningResultaat = d.get("ew_p2")
-    if d.get("ew_invoer_gevonden", False) and not _heeft_eigen_woning_effect(ew1) and not _heeft_eigen_woning_effect(ew2):
-        ew1, ew2 = _bereken_eigen_woning_voor_weergave(d, heeft_p2, config)
     heeft_ew = d.get("ew_invoer_gevonden", False) or _heeft_eigen_woning_effect(ew1) or _heeft_eigen_woning_effect(ew2)
     if heeft_ew:
         st.markdown("#### A.1 Eigen woning (saldo box 1)")

@@ -90,6 +90,8 @@ def _bouw_accountant_tarieven_payload(
     belasting_config: BelastingConfig,
     saldo_begin_jaar: Decimal,
     box3_grondslag_begin_jaar: Decimal,
+    box3_liquide_grondslag_begin_jaar: Decimal,
+    box3_vaste_grondslag_begin_jaar: Decimal,
     scenario: Scenario,
     heeft_partner: bool,
     box3_jaar: Decimal,
@@ -143,6 +145,8 @@ def _bouw_accountant_tarieven_payload(
         "box3": {
             "box3_meenemen": scenario.box3_meenemen,
             "grondslag_start_vermogen": _naar_float(box3_grondslag_begin_jaar),
+            "grondslag_liquide_deel": _naar_float(box3_liquide_grondslag_begin_jaar),
+            "grondslag_vaste_items": _naar_float(box3_vaste_grondslag_begin_jaar),
             "grondslag_bron": box3_bron,
             "rendement_grondslag_start": _naar_float(saldo_begin_jaar),
             "vrijstelling": _naar_float(vrijstelling),
@@ -266,6 +270,8 @@ def _bereken_jaar(
     aanname_melding: str,
     saldo_begin_jaar: Decimal,
     box3_grondslag_begin_jaar: Decimal,
+    box3_liquide_grondslag_begin_jaar: Decimal,
+    box3_vaste_grondslag_begin_jaar: Decimal,
     box3_bron: str,
 ) -> JaarResultaat:
     """
@@ -726,6 +732,8 @@ def _bereken_jaar(
                 belasting_config,
                 saldo_begin_jaar,
                 box3_grondslag_begin_jaar,
+                box3_liquide_grondslag_begin_jaar,
+                box3_vaste_grondslag_begin_jaar,
                 scenario,
                 heeft_partner,
                 box3_jaar,
@@ -812,7 +820,19 @@ def bereken_huishouden(
     startwaarden_vermogen = scenario_resolved.bepaal_vermogen_startwaarden(date(jaar_van, 1, 1))
     saldo = Decimal(str(startwaarden_vermogen["liquide_startvermogen"]))
     box3_grondslag = Decimal(str(startwaarden_vermogen["box3_grondslag"]))
+    box3_liquide_grondslag = Decimal(
+        str(startwaarden_vermogen["box3_liquide_grondslag"])
+    )
+    box3_vaste_grondslag = Decimal(
+        str(startwaarden_vermogen["box3_vaste_grondslag"])
+    )
     box3_bron = str(startwaarden_vermogen["bron"])
+    gebruikt_vermogensitems = box3_bron == "vermogensitems"
+    box3_liquide_aandeel = (
+        box3_liquide_grondslag / saldo
+        if saldo > Decimal("0")
+        else Decimal("1")
+    )
 
     for jaar in range(jaar_van, jaar_tot + 1):
         config, aanname_melding = belasting_configs[jaar]
@@ -828,12 +848,27 @@ def bereken_huishouden(
             aanname_melding=aanname_melding,
             saldo_begin_jaar=saldo,
             box3_grondslag_begin_jaar=box3_grondslag,
+            box3_liquide_grondslag_begin_jaar=box3_liquide_grondslag,
+            box3_vaste_grondslag_begin_jaar=box3_vaste_grondslag,
             box3_bron=box3_bron,
         )
         cashflow.jaren.append(jaar_resultaat)
         saldo = jaar_resultaat.vermogen_einde_jaar
-        box3_grondslag = saldo
-        box3_bron = "prognose_saldo"
+        if gebruikt_vermogensitems:
+            volgende_startwaarden = scenario_resolved.bepaal_vermogen_startwaarden(
+                date(jaar + 1, 1, 1)
+            )
+            box3_liquide_grondslag = saldo * box3_liquide_aandeel
+            box3_vaste_grondslag = Decimal(
+                str(volgende_startwaarden["box3_vaste_grondslag"])
+            )
+            box3_grondslag = box3_liquide_grondslag + box3_vaste_grondslag
+            box3_bron = "vermogensitems_prognose"
+        else:
+            box3_liquide_grondslag = saldo
+            box3_vaste_grondslag = Decimal("0")
+            box3_grondslag = saldo
+            box3_bron = "legacy_prognose"
 
     alle_aannames: set[str] = set()
     for jr in cashflow.jaren:
@@ -842,4 +877,3 @@ def bereken_huishouden(
     cashflow.aannames = sorted(alle_aannames)
 
     return cashflow
-

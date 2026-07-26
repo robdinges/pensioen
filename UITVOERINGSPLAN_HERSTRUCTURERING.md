@@ -157,6 +157,9 @@ Maak pensioen en bruto-inkomensopbouw eenduidig.
 
 ## Epic 3 — Eigen woning en vermogen harmoniseren
 
+**Status: 🟡 IMPLEMENTATIE AFGEROND — FUNCTIONELE VALIDATIE OPEN.** Zie
+`EPIC3_ISSUES_BACKLOG.md`.
+
 ### Doel Epic 3
 
 Breng eigen woning en vermogensgrondslagen onder één consistente bron.
