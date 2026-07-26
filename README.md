@@ -129,6 +129,17 @@ WARN/FAIL-resultaten zijn expliciet geregistreerd en blokken geen onverwachte
 regressies. Voor de go/no-go naar Epic 7 zijn nog productbesluiten nodig over
 de leidende fiscale bron, toleranties en AOW-bron bij partners.
 
+Epic 7-consolidatie:
+
+- `bereken_resultaten()` is de publieke ingang voor API, scenariovergelijking
+  en beide UI's.
+- jaar- en accountantoutput hebben een centraal typed contract in
+  `models/output_contract.py`.
+- React is de primaire gebruikers-UI; Streamlit blijft beheer/validatie totdat
+  een expliciet migratiebesluit verwijdering toestaat.
+- legacyvelden blijven alleen behouden waar API-, sessie- of fixturecallers
+  aantoonbaar bestaan; zie `docs/architecture/LEGACYREGISTER.md`.
+
 ## Usage
 
 1. Installeer dependencies:

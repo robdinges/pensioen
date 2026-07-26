@@ -2,7 +2,7 @@
 
 ## Status
 
-**Gepland — geblokkeerd tot Epic 6-go/no-go.**
+**Afgerond en geaccepteerd op 26 juli 2026.**
 
 ## Doel
 
@@ -119,10 +119,26 @@ Epic 7 is gereed als:
 6. projectdocumentatie de werkelijke architectuur beschrijft
 7. de volledige Epic 6-validatiepoort groen of expliciet geaccepteerd is
 
-## Gebruikersbesluiten
+## Uitvoering 26 juli 2026
 
-Voor uitvoering zijn minimaal nodig:
+- legacyregister gepubliceerd in `docs/architecture/LEGACYREGISTER.md`
+- scenariovergelijking geconsolideerd op `bereken_resultaten()`
+- Streamlit-accountant consumeert centrale detailoutput zonder wrapper of
+  lokale detailopbouw
+- typed en versieerbaar resultaatcontract gepubliceerd in
+  `src/pensioen/models/output_contract.py`
+- doelarchitectuur en API-deprecatiebeleid gepubliceerd onder
+  `docs/architecture/`
+- React als primaire UI vastgesteld; Streamlit voorlopig behouden voor
+  beheer/validatie
+- volledige Python-, frontend-, bouwsteen- en contracttestpoorten uitgevoerd
+- genormaliseerde fixtures driftvrij; bestaande afwijkingen tegenover de
+  fiscale 2025-referentiecijfers expliciet als open validatieschuld vastgelegd
 
-- keuze over React versus Streamlit
-- goedkeuring van API/DTO-breaking changes
-- besluit over ondersteuning van oude sessie- en requestformaten
+Productbesluiten:
+
+- React is de primaire UI; Streamlit blijft voor beheer en validatie.
+- API-contract `1.0` en oude sessies blijven voorlopig ondersteund. Een
+  toekomstige API v2 en bijbehorende migratie vormen een afzonderlijke scope.
+- De bekende fiscale 2025-validatieafwijkingen zijn geaccepteerd voor
+  afsluiting van Epic 7 en blijven geregistreerde validatieschuld.

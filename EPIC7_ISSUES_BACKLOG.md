@@ -2,26 +2,21 @@
 
 ## Status
 
-**Open, maar uitvoering wacht op Epic 6.**
+**Afgerond en geaccepteerd op 26 juli 2026.**
 
 | Nr. | Issue | Resultaat | Afhankelijk |
 | --- | --- | --- | --- |
-| 1 | Bouw legacyregister | complete kandidatenlijst | Epic 6 |
-| 2 | Meet callers en runtimegebruik | bewijs per kandidaat | 1 |
-| 3 | Classificeer behouden/migreren/verwijderen | besluitregister | 2 |
-| 4 | Ruim pensioencompatibiliteit op | één pensioenpad | 3 |
-| 5 | Ruim legacy eigen-woningmodel op | één woningbron | 3 |
-| 6 | Ruim legacy vermogensvelden op | één vermogensbron | 3 |
-| 7 | Verwijder accountantcompatibiliteitswrapper | centrale detailservice | 3 |
-| 8 | Type accountant- en jaardetailoutput | versieerbare DTO’s | 7 |
-| 9 | Consolideer publieke calculation-service | één service-ingang | 4–8 |
-| 10 | Formaliseer API-deprecationbeleid | beheersbare breaking changes | 8, 9 |
-| 11 | Beslis frontendstrategie | React/Streamlit-doelbesluit | Epic 6 |
-| 12 | Voer goedgekeurde frontendmigratie uit | minder dubbele UI-last | 11 |
-| 13 | Verwijder ongebruikte helpers en imports | opgeschoonde codebasis | 4–12 |
-| 14 | Archiveer tijdelijke analyses | actuele documentatielaag | 13 |
-| 15 | Publiceer doelarchitectuur | definitieve ownershipmatrix | 9–14 |
-| 16 | Draai eindvalidatie en migratiecheck | programma-go/no-go | 15 |
+| 1–3 | Legacyregister, calleranalyse en classificatie | Gereed | `docs/architecture/LEGACYREGISTER.md` |
+| 4–6 | Pensioen-, woning- en vermogenscompatibiliteit | Gemotiveerd behouden | migratie pas binnen toekomstige API v2 |
+| 7 | Accountantcompatibiliteitswrapper verwijderen | Gereed | centrale detailoutput |
+| 8 | Accountant- en jaardetailoutput typen | Gereed | contract 1.0 |
+| 9 | Publieke calculation-service consolideren | Gereed | `bereken_resultaten()` |
+| 10 | API-deprecatiebeleid | Gereed en goedgekeurd | contract 1.0 blijft compatibel |
+| 11–12 | Frontendstrategie en migratie | Gereed en goedgekeurd | React primair; Streamlit beheer/validatie |
+| 13 | Ongebruikte helpers | Geclassificeerd | veilige kandidaten behouden tot API v2 |
+| 14 | Tijdelijke analyses archiveren | Gereed uit eerdere documentopschoning | — |
+| 15 | Doelarchitectuur publiceren | Gereed | ownershipmatrix gepubliceerd |
+| 16 | Eindvalidatie en migratiecheck | Geaccepteerd met geregistreerde fiscale afwijkingen | fiscale schuld blijft zichtbaar |
 
 ## Acceptatiecriteria
 
@@ -52,6 +47,27 @@
 - alle Epic 6-contract- en regressiepoorten uitgevoerd
 - architectuurdocumentatie komt overeen met de code
 - resterende technische schuld staat met eigenaar en reden geregistreerd
+
+Uitkomst op 26 juli 2026:
+
+- 302 Python-tests geslaagd en 2 bekende API-regressiegevallen `xfail`
+- 194 bouwsteen-/contracttests geslaagd en dezelfde 2 gevallen `xfail`
+- 8 frontendtests en de productiebuild geslaagd
+- alle 7 genormaliseerde belastingfixtures zijn driftvrij
+- de strikte fiscale validatie blijft rood voor bestaande 2025-referentiecijfers;
+  de 2026-regressiecase slaagt exact. Dit is fiscale validatieschuld en geen
+  architectuurregressie van Epic 7.
+
+## Productbesluit
+
+Op 26 juli 2026 heeft de producteigenaar bevestigd:
+
+- React is de primaire gebruikersinterface; Streamlit blijft voor beheer en
+  validatie.
+- API-contract `1.0` en oude sessies blijven voorlopig ondersteund. Breaking
+  opschoning wordt afzonderlijk gepland binnen een toekomstige API v2.
+- De geregistreerde fiscale 2025-validatieafwijkingen worden voor afsluiting
+  van Epic 7 geaccepteerd en blijven als fiscale validatieschuld zichtbaar.
 
 ## Go/no-go-vraag
 

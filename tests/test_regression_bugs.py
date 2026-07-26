@@ -255,7 +255,7 @@ def test_accountant_eigen_woning_blok_bij_effect_partner2():
 def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
     """Accountantdetail moet de vermogensitem-bron gebruiken voor eigen woning en hypotheek."""
     from pensioen.tax.belasting_loader import laad_tarieven
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     scenario = Scenario(
         naam="Eigen woning",
@@ -284,7 +284,7 @@ def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
     persoon2 = Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True)
     config, aanname = laad_tarieven(2026)
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -293,7 +293,6 @@ def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("0"),
     )
 
     assert detail["ew_woz_waarde"] == Decimal("500000")
@@ -330,7 +329,7 @@ def test_validatie_tc008_bewaakt_bekende_heffingskortingafwijking() -> None:
 def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> None:
     """Handmatige AOW-component telt niet dubbel mee naast automatische AOW."""
     from pensioen.tax.belasting_loader import laad_tarieven
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     scenario = Scenario(
         naam="AOW dubbel",
@@ -348,7 +347,7 @@ def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> N
     persoon1 = Persoon(naam="P1", geboortedatum=date(1950, 1, 1), heeft_partner=False)
     config, aanname = laad_tarieven(2026)
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=persoon1,
         persoon2=None,
@@ -357,7 +356,6 @@ def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> N
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("0"),
     )
 
     assert detail["jaar_overig_p1"] == Decimal("0")
@@ -368,7 +366,7 @@ def test_accountant_filtert_handmatige_aow_component_bij_automatische_aow() -> N
 def test_accountant_toont_nooit_p2_bij_eenpersoonshuishouden() -> None:
     """Bij een eenpersoonshuishouden blijven P2-velden leeg en niet meegerekend."""
     from pensioen.tax.belasting_loader import laad_tarieven
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     scenario = Scenario(
         naam="Alleenstaand",
@@ -386,7 +384,7 @@ def test_accountant_toont_nooit_p2_bij_eenpersoonshuishouden() -> None:
     persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False)
     config, aanname = laad_tarieven(2026)
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=persoon1,
         persoon2=None,
@@ -395,7 +393,6 @@ def test_accountant_toont_nooit_p2_bij_eenpersoonshuishouden() -> None:
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("0"),
     )
 
     assert detail["bruto_p2"] == Decimal("0")
@@ -408,7 +405,7 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
     """Accountantdetail moet de resolved box-3 forfaitwaarden gebruiken."""
     from pensioen.models.scenario import TariefPeriodeItem
     from pensioen.tax.belasting_loader import laad_tarieven, resolve_tariefwaarden_voor_jaar
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     scenario = Scenario(naam="Forfait override", spaargeld_start=Decimal("200000"))
     config_basis, aanname = laad_tarieven(2026)
@@ -431,7 +428,7 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
         ],
     )
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False),
         persoon2=None,
@@ -440,7 +437,6 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("200000"),
         tarief_bronnen=bronnen,
     )
 
@@ -453,7 +449,7 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
 def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
     """De volledige bruto-opbouw komt in beide paden uit dezelfde componentbron."""
     from pensioen.tax.belasting_loader import laad_tarieven
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     persoon1 = Persoon(naam="P1", geboortedatum=date(1940, 1, 1), heeft_partner=True)
     persoon2 = Persoon(naam="P2", geboortedatum=date(1942, 1, 1), heeft_partner=True)
@@ -524,7 +520,7 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
         belasting_configs={2026: (config, aanname)},
     ).jaren[0]
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -533,7 +529,6 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("0"),
     )
 
     assert detail["pensioenbron"] == "scenario_componenten"
@@ -552,7 +547,7 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
 def test_accountant_en_hoofdengine_alignen_op_eigen_woning_en_box3_bron() -> None:
     """Hoofdengine en accountant gebruiken dezelfde bronkeuze voor woning en box 3."""
     from pensioen.tax.belasting_loader import laad_tarieven
-    from pensioen.ui.pagina_accountant import _bereken_jaar_detail
+    from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 
     persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=False)
     scenario = Scenario(
@@ -606,7 +601,7 @@ def test_accountant_en_hoofdengine_alignen_op_eigen_woning_en_box3_bron() -> Non
     ).jaren[0]
     payload_box3 = hoofd.maanden[0].gebruikte_tarieven["box3"]
 
-    detail = _bereken_jaar_detail(
+    detail = bereken_accountant_jaar_detail(
         jaar=2026,
         persoon1=persoon1,
         persoon2=None,
@@ -615,7 +610,6 @@ def test_accountant_en_hoofdengine_alignen_op_eigen_woning_en_box3_bron() -> Non
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=Decimal("120000"),
     )
 
     assert detail["ew_bron"] == "vermogensitems"

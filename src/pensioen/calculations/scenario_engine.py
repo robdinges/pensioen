@@ -6,14 +6,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from statistics import median
 
-from pensioen.calculations.cashflow_engine import bereken_huishouden
 from pensioen.calculations.inheritance_engine import get_parent_chain
+from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.models.cashflow import HuishoudCashflow
 from pensioen.models.component import CategorieComponent
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
-from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven_bereik
 
 
 def _stopdatum_werk(scenario: Scenario) -> str:
@@ -134,11 +133,10 @@ def vergelijk_scenarios(
     Returns:
         ScenarioVergelijking met resultaten per scenario.
     """
-    belasting_configs = laad_tarieven_bereik(jaar_van, jaar_tot)
     vergelijking = ScenarioVergelijking()
 
     for scenario in scenarios:
-        cashflow = bereken_huishouden(
+        cashflow = bereken_resultaten(
             scenario=scenario,
             persoon1=persoon1,
             persoon2=persoon2,
@@ -146,7 +144,6 @@ def vergelijk_scenarios(
             records2=records2,
             jaar_van=jaar_van,
             jaar_tot=jaar_tot,
-            belasting_configs=belasting_configs,
             scenario_lijst=scenarios,  # Pass full list for inheritance resolution
         )
         samenvatting = _bereken_samenvatting(scenario, cashflow, persoon1, scenarios)

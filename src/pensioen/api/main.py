@@ -17,6 +17,7 @@ from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.calculations.inheritance_engine import validate_inheritance_tree
 from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
+from pensioen.models.output_contract import OUTPUT_CONTRACT
 from pensioen.reports.rapport_engine import genereer_rapport
 
 app = FastAPI(
@@ -36,14 +37,6 @@ def _valideer_inheritance(scenario_lijst: list) -> None:
                 "waarschuwingen": waarschuwingen,
             },
         )
-
-
-OUTPUT_CONTRACT = {
-    "versie": "1.0",
-    "jaarresultaten": "cashflow.jaren[].jaar_samenvatting",
-    "accountant": "cashflow.jaren[].accountant_detail",
-    "maandresultaten": "cashflow.jaren[].maanden[]",
-}
 
 
 @app.get("/api/v1/health")

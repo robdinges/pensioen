@@ -7,15 +7,10 @@ from decimal import Decimal
 
 import streamlit as st
 
-from pensioen.calculations.cashflow_engine import (
-    bereken_accountant_jaar_detail,
-)
-from pensioen.calculations.detail_output_engine import bouw_accountant_detail
 from pensioen.calculations.resultaat_service import (
     bereken_resultaten,
     bouw_resultaat_voorbereiding,
 )
-from pensioen.models.component import is_handmatige_aow_component
 from pensioen.tax.belasting_loader import BelastingConfig
 from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 from pensioen.ui.flow_context import Stap, set_huidge_stap
@@ -48,45 +43,6 @@ def _heeft_eigen_woning_effect(resultaat: EigenWoningResultaat | None) -> bool:
             resultaat.tariefsaanpassing,
         )
     )
-
-
-def _handmatige_aow_componenten(scenario, jaar: int) -> list[str]:
-    """Geef actieve handmatige AOW-componenten terug voor een belastingjaar."""
-
-    gevonden: list[str] = []
-    for component in scenario.componenten:
-        if not is_handmatige_aow_component(component):
-            continue
-        if any(component.is_actief(jaar, maand) for maand in range(1, 13)):
-            gevonden.append(component.omschrijving)
-    return gevonden
-
-
-def _bereken_jaar_detail(
-    jaar: int,
-    persoon1,
-    persoon2,
-    records1: list,
-    records2: list,
-    scenario,
-    config: BelastingConfig,
-    aanname: str,
-    saldo_begin_jaar: Decimal,
-    tarief_bronnen: dict[str, str] | None = None,
-) -> dict:
-    """Compatibiliteitswrapper; businesslogica staat in de berekenlaag."""
-    detail = bereken_accountant_jaar_detail(
-        jaar=jaar,
-        persoon1=persoon1,
-        persoon2=persoon2,
-        records1=records1,
-        records2=records2,
-        scenario=scenario,
-        config=config,
-        aanname=aanname,
-        tarief_bronnen=tarief_bronnen,
-    )
-    return detail
 
 
 def _toon_inkomen_detail(d: dict, naam_p1: str, naam_p2: str | None, config: BelastingConfig) -> None:
@@ -542,13 +498,7 @@ def toon_accountant_pagina() -> None:
     for jr in cashflow.jaren:
         jaar = jr.jaar
         config, aanname = voorbereiding.configs[jaar]
-        d = bouw_accountant_detail(
-            jr,
-            aanname=aanname,
-            tarief_bronnen=voorbereiding.tarief_bronnen[jaar],
-            records_aangeleverd=len(records1) + len(records2),
-        )
-        d["aow_waarschuwingen"] = _handmatige_aow_componenten(scenario, jaar)
+        d = jr.accountant_detail
 
         with st.expander(
             f"**{jaar}**  —  netto inkomen: {_fmt(d['totaal_netto_inkomen'])}  |  "

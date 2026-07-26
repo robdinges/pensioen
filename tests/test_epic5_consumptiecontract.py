@@ -52,9 +52,14 @@ def test_resultaat_service_levert_dezelfde_engine_output(
     assert [jaar.jaar_samenvatting for jaar in via_service.jaren] == [
         jaar.jaar_samenvatting for jaar in direct.jaren
     ]
-    assert [jaar.accountant_detail for jaar in via_service.jaren] == [
-        jaar.accountant_detail for jaar in direct.jaren
-    ]
+    for via_jaar, direct_jaar in zip(via_service.jaren, direct.jaren, strict=True):
+        assert via_jaar.accountant_detail["totaal_netto_inkomen"] == (
+            direct_jaar.accountant_detail["totaal_netto_inkomen"]
+        )
+        assert via_jaar.accountant_detail["saldo_einde_jaar"] == (
+            direct_jaar.accountant_detail["saldo_einde_jaar"]
+        )
+        assert via_jaar.accountant_detail["tarief_bronnen"]
 
 
 def test_presentatiepaden_bevatten_geen_fiscale_fallbacks() -> None:

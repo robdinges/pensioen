@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
+from pensioen.models.output_contract import AccountantDetailDTO, JaarSamenvattingDTO
+
 
 @dataclass
 class MaandResultaat:
@@ -132,8 +134,8 @@ class JaarResultaat:
     tarieven_jaar: int = 0  # welk belastingjaar daadwerkelijk gebruikt
     tarieven_aanname: str = ""  # melding als toekomstig jaar
     bruto_inkomen: BrutoInkomenJaar = field(default_factory=BrutoInkomenJaar)
-    jaar_samenvatting: dict = field(default_factory=dict)
-    accountant_detail: dict = field(default_factory=dict)
+    jaar_samenvatting: JaarSamenvattingDTO = field(default_factory=dict)
+    accountant_detail: AccountantDetailDTO = field(default_factory=dict)
 
     @property
     def arbeid_bruto(self) -> Decimal:

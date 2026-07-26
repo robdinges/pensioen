@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.detail_output_engine import bouw_accountant_detail
 from pensioen.models.cashflow import HuishoudCashflow
+from pensioen.models.component import is_handmatige_aow_component
 from pensioen.models.pensioen_record import PensioenRecord
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
@@ -72,7 +74,10 @@ def bereken_resultaten(
     voorbereiding: ResultaatVoorbereiding | None = None,
 ) -> HuishoudCashflow:
     """Bereken resultaatoutput met centraal voorbereide tariefconfiguratie."""
-    return bereken_huishouden(
+    actief_voorbereiding = voorbereiding or bouw_resultaat_voorbereiding(
+        scenario, jaar_van, jaar_tot
+    )
+    cashflow = bereken_huishouden(
         scenario=scenario,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -80,9 +85,23 @@ def bereken_resultaten(
         records2=records2,
         jaar_van=jaar_van,
         jaar_tot=jaar_tot,
-        belasting_configs=(
-            voorbereiding
-            or bouw_resultaat_voorbereiding(scenario, jaar_van, jaar_tot)
-        ).configs,
+        belasting_configs=actief_voorbereiding.configs,
         scenario_lijst=scenario_lijst,
     )
+    for jaar_resultaat in cashflow.jaren:
+        jaar = jaar_resultaat.jaar
+        _, aanname = actief_voorbereiding.configs[jaar]
+        detail = bouw_accountant_detail(
+            jaar_resultaat,
+            aanname=aanname,
+            tarief_bronnen=actief_voorbereiding.tarief_bronnen[jaar],
+            records_aangeleverd=len(records1) + len(records2),
+        )
+        detail["aow_waarschuwingen"] = [
+            component.omschrijving
+            for component in scenario.componenten
+            if is_handmatige_aow_component(component)
+            and any(component.is_actief(jaar, maand) for maand in range(1, 13))
+        ]
+        jaar_resultaat.accountant_detail = detail
+    return cashflow

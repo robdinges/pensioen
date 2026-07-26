@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from pensioen.models.cashflow import JaarResultaat, MaandResultaat
+from pensioen.models.output_contract import AccountantDetailDTO, JaarSamenvattingDTO
 from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 
 
@@ -71,7 +72,7 @@ def _som_maanden(maanden: list[MaandResultaat], selector) -> Decimal:
     return sum((_d(selector(maand)) for maand in maanden), Decimal("0"))
 
 
-def bouw_jaar_samenvatting(jaar_resultaat: JaarResultaat) -> dict[str, Decimal | int]:
+def bouw_jaar_samenvatting(jaar_resultaat: JaarResultaat) -> JaarSamenvattingDTO:
     """Bouw een compacte jaarsamenvatting uit maandoutput van de engine."""
     maanden = jaar_resultaat.maanden
     if not maanden:
@@ -144,7 +145,7 @@ def bouw_accountant_detail(
     aanname: str,
     tarief_bronnen: dict[str, str] | None = None,
     records_aangeleverd: int = 0,
-) -> dict:
+) -> AccountantDetailDTO:
     """Bouw accountantdetail uitsluitend uit engine-output van het jaarresultaat."""
     maanden = jaar_resultaat.maanden
     if not maanden:
