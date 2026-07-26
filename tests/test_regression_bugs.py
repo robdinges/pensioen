@@ -172,15 +172,7 @@ def test_scenario_kopie_behoudt_persoon_velden():
 
 
 def test_accountant_p1_p2_breakdown():
-    """
-    Test dat accountantsoverzicht correct P1/P2 breakdown toont.
-    
-    Verificatie dat _component_som_maand correct filtert op persoon en dat
-    de accountant detail tabel P1 en P2 kolommen correct toont wanneer beide
-    personen inkomen hebben.
-    """
-    from pensioen.ui.pagina_accountant import _component_som_maand
-    
+    """Accountantdetail neemt de P1/P2-opbouw rechtstreeks uit de engine over."""
     scenario = Scenario(
         naam="Test",
         componenten=[
@@ -210,36 +202,21 @@ def test_accountant_p1_p2_breakdown():
             ),
         ],
     )
-    
-    # Verify P1 arbeidsinkomen
-    arbeid_p1 = _component_som_maand(
-        scenario, CategorieComponent.ARBEIDSINKOMEN, "P1", 2026, 1, BedragType.BRUTO
-    )
-    assert arbeid_p1 == Decimal("7000")
-    
-    # Verify P2 arbeidsinkomen
-    arbeid_p2 = _component_som_maand(
-        scenario, CategorieComponent.ARBEIDSINKOMEN, "P2", 2026, 1, BedragType.BRUTO
-    )
-    assert arbeid_p2 == Decimal("2500")
-    
-    # Verify P1 overig inkomen
-    overig_p1 = _component_som_maand(
-        scenario, CategorieComponent.OVERIG_INKOMEN, "P1", 2026, 1, BedragType.BRUTO
-    )
-    assert overig_p1 == Decimal("750")
-    
-    # Verify P2 overig inkomen (moet 0 zijn)
-    overig_p2 = _component_som_maand(
-        scenario, CategorieComponent.OVERIG_INKOMEN, "P2", 2026, 1, BedragType.BRUTO
-    )
-    assert overig_p2 == Decimal("0")
+    detail = bereken_huishouden(
+        scenario=scenario,
+        persoon1=Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True),
+        persoon2=Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True),
+        records1=[],
+        records2=[],
+        jaar_van=2026,
+        jaar_tot=2026,
+        belasting_configs=laad_tarieven_bereik(2026, 2026),
+    ).jaren[0].accountant_detail
 
-    # Verify totaal zonder persoon filter
-    arbeid_totaal = _component_som_maand(
-        scenario, CategorieComponent.ARBEIDSINKOMEN, None, 2026, 1, BedragType.BRUTO
-    )
-    assert arbeid_totaal == Decimal("9500")  # 7000 + 2500
+    assert detail["jaar_arbeid_p1"] == Decimal("84000")
+    assert detail["jaar_arbeid_p2"] == Decimal("30000")
+    assert detail["jaar_overig_p1"] == Decimal("9000")
+    assert detail["jaar_overig_p2"] == Decimal("0")
 
 
 def test_accountant_eigen_woning_blok_bij_effect_partner2():

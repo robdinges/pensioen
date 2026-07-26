@@ -630,11 +630,13 @@ Tests:
 
 Accountantdetail:
 
-- gebruikt nu geen centrale result-DT0 als volledige bron
+- gebruikt `JaarResultaat.accountant_detail` als centrale resultaatdetailbron
+- wordt puur samengesteld in `detail_output_engine.py`
+- wordt hergebruikt door accountant, Excel, API en testcase-validatie
 
 Source of truth:
 
-- **nee voor detailniveau**, **ja voor hoofdoutput**
+- **ja voor hoofdoutput en detailniveau**
 
 ## 4. Source-of-truth-matrix
 
@@ -651,7 +653,7 @@ Source of truth:
 | Netto inkomen | hoofdpad + accountantopbouw | dubbel |
 | Box 3 | formele peildatumgrondslag + `bereken_box3_heffing()` | goed |
 | Vermogen | saldo-opbouw in hoofdengine | goed |
-| Resultaatdetail | geen uniforme detail-DTO | ontbreekt |
+| Resultaatdetail | `JaarResultaat.accountant_detail` via pure detailassembler | goed |
 
 ## 5. Gewenste functionele doeltoestand
 

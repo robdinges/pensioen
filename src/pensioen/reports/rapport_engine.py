@@ -158,6 +158,38 @@ def _schrijf_aannames(wb: openpyxl.Workbook, cashflow: HuishoudCashflow) -> None
     _kolom_breedte(ws)
 
 
+def _schrijf_accountantdetail(wb: openpyxl.Workbook, cashflow: HuishoudCashflow) -> None:
+    """Schrijf centrale engine-detailoutput zonder fiscale herberekening."""
+    ws = wb.create_sheet("Accountantdetail")
+    velden = [
+        ("jaar", "Jaar"),
+        ("bruto_p1", "Bruto P1"),
+        ("bruto_p2", "Bruto P2"),
+        ("box1_grondslag_p1", "Box 1 grondslag P1"),
+        ("box1_grondslag_p2", "Box 1 grondslag P2"),
+        ("netto_bel_p1", "Netto belasting P1"),
+        ("netto_bel_p2", "Netto belasting P2"),
+        ("box3_grondslag", "Box 3 grondslag"),
+        ("box3_heffing", "Box 3 heffing"),
+        ("totaal_netto_inkomen", "Netto inkomen"),
+        ("saldo_begin_jaar", "Vermogen begin jaar"),
+        ("saldo_einde_jaar", "Vermogen einde jaar"),
+    ]
+    for kolom, (_, label) in enumerate(velden, 1):
+        _header_stijl(ws.cell(row=1, column=kolom, value=label), donker=True)
+
+    for rij, jaar_resultaat in enumerate(cashflow.jaren, 2):
+        detail = jaar_resultaat.accountant_detail
+        for kolom, (sleutel, _) in enumerate(velden, 1):
+            waarde = detail.get(sleutel)
+            if isinstance(waarde, Decimal):
+                waarde = float(waarde)
+            cel = ws.cell(row=rij, column=kolom, value=waarde)
+            if kolom > 1 and isinstance(waarde, (int, float)):
+                cel.number_format = _EURO
+    _kolom_breedte(ws)
+
+
 def _schrijf_vergelijking(
     wb: openpyxl.Workbook, vergelijking: ScenarioVergelijking
 ) -> None:
@@ -212,6 +244,7 @@ def genereer_rapport(
 
     _schrijf_jaaroverzicht(wb, cashflow)
     _schrijf_maanddetail(wb, cashflow)
+    _schrijf_accountantdetail(wb, cashflow)
     _schrijf_aannames(wb, cashflow)
     if vergelijking:
         _schrijf_vergelijking(wb, vergelijking)

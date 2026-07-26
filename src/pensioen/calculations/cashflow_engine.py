@@ -877,3 +877,40 @@ def bereken_huishouden(
     cashflow.aannames = sorted(alle_aannames)
 
     return cashflow
+
+
+def bereken_accountant_jaar_detail(
+    jaar: int,
+    persoon1: Persoon,
+    persoon2: Persoon | None,
+    records1: list[PensioenRecord],
+    records2: list[PensioenRecord],
+    scenario: Scenario,
+    config: BelastingConfig,
+    aanname: str,
+    tarief_bronnen: dict[str, str] | None = None,
+) -> dict:
+    """Lever centrale accountantdetailoutput voor exact één kalenderjaar."""
+    cashflow = bereken_huishouden(
+        scenario=scenario,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=records1,
+        records2=records2,
+        jaar_van=jaar,
+        jaar_tot=jaar,
+        belasting_configs={jaar: (config, aanname)},
+    )
+    detail = bouw_accountant_detail(
+        cashflow.jaren[0],
+        aanname=aanname,
+        tarief_bronnen=tarief_bronnen,
+        records_aangeleverd=len(records1) + len(records2),
+    )
+    detail["aow_waarschuwingen"] = [
+        component.omschrijving
+        for component in scenario.componenten
+        if is_handmatige_aow_component(component)
+        and any(component.is_actief(jaar, maand) for maand in range(1, 13))
+    ]
+    return detail

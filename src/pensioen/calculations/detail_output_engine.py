@@ -10,6 +10,52 @@ from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 
 CENT = Decimal("0.01")
 
+# Contract voor de stabiele kern van accountantdetail. Bronvelden zijn direct
+# afkomstig uit formele engine-output; afgeleide velden mogen uitsluitend in
+# deze pure assembler worden samengesteld.
+PRIMAIRE_DETAILVELDEN = frozenset(
+    {
+        "jaar",
+        "config_jaar",
+        "jaar_arbeid_p1",
+        "jaar_arbeid_p2",
+        "jaar_overig_p1",
+        "jaar_overig_p2",
+        "jaar_aow_p1",
+        "jaar_aow_p2",
+        "jaar_pen_p1",
+        "jaar_pen_p2",
+        "box1_grondslag_p1",
+        "box1_grondslag_p2",
+        "bel_voor_korting_p1",
+        "bel_voor_korting_p2",
+        "totale_hk_p1",
+        "totale_hk_p2",
+        "netto_bel_p1",
+        "netto_bel_p2",
+        "box3_grondslag",
+        "box3_heffing",
+        "saldo_begin_jaar",
+        "saldo_einde_jaar",
+        "maand_data",
+    }
+)
+AFGELEIDE_DETAILVELDEN = frozenset(
+    {
+        "bruto_p1",
+        "bruto_p2",
+        "totaal_netto_inkomen",
+        "jaar_netto_cashflow",
+        "vermogen_rijen",
+    }
+)
+VEREISTE_DETAILVELDEN = PRIMAIRE_DETAILVELDEN | AFGELEIDE_DETAILVELDEN
+
+
+def ontbrekende_detailvelden(detail: dict) -> frozenset[str]:
+    """Geef ontbrekende velden uit het formele accountantdetailcontract."""
+    return frozenset(VEREISTE_DETAILVELDEN.difference(detail))
+
 
 def _d(waarde) -> Decimal:
     if isinstance(waarde, Decimal):

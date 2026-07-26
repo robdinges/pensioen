@@ -10,14 +10,11 @@ from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
+from pensioen.calculations.cashflow_engine import bereken_accountant_jaar_detail
 from pensioen.tax.belasting_loader import laad_tarieven
 from pensioen.tax import belasting_engine, heffingskorting
 from tests.models.testcase import TestCase
 from tests.scenario_generator import genereer_personen, genereer_testcase_scenario
-
-# Import accountant helper (internal function)
-from pensioen.ui.pagina_accountant import _bereken_jaar_detail
-
 
 def _controleer_consistentie_verwachte_belasting(testcase: TestCase) -> list[str]:
     """Controleer interne consistentie van verwachte_belasting-velden."""
@@ -123,7 +120,7 @@ def bereken_belasting_testcase(testcase: TestCase) -> dict:
         testcase: TestCase om te berekenen
         
     Returns:
-        Dict met berekeningsdetails (zoals van _bereken_jaar_detail)
+        Centrale accountantdetailoutput van de engine.
     """
     # Genereer scenario
     personen, scenario = genereer_testcase_scenario(testcase)
@@ -139,11 +136,7 @@ def bereken_belasting_testcase(testcase: TestCase) -> dict:
     records1 = []
     records2 = []
     
-    # Beginsaldo
-    saldo_begin_jaar = testcase.vermogen.totaal
-    
-    # Bereken met accountant logica
-    resultaat = _bereken_jaar_detail(
+    resultaat = bereken_accountant_jaar_detail(
         jaar=testcase.jaar,
         persoon1=persoon1,
         persoon2=persoon2,
@@ -152,7 +145,6 @@ def bereken_belasting_testcase(testcase: TestCase) -> dict:
         scenario=scenario,
         config=config,
         aanname=aanname,
-        saldo_begin_jaar=saldo_begin_jaar,
     )
     
     return resultaat

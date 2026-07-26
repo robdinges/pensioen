@@ -7,10 +7,12 @@ from decimal import Decimal
 
 import streamlit as st
 
-from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.calculations.cashflow_engine import (
+    bereken_accountant_jaar_detail,
+    bereken_huishouden,
+)
 from pensioen.calculations.detail_output_engine import bouw_accountant_detail
-from pensioen.models.component import BedragType, CategorieComponent, is_handmatige_aow_component
-from pensioen.tax import belasting_engine
+from pensioen.models.component import is_handmatige_aow_component
 from pensioen.tax.belasting_loader import BelastingConfig, laad_tarieven, resolve_tariefwaarden_voor_jaar
 from pensioen.tax.eigen_woning_engine import EigenWoningResultaat
 from pensioen.ui.flow_context import Stap, set_huidge_stap
@@ -24,19 +26,6 @@ def _fmt(bedrag: Decimal | float | int) -> str:
 
 def _pct(waarde: Decimal | float) -> str:
     return f"{float(waarde) * 100:.4f}%"
-
-
-def _incidentele_items_voor_maand(scenario, jaar: int, maand: int) -> tuple[Decimal, Decimal]:
-    """Retourneer (ontvangst, uitgave) voor incidentele items in de maand."""
-    ontvangst = Decimal("0")
-    uitgave = Decimal("0")
-    for item in scenario.incidentele_items:
-        if item.datum.year == jaar and item.datum.month == maand:
-            if item.bedrag >= Decimal("0"):
-                ontvangst += item.bedrag
-            else:
-                uitgave += abs(item.bedrag)
-    return ontvangst, uitgave
 
 
 def _heeft_eigen_woning_effect(resultaat: EigenWoningResultaat | None) -> bool:
@@ -55,18 +44,6 @@ def _heeft_eigen_woning_effect(resultaat: EigenWoningResultaat | None) -> bool:
             resultaat.box1_mutatie,
             resultaat.tariefsaanpassing,
         )
-    )
-
-
-def _component_som_maand(scenario, categorie, persoon, jaar: int, maand: int, bedrag_type: BedragType | None = None) -> Decimal:
-    """Som van component-maandbedragen voor categorie en optioneel persoon."""
-    return sum(
-        (c.bedrag_per_maand_actief(jaar, maand) for c in scenario.componenten
-         if c.categorie == categorie
-         and not is_handmatige_aow_component(c)
-         and (persoon is None or c.persoon == persoon)
-         and (bedrag_type is None or c.bedrag_type == bedrag_type)),
-        Decimal("0"),
     )
 
 
@@ -94,28 +71,18 @@ def _bereken_jaar_detail(
     saldo_begin_jaar: Decimal,
     tarief_bronnen: dict[str, str] | None = None,
 ) -> dict:
-    """Bouw accountantdetail uit engine-output voor exact één kalenderjaar."""
-    eenjaars_cashflow = bereken_huishouden(
-        scenario=scenario,
+    """Compatibiliteitswrapper; businesslogica staat in de berekenlaag."""
+    detail = bereken_accountant_jaar_detail(
+        jaar=jaar,
         persoon1=persoon1,
         persoon2=persoon2,
         records1=records1,
         records2=records2,
-        jaar_van=jaar,
-        jaar_tot=jaar,
-        belasting_configs={jaar: (config, aanname)},
-    )
-    jr = eenjaars_cashflow.jaren[0]
-    detail = bouw_accountant_detail(
-        jr,
+        scenario=scenario,
+        config=config,
         aanname=aanname,
         tarief_bronnen=tarief_bronnen,
-        records_aangeleverd=len(records1) + len(records2),
     )
-    detail["aow_waarschuwingen"] = _handmatige_aow_componenten(scenario, jaar)
-
-    # Houd expliciet het externally supplied beginjaar-saldo aan voor accountantcontroles.
-    detail["saldo_begin_jaar"] = saldo_begin_jaar
     return detail
 
 
@@ -551,8 +518,8 @@ def toon_accountant_pagina() -> None:
         return
 
     st.caption("Overzicht wordt automatisch herberekend bij wijzigingen in personen of scenario.")
-    saldo = scenario.totaal_vermogen_op_datum(date(int(jaar_van), 1, 1))
-
+    configs: dict[int, tuple[BelastingConfig, str]] = {}
+    bronnen_per_jaar: dict[int, dict[str, str]] = {}
     for jaar in range(int(jaar_van), int(jaar_tot) + 1):
         config_basis, aanname = laad_tarieven(jaar)
         config, tarief_bronnen = resolve_tariefwaarden_voor_jaar(
@@ -560,19 +527,30 @@ def toon_accountant_pagina() -> None:
             jaar,
             scenario.tarief_periodes,
         )
+        configs[jaar] = (config, aanname)
+        bronnen_per_jaar[jaar] = tarief_bronnen
 
-        d = _bereken_jaar_detail(
-            jaar=jaar,
-            persoon1=persoon1,
-            persoon2=persoon2,
-            records1=records1,
-            records2=records2,
-            scenario=scenario,
-            config=config,
+    cashflow = bereken_huishouden(
+        scenario=scenario,
+        persoon1=persoon1,
+        persoon2=persoon2,
+        records1=records1,
+        records2=records2,
+        jaar_van=int(jaar_van),
+        jaar_tot=int(jaar_tot),
+        belasting_configs=configs,
+    )
+
+    for jr in cashflow.jaren:
+        jaar = jr.jaar
+        config, aanname = configs[jaar]
+        d = bouw_accountant_detail(
+            jr,
             aanname=aanname,
-            saldo_begin_jaar=saldo,
-            tarief_bronnen=tarief_bronnen,
+            tarief_bronnen=bronnen_per_jaar[jaar],
+            records_aangeleverd=len(records1) + len(records2),
         )
+        d["aow_waarschuwingen"] = _handmatige_aow_componenten(scenario, jaar)
 
         with st.expander(
             f"**{jaar}**  —  netto inkomen: {_fmt(d['totaal_netto_inkomen'])}  |  "
@@ -604,8 +582,6 @@ def toon_accountant_pagina() -> None:
             _toon_inkomen_detail(d, persoon1.naam, naam_p2, config)
             st.divider()
             _toon_vermogen_detail(d)
-
-        saldo = d["saldo_einde_jaar"]
 
     # ─── Vorige/Volgende knoppen ────────────────────────────────────────────
     st.divider()

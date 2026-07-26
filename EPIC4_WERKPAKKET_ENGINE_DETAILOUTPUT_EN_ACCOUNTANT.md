@@ -18,6 +18,17 @@ post_date: "2026-07-12"
 
 <!-- markdownlint-disable MD041 -->
 
+## Status 2026-07-26
+
+De implementatie is afgerond. De functionele stap is `Resultaten`; de source of
+truth is `JaarResultaat.accountant_detail`, samengesteld in
+`detail_output_engine.py` uit engine-output. Accountant, Excel en
+testcase-validatie gebruiken dit contract zonder fiscale herberekening.
+
+De integratiepoort blijft geel door reeds bestaande IB-2025-afwijkingen:
+2 WARN en 4 FAIL in de validatiepipeline. Deze zijn geen verschil tussen oud en
+nieuw accountantpad en zijn bewust niet gerebaselined.
+
 ## Doel
 
 Dit document werkt alleen **Epic 4** uit:

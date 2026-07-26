@@ -191,6 +191,11 @@ Breng eigen woning en vermogensgrondslagen onder één consistente bron.
 
 ## Epic 4 — Engine-detailoutput en accountant-engine
 
+Status 2026-07-26: **implementatie afgerond; functionele validatie open**.
+`JaarResultaat.accountant_detail` is de centrale bron voor accountant, Excel en
+testcase-validatie. De IB-2025-pipeline blijft op 2 WARN en 4 FAIL; dit zijn
+bestaande fiscale referentiepunten buiten de presentatiemigratie van Epic 4.
+
 ### Doel Epic 4
 
 Maak van de accountantlogica een afnemer van de engine in plaats van een tweede engine.

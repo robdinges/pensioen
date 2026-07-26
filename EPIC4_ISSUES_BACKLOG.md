@@ -22,6 +22,31 @@ post_date: "2026-07-12"
 
 Deze backlog vertaalt Epic 4 naar kleine, uitvoerbare issues.
 
+## Implementatiestatus 2026-07-26
+
+Status: **implementatie afgerond, fiscale referentievalidatie open**.
+
+- Issues 1-11 zijn geïmplementeerd op `codex/epic4-engine-detailoutput`.
+- `JaarResultaat.accountant_detail`, opgebouwd door
+  `detail_output_engine.py`, is de source of truth voor resultaatdetail.
+- Primaire en afgeleide contractvelden zijn expliciet geclassificeerd.
+- De accountantpagina rekent één doorlopende meerjarige engine-reeks en bevat
+  geen zelfstandige fiscale herberekening.
+- Excel en testcase-validatie consumeren de centrale detailoutput.
+- De compatibiliteitsfunctie `_bereken_jaar_detail()` blijft tijdelijk bestaan,
+  maar delegeert volledig naar `bereken_accountant_jaar_detail()`.
+- De Epic 4-contracttests zijn groen. De IB-2025-validatie blijft op 2 WARN en
+  4 FAIL; onder meer TC008 en TC010 hebben bestaande expliciete regressietests.
+  Deze referentieafwijkingen worden niet stil gerebaselined.
+
+Verschilclassificatie:
+
+| Verschil | Classificatie | Actie |
+| --- | --- | --- |
+| Accountant startte ieder jaar een losse eenjaarsberekening | echte bug | vervangen door één meerjarige engine-run |
+| Validatie importeerde een Streamlit-helper | migratieschuld | rechtstreeks aangesloten op berekenlaag |
+| IB-2025-pipeline: 2 WARN, 4 FAIL | bestaande fiscale validatieschuld | open laten voor inhoudelijke validatie |
+
 Epic 4 draait om één hoofdvraag:
 
 ```text
