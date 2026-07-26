@@ -22,6 +22,29 @@ post_date: "2026-07-12"
 
 Deze backlog vertaalt Epic 2 naar kleine, uitvoerbare issues.
 
+## Status
+
+**Epicstatus: 🟡 IMPLEMENTATIE AFGEROND — GO/NO-GO-VALIDATIE OPEN**
+
+Alle issues 1 tot en met 13 zijn geïmplementeerd. De pensioenbronketen is
+gericht gevalideerd met 56 geslaagde parser-, cashflow- en pensioentests plus
+de afzonderlijke accountantvergelijkingstest.
+
+De bredere regressiepoort is nog niet groen door reeds bestaande fiscale
+referentieverschillen buiten de Epic 2-berekenstap. De volledige testset heeft
+vier fouten:
+
+- `test_api_berekeningen_regressie_genormaliseerde_cases[tc_2025_006]`
+- `test_api_berekeningen_regressie_genormaliseerde_cases[tc_2025_010]`
+- `test_validatie_tc010_is_intern_consistent_na_rebaseline`
+- `test_validatie_tc008_heffingskortingen_sluiten_aan_op_verwachting`
+
+Epic 2 kan definitief op `✅ AFGEROND` zodra deze fiscale referentiecases
+inhoudelijk zijn gevalideerd of bewust opnieuw zijn gebaselined. Het actuele
+`validatie_rapport_ib2025.md` bevat daarnaast twee `WARN`- en vier
+`FAIL`-huishoudresultaten; deze fiscale verschillen moeten afzonderlijk van de
+pensioenbronharmonisatie worden beoordeeld.
+
 Epic 2 draait om twee functionele uitkomsten:
 
 - één leidende pensioenbron
@@ -41,6 +64,8 @@ De aanbevolen uitvoervolgorde is:
 
 ### Issue 1
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg leidende pensioenbron formeel vast`
@@ -55,6 +80,8 @@ Acceptatiecriteria:
 - de pensioenbronkeuze is expliciet en niet meer impliciet verspreid over code
 
 ### Issue 2
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -73,6 +100,8 @@ Acceptatiecriteria:
 ## Epic 2-B — Transformatielaag expliciteren
 
 ### Issue 3
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -94,6 +123,8 @@ Acceptatiecriteria:
 
 ### Issue 4
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voorkom impliciete pensioenbronwissel in importflow`
@@ -110,6 +141,8 @@ Acceptatiecriteria:
 ## Epic 2-C — Bruto inkomen expliciet maken
 
 ### Issue 5
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -134,6 +167,8 @@ Acceptatiecriteria:
 
 ### Issue 6
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Laat hoofdengine bruto-inkomensopbouw expliciet vullen`
@@ -150,6 +185,8 @@ Acceptatiecriteria:
 ## Epic 2-D — Hoofdpad en accountantpad uitlijnen
 
 ### Issue 7
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -172,6 +209,8 @@ Acceptatiecriteria:
 
 ### Issue 8
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Maak bruto-inkomen vergelijkingstest tussen hoofdengine en accountantpad`
@@ -188,6 +227,8 @@ Acceptatiecriteria:
 ## Epic 2-E — Test- en regressielaag
 
 ### Issue 9
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -212,6 +253,8 @@ Acceptatiecriteria:
 
 ### Issue 10
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Voeg tests toe voor MPO-import naar formele rekenbron`
@@ -230,6 +273,8 @@ Acceptatiecriteria:
 - importtransformatie is functioneel bewezen en niet alleen handmatig verondersteld
 
 ### Issue 11
+
+Status: `✅ AFGEROND`
 
 Titel:
 
@@ -252,6 +297,8 @@ Acceptatiecriteria:
 
 ### Issue 12
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Verifieer dat bruto-inkomen DTO geen fiscale detailstap vervuilt`
@@ -267,6 +314,8 @@ Acceptatiecriteria:
 
 ### Issue 13
 
+Status: `✅ AFGEROND`
+
 Titel:
 
 `Leg resterende migratieschuld in accountantpad expliciet vast`
@@ -279,6 +328,13 @@ Scope:
 Acceptatiecriteria:
 
 - geen verborgen restafwijkingen in het pensioenpad
+
+Vastgelegde migratieschuld:
+
+- `records1` en `records2` blijven parameters van `bereken_huishouden()` voor
+  achterwaartse compatibiliteit, maar zijn niet inhoudelijk leidend
+- `bereken_pensioen_maand()` blijft beschikbaar voor directe legacytests; de
+  huishoudengine en accountantoutput roepen deze functie niet aan
 
 ## Afhankelijkheden tussen issues
 

@@ -119,6 +119,9 @@ Maak de pure fiscale functies volledig zelfstandig testbaar en expliciet.
 
 ## Epic 2 — Pensioen en inkomensbronnen harmoniseren
 
+**Status: 🟡 IMPLEMENTATIE AFGEROND — GO/NO-GO-VALIDATIE OPEN.** Zie
+`EPIC2_ISSUES_BACKLOG.md`.
+
 ### Doel Epic 2
 
 Maak pensioen en bruto-inkomensopbouw eenduidig.

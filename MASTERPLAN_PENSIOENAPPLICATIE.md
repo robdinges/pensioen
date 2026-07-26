@@ -224,12 +224,13 @@ Source of truth:
 Functies:
 
 - hoofdpad: `_component_som_maand(... PENSIOEN_INKOMEN ...)`
-- alternatief pad: `bereken_pensioen_maand()`
+- importtransformatie: `pensioenrecords_naar_rekencomponenten()`
+- legacy recordfunctie: `bereken_pensioen_maand()` (alleen directe bouwsteentests)
 
 Gebruikte data:
 
-- `Scenario.componenten`
-- `PensioenRecord`
+- rekenbron: `Scenario.componenten` met categorie `PENSIOEN_INKOMEN`
+- ruwe importbron: `PensioenRecord`, vóór de expliciete transformatie
 
 Gebruikte tarieven:
 
@@ -237,12 +238,14 @@ Gebruikte tarieven:
 
 Tests:
 
+- `tests/test_parser_mpo.py`
 - `tests/test_pensioen_engine.py`
-- gedeeltelijk `tests/test_cashflow_engine.py`
+- `tests/test_cashflow_engine.py`
+- `tests/test_regression_bugs.py`
 
 Accountantdetail:
 
-- gebruikt `bereken_pensioen_maand()` op records
+- consumeert de pensioenopbouw uit engine-output
 
 Afhankelijkheden:
 
@@ -250,11 +253,14 @@ Afhankelijkheden:
 
 Source of truth:
 
-- **nee**
+- **ja**, de componentlaag na expliciete record-naar-componenttransformatie
 
-Probleem:
+Migratiecontract:
 
-- hoofdengine en accountantpad gebruiken een andere pensioenbron
+- `PensioenRecord` blijft ondersteund als ruwe importvorm en als invoerparameter
+  voor achterwaartse compatibiliteit, maar wordt niet rechtstreeks berekend
+- partner- en nabestaandenpensioen worden standaard niet naar regulier
+  pensioeninkomen getransformeerd
 
 ### 3.4 AOW
 
@@ -328,8 +334,8 @@ Source of truth:
 
 Functies:
 
-- hoofdpad: jaarsom in `_bereken_jaar()`
-- accountantpad: jaarsom in `_bereken_jaar_detail()`
+- hoofdpad: `BrutoInkomenJaar` in `_bereken_jaar()`
+- accountantpad: `bouw_accountant_detail()` consumeert dezelfde engine-output
 
 Formule:
 
@@ -349,16 +355,16 @@ Gebruikte tarieven:
 
 Tests:
 
-- indirect via `tests/test_cashflow_engine.py`
-- `tests/test_grafiek_consistency.py`
+- direct op de DTO via `tests/test_cashflow_engine.py`
+- vergelijking hoofdengine/accountant via `tests/test_regression_bugs.py`
 
 Accountantdetail:
 
-- heeft eigen bruto-opbouw per persoon
+- consumeert `BrutoInkomenJaar` per persoon
 
 Source of truth:
 
-- **nee**, omdat pensioenbron niet eenduidig is
+- **ja**, `JaarResultaat.bruto_inkomen`
 
 ### 3.7 Eigen woning
 

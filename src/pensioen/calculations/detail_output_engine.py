@@ -107,13 +107,15 @@ def bouw_accountant_detail(
     aow_payload = tarieven_payload.get("aow", {})
     vermogen_payload = tarieven_payload.get("vermogen", {})
 
-    jaar_arbeid_p1 = _som_maanden(maanden, lambda m: m.arbeid_p1_bruto)
-    jaar_arbeid_p2 = _som_maanden(maanden, lambda m: m.arbeid_p2_bruto)
-    jaar_overig = _som_maanden(maanden, lambda m: m.overig_bruto)
-    jaar_aow_p1 = _som_maanden(maanden, lambda m: m.aow_p1_bruto)
-    jaar_aow_p2 = _som_maanden(maanden, lambda m: m.aow_p2_bruto)
-    jaar_pen_p1 = _som_maanden(maanden, lambda m: m.pensioen_p1_bruto)
-    jaar_pen_p2 = _som_maanden(maanden, lambda m: m.pensioen_p2_bruto)
+    bruto_inkomen = jaar_resultaat.bruto_inkomen
+    jaar_arbeid_p1 = _d(bruto_inkomen.p1.arbeid)
+    jaar_arbeid_p2 = _d(bruto_inkomen.p2.arbeid)
+    jaar_overig_p1 = _d(bruto_inkomen.p1.overig)
+    jaar_overig_p2 = _d(bruto_inkomen.p2.overig)
+    jaar_aow_p1 = _d(bruto_inkomen.p1.aow)
+    jaar_aow_p2 = _d(bruto_inkomen.p2.aow)
+    jaar_pen_p1 = _d(bruto_inkomen.p1.pensioen)
+    jaar_pen_p2 = _d(bruto_inkomen.p2.pensioen)
 
     jaar_arbeid_netto = _som_maanden(maanden, lambda m: m.inkomen_componenten_netto)
     jaar_inhoudingen = _som_maanden(maanden, lambda m: m.inhoudingen)
@@ -179,8 +181,8 @@ def bouw_accountant_detail(
         "tarief_bronnen": tarief_bronnen or {},
         "jaar_arbeid_p1": jaar_arbeid_p1,
         "jaar_arbeid_p2": jaar_arbeid_p2,
-        "jaar_overig_p1": jaar_overig,
-        "jaar_overig_p2": Decimal("0"),
+        "jaar_overig_p1": jaar_overig_p1,
+        "jaar_overig_p2": jaar_overig_p2,
         "jaar_arbeid_netto_p1": jaar_arbeid_netto,
         "jaar_arbeid_netto_p2": Decimal("0"),
         "jaar_overig_netto_p1": Decimal("0"),

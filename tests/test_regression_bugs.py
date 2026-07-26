@@ -14,6 +14,7 @@ from pensioen.models.component import (
     Frequentie,
 )
 from pensioen.models.persoon import Persoon
+from pensioen.models.pensioen_record import PensioenRecord, TypePensioen
 from pensioen.models.scenario import Scenario
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.tax.belasting_loader import laad_tarieven_bereik
@@ -471,16 +472,24 @@ def test_accountant_gebruikt_opgeloste_box3_forfaits() -> None:
 
 
 def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
-    """Pensioenopbouw moet gelijk zijn tussen hoofdengine en accountantpad bij componentbron."""
+    """De volledige bruto-opbouw komt in beide paden uit dezelfde componentbron."""
     from pensioen.tax.belasting_loader import laad_tarieven
     from pensioen.ui.pagina_accountant import _bereken_jaar_detail
 
-    persoon1 = Persoon(naam="P1", geboortedatum=date(1980, 1, 1), heeft_partner=True)
-    persoon2 = Persoon(naam="P2", geboortedatum=date(1982, 1, 1), heeft_partner=True)
+    persoon1 = Persoon(naam="P1", geboortedatum=date(1940, 1, 1), heeft_partner=True)
+    persoon2 = Persoon(naam="P2", geboortedatum=date(1942, 1, 1), heeft_partner=True)
     scenario = Scenario(
         naam="Pensioenbron gelijk",
         box3_meenemen=False,
         componenten=[
+            FinancieelComponent(
+                omschrijving="Arbeid P1",
+                categorie=CategorieComponent.ARBEIDSINKOMEN,
+                persoon="P1",
+                bedrag=Decimal("6000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            ),
             FinancieelComponent(
                 omschrijving="Pensioen P1",
                 categorie=CategorieComponent.PENSIOEN_INKOMEN,
@@ -497,7 +506,30 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
                 bedrag_type=BedragType.BRUTO,
                 frequentie=Frequentie.JAARLIJKS,
             ),
+            FinancieelComponent(
+                omschrijving="Overig P1",
+                categorie=CategorieComponent.OVERIG_INKOMEN,
+                persoon="P1",
+                bedrag=Decimal("3000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            ),
+            FinancieelComponent(
+                omschrijving="Overig P2",
+                categorie=CategorieComponent.OVERIG_INKOMEN,
+                persoon="P2",
+                bedrag=Decimal("9000"),
+                bedrag_type=BedragType.BRUTO,
+                frequentie=Frequentie.JAARLIJKS,
+            ),
         ],
+    )
+    genegeerd_record = PensioenRecord(
+        uitvoerder="Niet leidend",
+        regeling="Recordpad",
+        type_pensioen=TypePensioen.OUDERDOMS,
+        ingangsdatum=date(2020, 1, 1),
+        bruto_per_jaar=Decimal("999999"),
     )
 
     config, aanname = laad_tarieven(2026)
@@ -506,7 +538,7 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
         scenario=scenario,
         persoon1=persoon1,
         persoon2=persoon2,
-        records1=[],
+        records1=[genegeerd_record],
         records2=[],
         jaar_van=2026,
         jaar_tot=2026,
@@ -517,7 +549,7 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
         jaar=2026,
         persoon1=persoon1,
         persoon2=persoon2,
-        records1=[],
+        records1=[genegeerd_record],
         records2=[],
         scenario=scenario,
         config=config,
@@ -526,8 +558,15 @@ def test_accountant_en_hoofdengine_gebruiken_dezelfde_pensioenbron() -> None:
     )
 
     assert detail["pensioenbron"] == "scenario_componenten"
+    assert detail["pensioen_records_genegeerd"] == 1
+    assert detail["jaar_arbeid_p1"] == hoofd.bruto_inkomen.p1.arbeid
+    assert detail["jaar_arbeid_p2"] == hoofd.bruto_inkomen.p2.arbeid
+    assert detail["jaar_aow_p1"] == hoofd.bruto_inkomen.p1.aow
+    assert detail["jaar_aow_p2"] == hoofd.bruto_inkomen.p2.aow
     assert detail["jaar_pen_p1"] == hoofd.bruto_inkomen.p1.pensioen
     assert detail["jaar_pen_p2"] == hoofd.bruto_inkomen.p2.pensioen
+    assert detail["jaar_overig_p1"] == hoofd.bruto_inkomen.p1.overig
+    assert detail["jaar_overig_p2"] == hoofd.bruto_inkomen.p2.overig
     assert detail["jaar_pen_p1"] + detail["jaar_pen_p2"] == hoofd.pensioen_bruto
 
 

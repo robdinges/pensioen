@@ -32,6 +32,10 @@ Het doel van Epic 2 is om vast te leggen en daarna technisch af te dwingen dat:
 - bruto inkomen een expliciete tussenstap wordt
 - hoofdengine en accountantpad dezelfde opbouw van inkomsten gebruiken
 
+**Status: 🟡 IMPLEMENTATIE AFGEROND — GO/NO-GO-VALIDATIE OPEN.** Zie
+`EPIC2_ISSUES_BACKLOG.md` voor de status per issue en de twee resterende
+fiscale validatievragen.
+
 ## Functionele stap
 
 Primary step:

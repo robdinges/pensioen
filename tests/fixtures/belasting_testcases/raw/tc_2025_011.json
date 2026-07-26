@@ -85,7 +85,7 @@
       "Geen eigen woning",
       "Vermogen 500.000 euro met 50/50 verdeling tussen partners"
     ],
-    "opmerkingen": "TC6 volgens bevestigde keuze zonder eigen woning.",
+    "opmerkingen": "TC6 volgens bevestigde keuze zonder eigen woning. Epic 2-validatie: pensioen en bruto inkomen blijven per persoon gescheiden in engine- en accountantoutput.",
     "data_kwaliteit": "volledig",
     "bron": "Handmatige transcriptie Belastingdienst simulator 2025",
     "_incomplete": false

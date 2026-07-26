@@ -10,8 +10,12 @@ from pathlib import Path
 
 import pytest
 
+from pensioen.calculations.cashflow_engine import bereken_huishouden
 from pensioen.models.pensioen_record import TypePensioen
+from pensioen.models.persoon import Persoon
+from pensioen.models.scenario import Scenario
 from pensioen.parsers.parser_mpo import MPOParser, pensioenrecords_naar_rekencomponenten
+from pensioen.tax.belasting_loader import laad_tarieven
 from pensioen.validators.validator import valideer_records
 
 
@@ -112,6 +116,70 @@ class TestMPOParser:
         assert len(componenten) == 1
         assert componenten[0].persoon == "P2"
         assert "Partnerpensioen" in componenten[0].omschrijving
+
+    def test_mpo_transformatie_is_enige_pensioenbron_voor_huishouden(
+        self, fixture_dir: Path
+    ) -> None:
+        """Meerdere MPO-records voor P1 en P2 lopen via componenten naar de engine."""
+        records1 = MPOParser.parse_csv(fixture_dir / "mpo_partner1.csv")
+        records2 = MPOParser.parse_csv(fixture_dir / "mpo_partner2.csv")
+        componenten = [
+            *pensioenrecords_naar_rekencomponenten(records1, persoon="P1"),
+            *pensioenrecords_naar_rekencomponenten(records2, persoon="P2"),
+        ]
+        scenario = Scenario(
+            naam="MPO naar rekenbron",
+            componenten=componenten,
+            box3_meenemen=False,
+        )
+        persoon1 = Persoon(
+            naam="P1",
+            geboortedatum=date(1965, 1, 1),
+            heeft_partner=True,
+        )
+        persoon2 = Persoon(
+            naam="P2",
+            geboortedatum=date(1967, 1, 1),
+            heeft_partner=True,
+        )
+        config, aanname = laad_tarieven(2036)
+
+        jaar = bereken_huishouden(
+            scenario=scenario,
+            persoon1=persoon1,
+            persoon2=persoon2,
+            records1=records1,
+            records2=records2,
+            jaar_van=2036,
+            jaar_tot=2036,
+            belasting_configs={2036: (config, aanname)},
+        ).jaren[0]
+
+        verwacht_p1 = sum(
+            (
+                component.bedrag_per_maand_actief(2036, maand)
+                for component in componenten
+                if component.persoon == "P1"
+                for maand in range(1, 13)
+            ),
+            Decimal("0"),
+        )
+        verwacht_p2 = sum(
+            (
+                component.bedrag_per_maand_actief(2036, maand)
+                for component in componenten
+                if component.persoon == "P2"
+                for maand in range(1, 13)
+            ),
+            Decimal("0"),
+        )
+
+        assert jaar.bruto_inkomen.p1.pensioen == verwacht_p1
+        assert jaar.bruto_inkomen.p2.pensioen == verwacht_p2
+        assert any(
+            "PensioenRecord-invoer ontvangen" in aanname
+            for aanname in jaar.maanden[0].aannames
+        )
 
 
 class TestValidator:
