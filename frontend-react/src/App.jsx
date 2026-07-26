@@ -10,6 +10,7 @@ import {
   buildInputSignature,
   createEmptyValues,
   createDefaultScenarioData,
+  createHouseholdPreferences,
   createHouseholdSnapshot,
   createInitialHouseholdSnapshot,
   createPost,
@@ -22,6 +23,7 @@ import {
   FIELD_META,
   FLOW_STEPS,
   normalizeHouseholdSnapshot,
+  normalizeHouseholdPreferences,
   normalizeScenarioSnapshot,
   createScenarioSnapshot,
   signedEuro,
@@ -109,6 +111,9 @@ function AppContent() {
       persoonNaam: DEFAULT_PERSOON_NAAM,
       geboortedatum: DEFAULT_GEBOORTEDATUM,
     }),
+  });
+  const [householdPreferences, setHouseholdPreferences] = useState({
+    [initialHouseholdId]: createHouseholdPreferences(),
   });
   const [hydrated, setHydrated] = useState(false);
 
@@ -257,8 +262,42 @@ function AppContent() {
     actions.setCalcStatus(source.calculationStatus);
   };
 
-  const buildCurrentSnapshot = () =>
-    createHouseholdSnapshot({
+  const buildCurrentPreferences = () =>
+    createHouseholdPreferences({ jaarVan, jaarTot, apiBase, inkomenType, vermogenType });
+
+  const applyHouseholdPreferences = (preferences, fallback = {}) => {
+    const source = normalizeHouseholdPreferences(preferences, fallback);
+    setJaarVan(source.jaarVan);
+    setJaarTot(source.jaarTot);
+    setApiBase(source.apiBase);
+    setInkomenType(source.inkomenType);
+    setVermogenType(source.vermogenType);
+  };
+
+  const updateHouseholdPreference = (key, value) => {
+    const setters = {
+      jaarVan: setJaarVan,
+      jaarTot: setJaarTot,
+      apiBase: setApiBase,
+      inkomenType: setInkomenType,
+      vermogenType: setVermogenType,
+    };
+    setters[key](value);
+    setHouseholdPreferences((prev) => ({
+      ...prev,
+      [activeHouseholdId]: {
+        ...normalizeHouseholdPreferences(prev[activeHouseholdId]),
+        [key]: value,
+      },
+    }));
+  };
+
+  const buildCurrentSnapshot = () => {
+    const currentScenarioSnapshots = {
+      ...scenarioSnapshots,
+      [activeScenarioId]: buildCurrentScenarioSnapshot(),
+    };
+    return createHouseholdSnapshot({
       posts,
       apiBase,
       persoonNaam,
@@ -268,7 +307,7 @@ function AppContent() {
       partnerGeboortedatum,
       scenarios,
       activeScenarioId,
-      scenarioSnapshots,
+      scenarioSnapshots: currentScenarioSnapshots,
       compareScenarioId,
       comparisonResult,
       importBestandP1Naam,
@@ -285,6 +324,7 @@ function AppContent() {
       inputSignatureAtCalculation,
       calculationStatus: state.calculationStatus,
     });
+  };
 
   const hydrateFromSnapshot = (snapshot) => {
     const source = normalizeHouseholdSnapshot(snapshot);
@@ -315,11 +355,16 @@ function AppContent() {
       [activeHouseholdId]: buildCurrentSnapshot(),
     };
     const nextSnapshot = updatedSnapshots[nextHouseholdId] || null;
+    const updatedPreferences = {
+      ...householdPreferences,
+      [activeHouseholdId]: buildCurrentPreferences(),
+    };
 
     setHouseholdSnapshots(updatedSnapshots);
-
+    setHouseholdPreferences(updatedPreferences);
     setActiveHouseholdId(nextHouseholdId);
     hydrateFromSnapshot(nextSnapshot);
+    applyHouseholdPreferences(updatedPreferences[nextHouseholdId], nextSnapshot);
   };
 
   const addHousehold = () => {
@@ -333,9 +378,15 @@ function AppContent() {
       [activeHouseholdId]: buildCurrentSnapshot(),
       [nextHouseholdId]: snapshot,
     }));
+    setHouseholdPreferences((prev) => ({
+      ...prev,
+      [activeHouseholdId]: buildCurrentPreferences(),
+      [nextHouseholdId]: createHouseholdPreferences(snapshot),
+    }));
     setActiveHouseholdId(nextHouseholdId);
     setNewHouseholdName("");
     hydrateFromSnapshot(snapshot);
+    applyHouseholdPreferences(createHouseholdPreferences(snapshot));
   };
 
   const removeActiveHousehold = () => {
@@ -353,8 +404,14 @@ function AppContent() {
       delete clone[activeHouseholdId];
       return clone;
     });
+    setHouseholdPreferences((prev) => {
+      const clone = { ...prev };
+      delete clone[activeHouseholdId];
+      return clone;
+    });
     setActiveHouseholdId(nextActiveId);
     hydrateFromSnapshot(nextSnapshot);
+    applyHouseholdPreferences(householdPreferences[nextActiveId], nextSnapshot);
   };
 
   const renameActiveHousehold = (name) => {
@@ -647,8 +704,22 @@ function AppContent() {
           : null;
 
         if (parsedHouseholds && parsedHouseholds.length > 0 && parsedSnapshots) {
+          const parsedPreferences =
+            parsed.householdPreferences && typeof parsed.householdPreferences === "object"
+              ? parsed.householdPreferences
+              : {};
+          const migratedPreferences = Object.fromEntries(
+            parsedHouseholds.map((household) => [
+              household.id,
+              normalizeHouseholdPreferences(
+                parsedPreferences[household.id],
+                parsedSnapshots[household.id],
+              ),
+            ]),
+          );
           setHouseholds(parsedHouseholds);
           setHouseholdSnapshots(parsedSnapshots);
+          setHouseholdPreferences(migratedPreferences);
           const persistedActiveId =
             typeof parsed.activeHouseholdId === "string" &&
             parsedHouseholds.some((item) => item.id === parsed.activeHouseholdId)
@@ -656,6 +727,10 @@ function AppContent() {
               : parsedHouseholds[0].id;
           setActiveHouseholdId(persistedActiveId);
           hydrateFromSnapshot(parsedSnapshots[persistedActiveId]);
+          applyHouseholdPreferences(
+            migratedPreferences[persistedActiveId],
+            parsedSnapshots[persistedActiveId],
+          );
         } else {
           if (Array.isArray(parsed.posts) && parsed.posts.length > 0) {
             setPosts(parsed.posts);
@@ -722,6 +797,10 @@ function AppContent() {
         ...householdSnapshots,
         [activeHouseholdId]: buildCurrentSnapshot(),
       },
+      householdPreferences: {
+        ...householdPreferences,
+        [activeHouseholdId]: buildCurrentPreferences(),
+      },
       posts,
       apiBase,
       persoonNaam,
@@ -757,6 +836,7 @@ function AppContent() {
     households,
     activeHouseholdId,
     householdSnapshots,
+    householdPreferences,
     posts,
     apiBase,
     persoonNaam,
@@ -1096,7 +1176,7 @@ function AppContent() {
             <h1>Huishoudgegevens</h1>
             <p>Leg de basis vast voor persoon en API-verbinding.</p>
             <div className="toolbar">
-              <label className="field"><span>API basis</span><input value={apiBase} onChange={(e) => setApiBase(e.target.value)} /></label>
+              <label className="field"><span>API basis</span><input value={apiBase} onChange={(e) => updateHouseholdPreference("apiBase", e.target.value)} /></label>
               <label className="field"><span>P1 naam</span><input value={persoonNaam} onChange={(e) => setPersoonNaam(e.target.value)} /></label>
               <label className="field"><span>P1 geboortedatum</span><input type="date" value={geboortedatum} onChange={(e) => setGeboortedatum(e.target.value)} /></label>
             </div>
@@ -1135,8 +1215,8 @@ function AppContent() {
         <section className="section">
           <SectionHeader title="Berekeningsperiode" description="Stel globale periode in. Componenten kunnen later een eigen looptijd hebben." />
           <div className="toolbar">
-            <label className="field"><span>Jaar van</span><input type="number" value={jaarVan} onChange={(e) => setJaarVan(e.target.value)} /></label>
-            <label className="field"><span>Jaar tot</span><input type="number" value={jaarTot} onChange={(e) => setJaarTot(e.target.value)} /></label>
+            <label className="field"><span>Jaar van</span><input type="number" value={jaarVan} onChange={(e) => updateHouseholdPreference("jaarVan", e.target.value)} /></label>
+            <label className="field"><span>Jaar tot</span><input type="number" value={jaarTot} onChange={(e) => updateHouseholdPreference("jaarTot", e.target.value)} /></label>
           </div>
           {periodeValidatie.length > 0 ? (
             <ul className="validation-list">
@@ -1192,14 +1272,14 @@ function AppContent() {
           fieldMeta={FIELD_META}
           inkomstenTypes={inkomstenTypes}
           inkomenType={inkomenType}
-          setInkomenType={setInkomenType}
+          setInkomenType={(value) => updateHouseholdPreference("inkomenType", value)}
           addPost={addPost}
           inkomstenPosts={inkomstenPosts}
           updatePost={updatePost}
           removePost={removePost}
           vermogenTypes={vermogenTypes}
           vermogenType={vermogenType}
-          setVermogenType={setVermogenType}
+          setVermogenType={(value) => updateHouseholdPreference("vermogenType", value)}
           vermogenPosts={vermogenPosts}
           payloadPreview={payloadPreview}
         />

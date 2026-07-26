@@ -16,6 +16,63 @@ function normalizeHeader(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isoDateFromParts(year, month, day) {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    candidate.getUTCFullYear() !== year
+    || candidate.getUTCMonth() + 1 !== month
+    || candidate.getUTCDate() !== day
+  ) {
+    return "";
+  }
+  return [
+    String(year).padStart(4, "0"),
+    String(month).padStart(2, "0"),
+    String(day).padStart(2, "0"),
+  ].join("-");
+}
+
+export function normalizeMpoDate(value) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime())
+      ? ""
+      : isoDateFromParts(value.getFullYear(), value.getMonth() + 1, value.getDate());
+  }
+
+  const raw = String(value).trim();
+  const isoMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/);
+  if (isoMatch) {
+    return isoDateFromParts(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+  }
+
+  const dutchMatch = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dutchMatch) {
+    return isoDateFromParts(Number(dutchMatch[3]), Number(dutchMatch[2]), Number(dutchMatch[1]));
+  }
+
+  const compactMatch = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compactMatch) {
+    return isoDateFromParts(Number(compactMatch[1]), Number(compactMatch[2]), Number(compactMatch[3]));
+  }
+
+  const excelSerial = Number(raw.replace(",", "."));
+  if (Number.isFinite(excelSerial) && excelSerial >= 1 && excelSerial <= 2958465) {
+    const excelEpoch = Date.UTC(1899, 11, 30);
+    const candidate = new Date(excelEpoch + Math.floor(excelSerial) * 86400000);
+    return isoDateFromParts(
+      candidate.getUTCFullYear(),
+      candidate.getUTCMonth() + 1,
+      candidate.getUTCDate(),
+    );
+  }
+
+  return "";
+}
+
 export function normalizeMpoRow(rawRow) {
   const mapped = {};
   Object.entries(rawRow || {}).forEach(([key, val]) => {
@@ -23,6 +80,12 @@ export function normalizeMpoRow(rawRow) {
     const mappedKey = MPO_KOLOM_MAP[normalizedKey] || normalizedKey;
     mapped[mappedKey] = val;
   });
+  if (Object.hasOwn(mapped, "ingangsdatum")) {
+    mapped.ingangsdatum = normalizeMpoDate(mapped.ingangsdatum);
+  }
+  if (Object.hasOwn(mapped, "einddatum")) {
+    mapped.einddatum = normalizeMpoDate(mapped.einddatum);
+  }
   return mapped;
 }
 

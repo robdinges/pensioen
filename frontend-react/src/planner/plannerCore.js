@@ -210,6 +210,22 @@ export function createScenarioSnapshot(state) {
   };
 }
 
+export function createHouseholdPreferences(state = {}) {
+  const defaults = createDefaultScenarioData();
+  return {
+    jaarVan: typeof state.jaarVan === "string" ? state.jaarVan : defaults.jaarVan,
+    jaarTot: typeof state.jaarTot === "string" ? state.jaarTot : defaults.jaarTot,
+    apiBase: typeof state.apiBase === "string" ? state.apiBase : DEFAULT_API_BASE,
+    inkomenType: typeof state.inkomenType === "string" ? state.inkomenType : "uitkering",
+    vermogenType: typeof state.vermogenType === "string" ? state.vermogenType : "beleggen",
+  };
+}
+
+export function normalizeHouseholdPreferences(preferences, fallback = {}) {
+  const source = preferences && typeof preferences === "object" ? preferences : {};
+  return createHouseholdPreferences({ ...fallback, ...source });
+}
+
 export function normalizeScenarioSnapshot(snapshot, fallback = {}) {
   const defaults = {
     ...createDefaultScenarioData(),
