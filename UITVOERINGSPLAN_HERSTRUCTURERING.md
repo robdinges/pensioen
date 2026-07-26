@@ -268,15 +268,15 @@ Laat UI- en API-lagen uitsluitend nog consumeren.
 
 ## Epic 6 — Regressie, validatie en governance
 
-**Status: TECHNISCHE IMPLEMENTATIE GEREED — PRODUCTVALIDATIE OPEN.**
+**Status: AFGEROND — BEKENDE FISCALE AFWIJKINGEN GEACCEPTEERD.**
 De volledige suite staat op 293 geslaagd en 2 geregistreerde xfails van 295
 tests, met 52% line coverage. Raw/normalized-driftcontrole en React-build zijn
 groen. De strikte IB-2025-validatie staat zichtbaar op 2 WARN en 4 FAIL.
 
-Actieve uitwerking:
+Gearchiveerde uitwerking:
 
-- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
-- `EPIC6_ISSUES_BACKLOG.md`
+- `docs/archive/epics/EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
+- `docs/archive/epics/EPIC6_ISSUES_BACKLOG.md`
 
 ### Doel Epic 6
 
@@ -307,10 +307,12 @@ Veranker correctheid en wijzigingsdiscipline.
 
 ## Epic 7 — Opschoning en doelarchitectuur consolideren
 
-Actieve uitwerking:
+**Status: AFGEROND EN GEACCEPTEERD.**
 
-- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
-- `EPIC7_ISSUES_BACKLOG.md`
+Gearchiveerde uitwerking:
+
+- `docs/archive/epics/EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
+- `docs/archive/epics/EPIC7_ISSUES_BACKLOG.md`
 
 ### Doel Epic 7
 

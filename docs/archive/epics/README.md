@@ -1,15 +1,11 @@
 # Archief afgeronde epics
 
-Deze map bevat de uitvoeringsdocumentatie van Epic 1 tot en met 5.
+Deze map bevat de afgeronde uitvoeringsdocumentatie van Epic 1 tot en met 7.
 
 De documenten blijven beschikbaar voor herleidbaarheid, maar zijn geen actieve
-backlog meer. De actuele richting staat in:
+backlog meer. De actuele richting staat in de projectroot:
 
 - `MASTERPLAN_PENSIOENAPPLICATIE.md`
 - `UITVOERINGSPLAN_HERSTRUCTURERING.md`
-- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
-- `EPIC6_ISSUES_BACKLOG.md`
-- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
-- `EPIC7_ISSUES_BACKLOG.md`
 
 Wijzig gearchiveerde documenten alleen om historische onjuistheden te herstellen.

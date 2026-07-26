@@ -2,8 +2,8 @@
 
 > Statuscontrole 26 juli 2026: dit is de brede productbacklog en bevat ook
 > historische planning en nog niet opnieuw gevalideerde statussen. Voor de
-> actuele herstructurering zijn `UITVOERINGSPLAN_HERSTRUCTURERING.md`,
-> `EPIC6_ISSUES_BACKLOG.md` en `EPIC7_ISSUES_BACKLOG.md` leidend.
+> actuele richting is `UITVOERINGSPLAN_HERSTRUCTURERING.md` leidend. De
+> afgeronde Epic 1–7-uitwerking staat in `docs/archive/epics/`.
 
 ## 📋 GEREGISTREERDE PRODUCTSCOPE (v1.0)
 

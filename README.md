@@ -105,17 +105,9 @@ cashflowprognose voor een huishouden.
 
 ## Actuele herstructurering
 
-De implementatiedocumentatie van Epic 1–5 staat in `docs/archive/epics/`.
-Epic 1 is afgerond; voor Epic 2–5 staat nog expliciete functionele of
-handmatige validatie open. Een overzicht van operationele, referentie- en
-archiefdocumentatie staat in `docs/README.md`.
-
-Actief vervolgwerk:
-
-- `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
-- `EPIC6_ISSUES_BACKLOG.md`
-- `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
-- `EPIC7_ISSUES_BACKLOG.md`
+De implementatiedocumentatie van Epic 1–7 staat in `docs/archive/epics/`.
+Een overzicht van operationele, referentie- en archiefdocumentatie staat in
+`docs/README.md`.
 
 Epic 6-uitvoer op 26 juli 2026:
 
@@ -125,9 +117,9 @@ Epic 6-uitvoer op 26 juli 2026:
 - raw/normalized-driftcontrole: geslaagd
 
 De technische implementatie van Epic 6 is gereed. De twee xfails en externe
-WARN/FAIL-resultaten zijn expliciet geregistreerd en blokken geen onverwachte
-regressies. Voor de go/no-go naar Epic 7 zijn nog productbesluiten nodig over
-de leidende fiscale bron, toleranties en AOW-bron bij partners.
+WARN/FAIL-resultaten zijn expliciet geregistreerd en als fiscale
+validatieschuld geaccepteerd. Epic 7 en de bijbehorende productbesluiten zijn
+eveneens afgerond.
 
 Epic 7-consolidatie:
 
