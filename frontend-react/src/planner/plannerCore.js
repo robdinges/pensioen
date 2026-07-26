@@ -358,6 +358,10 @@ export function normalizeHouseholdSnapshot(snapshot) {
     partnerNaam: typeof source.partnerNaam === "string" ? source.partnerNaam : "",
     partnerGeboortedatum:
       typeof source.partnerGeboortedatum === "string" ? source.partnerGeboortedatum : "",
+    jaarVan:
+      typeof source.jaarVan === "string" ? source.jaarVan : fallbackScenarioData.jaarVan,
+    jaarTot:
+      typeof source.jaarTot === "string" ? source.jaarTot : fallbackScenarioData.jaarTot,
     scenarios,
     activeScenarioId,
     scenarioSnapshots,

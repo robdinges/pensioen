@@ -227,8 +227,8 @@ function AppContent() {
       posts: snapshot.posts,
       persoonNaam,
       geboortedatum,
-      jaarVan: snapshot.jaarVan,
-      jaarTot: snapshot.jaarTot,
+      jaarVan,
+      jaarTot,
       scenarioNaam,
       heeftPartner,
       partnerNaam,
@@ -237,11 +237,13 @@ function AppContent() {
     return request;
   };
 
-  const hydrateFromScenarioSnapshot = (snapshot) => {
+  const hydrateFromScenarioSnapshot = (snapshot, { includePeriod = false } = {}) => {
     const source = normalizeScenarioSnapshot(snapshot);
     setPosts(source.posts);
-    setJaarVan(source.jaarVan);
-    setJaarTot(source.jaarTot);
+    if (includePeriod) {
+      setJaarVan(source.jaarVan);
+      setJaarTot(source.jaarTot);
+    }
     setImportBestandP1Naam(source.importBestandP1Naam);
     setImportBestandP2Naam(source.importBestandP2Naam);
     setImportPreviewP1(source.importPreviewP1);
@@ -293,6 +295,8 @@ function AppContent() {
     setHeeftPartner(source.heeftPartner);
     setPartnerNaam(source.partnerNaam);
     setPartnerGeboortedatum(source.partnerGeboortedatum);
+    setJaarVan(source.jaarVan);
+    setJaarTot(source.jaarTot);
     setScenarios(source.scenarios);
     setActiveScenarioId(source.activeScenarioId);
     setScenarioSnapshots(source.scenarioSnapshots);
@@ -464,8 +468,8 @@ function AppContent() {
     try {
       const activeRequest = scenarioRequestFromSnapshot(currentSnapshot, activeScenarioName);
       const otherRequest = scenarioRequestFromSnapshot(otherSnapshot, otherScenario.naam);
-      const jaarVanVergelijking = Math.min(Number(currentSnapshot.jaarVan), Number(otherSnapshot.jaarVan));
-      const jaarTotVergelijking = Math.max(Number(currentSnapshot.jaarTot), Number(otherSnapshot.jaarTot));
+      const jaarVanVergelijking = Number(jaarVan);
+      const jaarTotVergelijking = Number(jaarTot);
 
       const response = await fetch(`${apiBase}/vergelijkingen`, {
         method: "POST",

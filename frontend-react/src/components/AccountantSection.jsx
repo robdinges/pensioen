@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 function number(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -188,7 +186,6 @@ function AccountantYear({ jaarResultaat, euro }) {
 
 export default function AccountantSection({ SectionHeader, resultaat, euro }) {
   const jaren = Array.isArray(resultaat?.cashflow?.jaren) ? resultaat.cashflow.jaren : [];
-  const [expandedYears, setExpandedYears] = useState(() => (jaren[0] ? { [jaren[0].jaar]: true } : {}));
 
   return (
     <section className="section">
@@ -196,21 +193,18 @@ export default function AccountantSection({ SectionHeader, resultaat, euro }) {
         title="Toelichting berekening"
         description="Van bruto inkomen naar belasting, netto inkomen en vermogen. Alle bedragen komen rechtstreeks uit de rekenengine."
       />
-      {jaren.length === 0 ? <p>Voer eerst een berekening uit om de toelichting te tonen.</p> : jaren.map((jaarResultaat) => {
-        const expanded = Boolean(expandedYears[jaarResultaat.jaar]);
+      {jaren.length === 0 ? <p>Voer eerst een berekening uit om de toelichting te tonen.</p> : jaren.map((jaarResultaat, index) => {
         const detail = jaarResultaat.accountant_detail || {};
         return (
-          <article className="section" key={jaarResultaat.jaar}>
-            <div className="household-controls">
-              <p className="notice">
+          <details className="accountant-year section" key={jaarResultaat.jaar} defaultOpen={index === 0}>
+            <summary className="accountant-year-summary">
+              <span className="accountant-year-copy">
                 <strong>{jaarResultaat.jaar}</strong> · box 1 {euro(detail.totaal_netto_belasting_box1)} · netto {euro(detail.totaal_netto_inkomen)} · box 3 {euro(detail.box3_heffing)}
-              </p>
-              <button type="button" className="ghost" onClick={() => setExpandedYears((current) => ({ ...current, [jaarResultaat.jaar]: !expanded }))}>
-                {expanded ? "Inklappen" : "Uitklappen"}
-              </button>
-            </div>
-            {expanded ? <AccountantYear jaarResultaat={jaarResultaat} euro={euro} /> : null}
-          </article>
+              </span>
+              <span className="chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <AccountantYear jaarResultaat={jaarResultaat} euro={euro} />
+          </details>
         );
       })}
     </section>

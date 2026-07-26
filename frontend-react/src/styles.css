@@ -292,15 +292,90 @@ body {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.55rem;
 }
 
 .card {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 0.85rem;
+  border-radius: 12px;
   background: white;
+}
+
+.component-card {
+  overflow: hidden;
+}
+
+.component-summary,
+.accountant-year-summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.component-summary::-webkit-details-marker,
+.accountant-year-summary::-webkit-details-marker {
+  display: none;
+}
+
+.component-summary {
+  min-height: 72px;
+  padding: 0.62rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.component-summary:hover,
+.accountant-year-summary:hover {
+  background: #f5f9ef;
+}
+
+.component-summary > div {
+  min-width: 0;
+}
+
+.component-type {
+  display: block;
+  margin-bottom: 0.12rem;
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.component-summary h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.component-summary p {
+  margin: 0.12rem 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  color: var(--primary);
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+details[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+
+.component-editor {
+  padding: 0.65rem 0.7rem 0.7rem;
+  border-top: 1px solid var(--line);
+  background: #fbfdf8;
 }
 
 .card-top {
@@ -321,10 +396,37 @@ body {
   font-size: 0.9rem;
 }
 
+.compact-card-top {
+  align-items: end;
+  margin-bottom: 0.55rem;
+}
+
+.component-title-field {
+  flex: 1;
+}
+
+.compact-delete {
+  padding: 0.42rem 0.55rem;
+  font-size: 0.78rem;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
+}
+
+.compact-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.compact-grid input,
+.compact-grid select,
+.component-title-field input {
+  min-width: 0;
+  padding: 0.4rem 0.48rem;
+  font-size: 0.82rem;
 }
 
 .field {
@@ -473,6 +575,98 @@ pre {
   font-size: 1rem;
 }
 
+.charts-stack {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0.9rem 0 1rem;
+}
+
+.chart-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: white;
+}
+
+.chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.chart-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.chart-legend i {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+}
+
+.trend-chart {
+  display: block;
+  width: 100%;
+  min-height: 190px;
+  margin-top: 0.35rem;
+}
+
+.chart-gridline {
+  stroke: #dfe8d6;
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  fill: #627269;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.accountant-year {
+  padding: 0;
+  overflow: hidden;
+}
+
+.accountant-year-summary {
+  padding: 0.8rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.accountant-year-copy {
+  color: #395042;
+  font-size: 0.88rem;
+}
+
+.accountant-year-copy strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.accountant-year-detail {
+  padding: 0 0.9rem 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
 .comparison-kpis {
   margin-top: 0.9rem;
 }
@@ -542,6 +736,10 @@ th {
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .page {
