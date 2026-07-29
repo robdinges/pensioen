@@ -4,24 +4,60 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from html import escape
+from pathlib import Path
 
 import streamlit as st
 
 from pensioen.models.component import FinancieelComponent, CategorieComponent
 from pensioen.models.vermogensitem import VermogensItem, VermogensType
 from pensioen.models.scenario import IncidenteelItem
-from pensioen.ui.style import COLORS, ICONS, badge_html, format_bedrag
+from pensioen.ui.style import badge_html, format_bedrag
 from pensioen.ui.helpers import get_persoon_display_naam
 from pensioen.ui.component_helpers import (
     CATEGORIE_LABELS,
     FREQUENTIE_LABELS,
     BEDRAG_TYPE_LABELS,
-    BELEGGINGS_TYPE_LABELS,
 )
+
+_TEGELICOON_MAP = Path(__file__).resolve().parents[3] / "docs" / "assets" / "icons" / "financiele-tegels"
+_TEGELICOON_BESTANDEN = {
+    "arbeidsinkomen": "arbeidsinkomen.svg",
+    "pensioen_inkomen": "pensioeninkomen.svg",
+    "overig_inkomen": "overig_inkomen.svg",
+    "uitgave": "uitgave.svg",
+    "inhouding": "inhouding.svg",
+    "spaargeld": "sparen.svg",
+    "beleggingen": "beleggen.svg",
+    "eigen_woning": "eigen_woning.svg",
+    "hypotheek": "hypotheek.svg",
+    "auto": "auto.svg",
+    "kunst": "kunst.svg",
+    "boot": "boot.svg",
+    "overig": "overig.svg",
+}
+
+
+def tegelicoon_pad(sleutel: str) -> Path:
+    """Geef het icoonpad voor een financiële tegel, met een generieke fallback."""
+    bestandsnaam = _TEGELICOON_BESTANDEN.get(sleutel, "overig.svg")
+    return _TEGELICOON_MAP / bestandsnaam
+
+
+def _render_tegelkop(titel: str, icoonsleutel: str) -> None:
+    """Render een rustig, monochroom icoon naast de titel van een tegel."""
+    icoon = tegelicoon_pad(icoonsleutel).read_text(encoding="utf-8")
+    st.markdown(
+        f'<div class="fin-tegelkop">'
+        f'<span class="fin-tegelicoon">{icoon}</span>'
+        f'<span class="fin-tegeltitel">{escape(titel)}</span>'
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ==============================================================================
-# Tile Rendering Functions (Modern 4-koloms layout met kebab menu)
+# Tile Rendering Functions (zakelijke tegels met kebabmenu)
 # ==============================================================================
 
 def render_component_tile(
@@ -44,56 +80,42 @@ def render_component_tile(
         idx: Index in de lijst.
         section_key: Unieke sectie-identifier voor state keys.
     """
-    # Bepaal badge type
-    if comp.categorie.value in ("arbeidsinkomen", "pensioen_inkomen", "overig_inkomen"):
-        badge_type = "inkomen"
-    elif comp.categorie.value in ("uitgave", "inhouding"):
-        badge_type = "uitgave"
-    else:
-        badge_type = "neutraal"
-    
     # Container met tile styling
     with st.container():
         # Header met titel en kebab menu
         col_title, col_menu = st.columns([4, 1])
         
         with col_title:
-            st.markdown(f"**{comp.omschrijving}**")
+            _render_tegelkop(comp.omschrijving, comp.categorie.value)
         
         with col_menu:
             with st.popover("⋮", use_container_width=False):
-                if st.button("✏️ Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
+                if st.button("Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
                     st.session_state[f"{section_key}_active_idx"] = idx
                     st.session_state[f"{section_key}_active_mode"] = "edit"
                     st.rerun()
-                if st.button("🗑️ Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
+                if st.button("Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
                     st.session_state[f"{section_key}_delete_idx"] = idx
                     st.rerun()
         
         # Bedrag en frequentie
         bedrag_str = format_bedrag(float(comp.bedrag))
         freq_label = FREQUENTIE_LABELS[comp.frequentie]
-        st.markdown(f"### {bedrag_str}")
-        st.caption(freq_label.lower())
-        
-        # Badges
-        type_badge = badge_html(BEDRAG_TYPE_LABELS[comp.bedrag_type], badge_type="neutraal", small=True)
-        cat_badge = badge_html(CATEGORIE_LABELS[comp.categorie], badge_type=badge_type, small=True)
-        belegg_badge = badge_html(BELEGGINGS_TYPE_LABELS[comp.beleggings_type], badge_type="vermogen", small=True)
-        
-        st.markdown(
-            f"{get_persoon_display_naam(comp.persoon)} • {type_badge} {cat_badge} {belegg_badge}",
-            unsafe_allow_html=True
+        st.markdown(f'<p class="fin-bedrag">{bedrag_str}</p>', unsafe_allow_html=True)
+        st.caption(
+            f"{CATEGORIE_LABELS[comp.categorie]} • "
+            f"{get_persoon_display_naam(comp.persoon)}"
         )
+        st.caption(f"{freq_label} • {BEDRAG_TYPE_LABELS[comp.bedrag_type]}")
         
         # Extra details
         details = []
         if comp.begindatum:
-            details.append(f"📅 Vanaf {comp.begindatum.strftime('%d-%m-%Y')}")
+            details.append(f"Vanaf {comp.begindatum.strftime('%d-%m-%Y')}")
         if comp.einddatum:
             details.append(f"Tot {comp.einddatum.strftime('%d-%m-%Y')}")
         if comp.groei_pct and comp.groei_pct > 0:
-            details.append(f"📈 Groei {float(comp.groei_pct):.1f}%/jr")
+            details.append(f"Groei {float(comp.groei_pct):.1f}% per jaar")
         
         if details:
             st.caption(" • ".join(details))
@@ -129,59 +151,57 @@ def render_vermogensitem_tile(
         col_title, col_menu = st.columns([4, 1])
         
         with col_title:
-            st.markdown(f"**{item.omschrijving}**")
+            _render_tegelkop(item.omschrijving, item.type.value)
         
         with col_menu:
             with st.popover("⋮", use_container_width=False):
-                if st.button("✏️ Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
+                if st.button("Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
                     st.session_state[f"{section_key}_active_idx"] = idx
                     st.session_state[f"{section_key}_active_mode"] = "edit"
                     st.rerun()
-                if st.button("🗑️ Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
+                if st.button("Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
                     st.session_state[f"{section_key}_delete_idx"] = idx
                     st.rerun()
         
         # Waarde (groot en prominent)
-        st.markdown(f"### {format_bedrag(float(waarde))}")
+        st.markdown(
+            f'<p class="fin-bedrag">{format_bedrag(float(waarde))}</p>',
+            unsafe_allow_html=True,
+        )
         
         # Type en persoon
         type_label = item.type.value.replace("_", " ").title()
         st.caption(f"{type_label} • {get_persoon_display_naam(item.persoon)}")
 
         if item.type == VermogensType.EIGEN_WONING:
-            st.caption(f"🏠 WOZ {format_bedrag(float(item.woz_waarde or item.aanschafwaarde))}")
-            st.caption(f"📈 WOZ-stijging {float(item.woz_jaarlijkse_stijging_pct):.1f}% /jaar")
+            st.caption(f"WOZ {format_bedrag(float(item.woz_waarde or item.aanschafwaarde))}")
+            if item.woz_jaarlijkse_stijging_pct != Decimal("0"):
+                st.caption(f"WOZ-stijging {float(item.woz_jaarlijkse_stijging_pct):.1f}% per jaar")
         elif item.type == VermogensType.HYPOTHEEK:
-            st.caption(f"🏦 Schuld {format_bedrag(float(abs(waarde)))}")
-            st.caption(f"🏠 Primaire woning: {'ja' if item.is_primaire_woning else 'nee'}")
+            st.caption(f"Schuld {format_bedrag(float(abs(waarde)))}")
             if item.hypotheekrente_pct is not None:
-                st.caption(f"💶 Rente {float(item.hypotheekrente_pct):.2f}% /jaar")
+                st.caption(f"Rente {float(item.hypotheekrente_pct):.2f}% per jaar")
             if item.einddatum_aftrekbaarheid is not None:
-                st.caption(f"📅 Aftrek t/m {item.einddatum_aftrekbaarheid.strftime('%d-%m-%Y')}")
+                st.caption(f"Aftrek t/m {item.einddatum_aftrekbaarheid.strftime('%d-%m-%Y')}")
         
         # RENDEMENT/GROEI - PROMINENT voor liquide middelen
         if item.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN):
-            # Rendement prominent tonen voor spaargeld en beleggingen
-            rendement_kleur = COLORS["vermogen"].primary
             st.markdown(
-                f"<div style='background-color: {COLORS['vermogen'].bg}; padding: 0.5rem; border-radius: 0.375rem; margin: 0.5rem 0;'>"
-                f"<span style='color: {rendement_kleur}; font-weight: 600;'>📊 Rendement: {float(item.groei_pct):.1f}% /jaar</span>"
-                f"</div>",
-                unsafe_allow_html=True
+                f'<p class="fin-kerngegeven">Rendement '
+                f"{float(item.groei_pct):.1f}% per jaar</p>",
+                unsafe_allow_html=True,
             )
         elif item.groei_pct != Decimal("0"):
-            # Groei/afschrijving voor andere items
-            groei_label = "📈 Waardestijging" if item.groei_pct > 0 else "📉 Afschrijving"
-            st.caption(f"{groei_label}: {float(item.groei_pct):+.1f}% /jaar")
+            groei_label = "Waardestijging" if item.groei_pct > 0 else "Afschrijving"
+            st.caption(f"{groei_label}: {float(item.groei_pct):+.1f}% per jaar")
         
         # Box 3 status
-        box3_icon = "✅" if item.box3_belast else "❌"
         box3_label = "Box 3 belast" if item.box3_belast else "Box 3 vrijgesteld"
-        st.caption(f"{box3_icon} {box3_label}")
+        st.caption(box3_label)
         
         # Verkoopdatum indien aanwezig
         if item.verkoopdatum:
-            st.caption(f"🔚 Verkoop: {item.verkoopdatum.strftime('%d-%m-%Y')}")
+            st.caption(f"Verkoop: {item.verkoopdatum.strftime('%d-%m-%Y')}")
 
 
 def render_incidenteel_tile(
@@ -213,25 +233,25 @@ def render_incidenteel_tile(
         col_title, col_menu = st.columns([4, 1])
         
         with col_title:
-            st.markdown(f"**{item.omschrijving or '(geen omschrijving)'}**")
+            icoonsleutel = "overig" if is_ontvangst else "uitgave"
+            _render_tegelkop(item.omschrijving or "(geen omschrijving)", icoonsleutel)
         
         with col_menu:
             with st.popover("⋮", use_container_width=False):
-                if st.button("✏️ Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
+                if st.button("Bewerken", key=f"{section_key}_edit_{idx}", use_container_width=True):
                     st.session_state[f"{section_key}_active_idx"] = idx
                     st.session_state[f"{section_key}_active_mode"] = "edit"
                     st.rerun()
-                if st.button("🗑️ Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
+                if st.button("Verwijderen", key=f"{section_key}_del_{idx}", use_container_width=True, type="secondary"):
                     st.session_state[f"{section_key}_delete_idx"] = idx
                     st.rerun()
         
         # Bedrag (met kleur)
         bedrag_str = format_bedrag(float(item.bedrag))
-        bedrag_kleur = COLORS["ontvangst"].primary if is_ontvangst else COLORS["uitgave_eenmalig"].primary
-        st.markdown(f"<h3 style='color: {bedrag_kleur}; margin: 0;'>{bedrag_str}</h3>", unsafe_allow_html=True)
+        st.markdown(f'<p class="fin-bedrag">{bedrag_str}</p>', unsafe_allow_html=True)
         
         # Datum
-        st.caption(f"📅 {item.datum.strftime('%d-%m-%Y')}")
+        st.caption(item.datum.strftime("%d-%m-%Y"))
         
         # Type badge
         type_label = "Ontvangst" if is_ontvangst else "Uitgave"

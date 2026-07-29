@@ -71,6 +71,7 @@ function AppContent() {
   const [posts, setPosts] = useState([createPost("loon"), createPost("sparen")]);
   const [inkomenType, setInkomenType] = useState("uitkering");
   const [vermogenType, setVermogenType] = useState("beleggen");
+  const [componentLayout, setComponentLayout] = useState("masterpiece");
   const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
   const [persoonNaam, setPersoonNaam] = useState(DEFAULT_PERSOON_NAAM);
   const [geboortedatum, setGeboortedatum] = useState(DEFAULT_GEBOORTEDATUM);
@@ -1304,6 +1305,8 @@ function AppContent() {
           setVermogenType={(value) => updateHouseholdPreference("vermogenType", value)}
           vermogenPosts={vermogenPosts}
           payloadPreview={payloadPreview}
+          layoutVariant={componentLayout}
+          setLayoutVariant={setComponentLayout}
         />
       );
     }
@@ -1372,6 +1375,7 @@ function AppContent() {
 
   return (
     <AppShell
+      className={activeStep === "componenten" ? `component-layout-${componentLayout}` : ""}
       sidebar={<WizardSidebar steps={FLOW_STEPS} activeStep={activeStep} stepStatusMap={stepStatusMap} onStepSelect={actions.setActiveStep} calculationStatus={state.calculationStatus} isCalculating={isLoading} />}
       topbar={<ContextTopBar currentHousehold={activeHouseholdName} activeScenario={activeScenarioName} calculationStatus={state.calculationStatus} lastCalculatedAt={state.lastCalculatedAt} autosaveStatus={state.autosaveStatus} onCalculate={runBerekening} isCalculating={isLoading} canCalculate={canCalculate} />}
       footer={

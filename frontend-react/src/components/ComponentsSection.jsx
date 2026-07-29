@@ -16,25 +16,142 @@ export default function ComponentsSection({
   setVermogenType,
   vermogenPosts,
   payloadPreview,
+  layoutVariant,
+  setLayoutVariant,
 }) {
+  const categories = [
+    {
+      id: "inkomsten",
+      title: "Inkomsten & uitgaven",
+      description: "Wat komt er binnen en wat gaat er uit?",
+      options: inkomstenTypes,
+      value: inkomenType,
+      setValue: setInkomenType,
+      posts: inkomstenPosts,
+    },
+    {
+      id: "vermogen",
+      title: "Vermogen",
+      description: "Wat bezit je en welke schulden staan daar tegenover?",
+      options: vermogenTypes,
+      value: vermogenType,
+      setValue: setVermogenType,
+      posts: vermogenPosts,
+    },
+  ];
+
+  const variantCopy = {
+    color: {
+      number: "01",
+      title: "Kleur & herkenning",
+      description: "Dezelfde vertrouwde indeling, met kleur als wegwijzer tussen geldstromen en vermogen.",
+    },
+    scale: {
+      number: "02",
+      title: "Ruimte & uitlijning",
+      description: "Compacte bediening, strakke kolommen en meer overzicht op één scherm.",
+    },
+    masterpiece: {
+      number: "03",
+      title: "Financieel werkblad",
+      description: "Een taakgerichte werkruimte: eerst kiezen, dan toevoegen, daarna controleren en verfijnen.",
+    },
+  };
+  const activeVariant = variantCopy[layoutVariant];
+
   return (
-    <>
-      <section className="section">
-        <SectionHeader title="Inkomsten / Uitgaven" description="Loon, uitkering, pensioen en eenmalige inkomsten/uitgaven als losse tegels." />
-        <NewPostPicker title="Nieuwe post" options={inkomstenTypes} value={inkomenType} onValueChange={setInkomenType} onAdd={() => addPost(inkomenType)} labelMap={Object.fromEntries(inkomstenTypes.map((option) => [option, typeConfig[option].label]))} />
-        <div className="tiles">{inkomstenPosts.map((post) => <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} config={typeConfig[post.type]} fieldMeta={fieldMeta} />)}</div>
-      </section>
+    <div className={`components-page variant-${layoutVariant}`}>
+      <header className="components-intro">
+        <div>
+          <p className="eyebrow">Componenten · ontwerpvoorbeeld {activeVariant.number}</p>
+          <h1>{activeVariant.title}</h1>
+          <p>{activeVariant.description}</p>
+        </div>
+        <div className="layout-switcher" role="group" aria-label="Kies een ontwerpvariant">
+          {Object.entries(variantCopy).map(([key, copy]) => (
+            <button
+              key={key}
+              type="button"
+              className={layoutVariant === key ? "is-active" : ""}
+              aria-pressed={layoutVariant === key}
+              onClick={() => setLayoutVariant(key)}
+            >
+              <span>{copy.number}</span>
+              {copy.title}
+            </button>
+          ))}
+        </div>
+      </header>
 
-      <section className="section">
-        <SectionHeader title="Vermogen" description="Sparen, beleggen, eigen woning, overige bezittingen en schulden (hypotheek)." />
-        <NewPostPicker title="Nieuwe post" options={vermogenTypes} value={vermogenType} onValueChange={setVermogenType} onAdd={() => addPost(vermogenType)} labelMap={Object.fromEntries(vermogenTypes.map((option) => [option, typeConfig[option].label]))} />
-        <div className="tiles">{vermogenPosts.map((post) => <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} config={typeConfig[post.type]} fieldMeta={fieldMeta} />)}</div>
-      </section>
+      {layoutVariant === "masterpiece" ? (
+        <section className="component-command">
+          <div>
+            <span className="command-kicker">Snel toevoegen</span>
+            <h2>Wat wil je vastleggen?</h2>
+            <p>Kies een soort post. De nieuwe kaart verschijnt direct in het juiste overzicht.</p>
+          </div>
+          <div className="command-actions">
+            {categories.map((category) => (
+              <NewPostPicker
+                key={category.id}
+                title={category.title}
+                options={category.options}
+                value={category.value}
+                onValueChange={category.setValue}
+                onAdd={() => addPost(category.value)}
+                labelMap={Object.fromEntries(category.options.map((option) => [option, typeConfig[option].label]))}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      <section className="section">
-        <SectionHeader title="JSON Preview" description="Voor API-koppeling: actuele UI-invoer als JSON-structuur." />
+      <div className="component-groups">
+        {categories.map((category, index) => (
+          <section className={`section component-group group-${category.id}`} key={category.id}>
+            <div className="group-heading">
+              <span className="group-index">0{index + 1}</span>
+              <div>
+                <SectionHeader title={category.title} description={category.description} />
+                <span className="item-count">{category.posts.length} {category.posts.length === 1 ? "post" : "posten"}</span>
+              </div>
+            </div>
+
+            {layoutVariant !== "masterpiece" ? (
+              <NewPostPicker
+                title="Nieuwe post"
+                options={category.options}
+                value={category.value}
+                onValueChange={category.setValue}
+                onAdd={() => addPost(category.value)}
+                labelMap={Object.fromEntries(category.options.map((option) => [option, typeConfig[option].label]))}
+              />
+            ) : null}
+
+            {category.posts.length > 0 ? (
+              <div className="tiles">
+                {category.posts.map((post) => (
+                  <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} config={typeConfig[post.type]} fieldMeta={fieldMeta} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-component">
+                <strong>Nog geen posten</strong>
+                <span>Voeg hierboven de eerste post toe.</span>
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+
+      <details className="section payload-details">
+        <summary>
+          <span>Technische gegevens</span>
+          <small>JSON voor API-koppeling</small>
+          <span className="chevron" aria-hidden="true">⌄</span>
+        </summary>
         <pre>{JSON.stringify(payloadPreview, null, 2)}</pre>
-      </section>
-    </>
+      </details>
+    </div>
   );
 }

@@ -25,7 +25,199 @@ from pensioen.ui.tile_renderers import (
     render_incidenteel_tile,
     render_type_filters,
 )
-from pensioen.ui.style import COLORS, ICONS, section_header_html, format_bedrag
+from pensioen.ui.style import format_bedrag
+
+
+def _injecteer_componenten_stijl() -> None:
+    """Voeg een zakelijke, consistente presentatiestijl voor deze pagina toe."""
+    st.markdown(
+        """
+        <style>
+        .fin-tegelkop {
+            align-items: center;
+            display: flex;
+            gap: 0.625rem;
+            min-height: 2rem;
+        }
+        .fin-tegelicoon {
+            color: #52606d;
+            display: inline-flex;
+            flex: 0 0 1.5rem;
+        }
+        .fin-tegelicoon svg {
+            height: 1.5rem;
+            width: 1.5rem;
+        }
+        .fin-tegeltitel {
+            color: #17212b;
+            font-size: 0.95rem;
+            font-weight: 650;
+            line-height: 1.3;
+        }
+        .fin-bedrag {
+            color: #17212b;
+            font-size: 1.45rem;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin: 0.9rem 0 0.1rem;
+        }
+        .fin-kerngegeven {
+            border-left: 2px solid #6a7b8c;
+            color: #344454;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.75rem 0;
+            padding: 0.2rem 0 0.2rem 0.6rem;
+        }
+        [class*="st-key-fin_tegel_"],
+        [class*="st-key-fin_tegel_"] [data-testid="stVerticalBlockBorderWrapper"] {
+            background-color: #ffffff !important;
+            border-color: #b8c5d1 !important;
+            border-radius: 3px !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] {
+            color: #52606d;
+            line-height: 1.4;
+        }
+        .st-key-comp_inkuit_pills button,
+        .st-key-vermogen_pills button,
+        .st-key-eenmalig_pills button {
+            background: #edf2f6 !important;
+            border: 1px solid #c7d2dc !important;
+            border-radius: 3px !important;
+            color: #52606d !important;
+            font-weight: 550 !important;
+            min-height: 2rem !important;
+            padding: 0.25rem 0.7rem !important;
+        }
+        .st-key-comp_inkuit_pills button[aria-selected="true"],
+        .st-key-vermogen_pills button[aria-selected="true"],
+        .st-key-eenmalig_pills button[aria-selected="true"],
+        .st-key-comp_inkuit_pills button[aria-pressed="true"],
+        .st-key-vermogen_pills button[aria-pressed="true"],
+        .st-key-eenmalig_pills button[aria-pressed="true"] {
+            background: #6a89a7 !important;
+            border-color: #5c7892 !important;
+            color: #ffffff !important;
+            font-weight: 650 !important;
+        }
+        .st-key-comp_inkuit_pills button:hover,
+        .st-key-vermogen_pills button:hover,
+        .st-key-eenmalig_pills button:hover {
+            border-color: #8299ad !important;
+        }
+        [data-testid="stPopoverBody"] {
+            border: 1px solid #c9d2dc !important;
+            border-radius: 3px !important;
+            box-shadow: 0 4px 12px rgba(23, 33, 43, 0.12) !important;
+            padding: 0.25rem !important;
+        }
+        [data-testid="stPopoverBody"] .stButton > button {
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 2px !important;
+            color: #344454 !important;
+            font-size: 0.82rem !important;
+            justify-content: flex-start !important;
+            min-height: 1.9rem !important;
+            padding: 0.25rem 0.5rem !important;
+        }
+        [data-testid="stPopoverBody"] .stButton > button:hover {
+            background: #edf2f6 !important;
+            color: #17212b !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+LAYOUT_OPTIES = {
+    "1 · Kleur": "kleur",
+    "2 · Compact": "compact",
+    "3 · Werkblad": "werkblad",
+}
+
+
+def _aantal_tegelkolommen(layout: str) -> int:
+    """Geef de informatiedichtheid van de gekozen ontwerpvariant."""
+    return 4 if layout == "compact" else 3
+
+
+def _injecteer_variant_stijl(layout: str) -> None:
+    """Pas ook de Streamlit-zijbalk en hoofdindeling zichtbaar aan."""
+    variant_css = {
+        "kleur": """
+            [data-testid="stSidebar"] { background: #123c34 !important; }
+            [data-testid="stMainBlockContainer"] { max-width: 1380px; }
+            [class*="st-key-fin_tegel_comp_"] {
+                border-left: 5px solid #1b8a70 !important;
+            }
+            [class*="st-key-fin_tegel_verm_"] {
+                border-left: 5px solid #3977c3 !important;
+            }
+            [class*="st-key-fin_tegel_inc_"] {
+                border-left: 5px solid #b87520 !important;
+            }
+        """,
+        "compact": """
+            [data-testid="stSidebar"] {
+                min-width: 13.5rem !important;
+                max-width: 13.5rem !important;
+                background: #17212b !important;
+            }
+            [data-testid="stMainBlockContainer"] {
+                max-width: 1600px;
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+            [class*="st-key-fin_tegel_"] .fin-bedrag {
+                font-size: 1.15rem;
+                margin-top: 0.45rem;
+            }
+            [class*="st-key-fin_tegel_"] [data-testid="stVerticalBlock"] {
+                gap: 0.35rem !important;
+            }
+        """,
+        "werkblad": """
+            [data-testid="stSidebar"] {
+                min-width: 15.5rem !important;
+                max-width: 15.5rem !important;
+                background: #102d29 !important;
+                border-right: 1px solid #294943;
+            }
+            [data-testid="stMainBlockContainer"] {
+                max-width: 1500px;
+                padding-top: 1.4rem;
+            }
+            [data-testid="stMetric"] {
+                background: #f7faf8;
+                border: 1px solid #d9e4df;
+                border-radius: 8px;
+                padding: 0.75rem 1rem;
+            }
+            [data-testid="stTabs"] [data-baseweb="tab-list"] {
+                gap: 0.35rem;
+                border-bottom: 1px solid #d7e1dc;
+            }
+            [data-testid="stTabs"] button[role="tab"] {
+                min-height: 3rem;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            [data-testid="stTabs"] button[aria-selected="true"] {
+                color: #126a58 !important;
+                font-weight: 700;
+            }
+            [class*="st-key-fin_tegel_"] {
+                box-shadow: 0 5px 16px rgba(20, 48, 41, 0.06) !important;
+            }
+        """,
+    }
+    st.markdown(f"<style>{variant_css[layout]}</style>", unsafe_allow_html=True)
 
 
 def _update_scenario(scenario, scenario_lijst):
@@ -49,7 +241,20 @@ def _plus_jaren(brondatum: date, jaren: int) -> date:
 
 def toon_componenten_pagina() -> None:
     """Financiële componenten, vermogen en eenmalige posten in één overzichtelijke pagina."""
-    st.header("💼 Financiële Planning")
+    _injecteer_componenten_stijl()
+    kop_col, keuze_col = st.columns([1.35, 1])
+    with kop_col:
+        st.header("Financiële planning")
+        st.caption("Leg inkomsten, vermogen en eenmalige gebeurtenissen vast.")
+    with keuze_col:
+        gekozen_layout = st.radio(
+            "Vergelijk ontwerp",
+            options=list(LAYOUT_OPTIES),
+            horizontal=True,
+            key="componenten_layout_variant",
+        )
+    layout = LAYOUT_OPTIES[gekozen_layout]
+    _injecteer_variant_stijl(layout)
     
     scenario_lijst = st.session_state.get("scenario_lijst", [])
     actief = get_actief_scenario(scenario_lijst)
@@ -111,38 +316,63 @@ def toon_componenten_pagina() -> None:
         _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
-    # ========== SECTIE 1: INKOMSTEN & UITGAVEN ==========
+    if layout == "werkblad":
+        st.markdown("### Financieel overzicht")
+        metric_cols = st.columns(3)
+        metric_cols[0].metric("Periodieke posten", len(scenario.componenten))
+        metric_cols[1].metric("Vermogensonderdelen", len(scenario.vermogensitems))
+        metric_cols[2].metric("Eenmalige posten", len(scenario.incidentele_items))
+        st.caption(
+            "Kies hieronder het onderdeel waaraan je wilt werken. "
+            "Zo blijft alleen de informatie voor die taak in beeld."
+        )
+        tab_inkomen, tab_vermogen, tab_eenmalig = st.tabs(
+            ["Inkomsten & uitgaven", "Vermogen", "Eenmalige posten"]
+        )
+        with tab_inkomen:
+            _render_inkomsten_uitgaven_sectie(
+                scenario, scenario_lijst, persoon_opties, persoon_display, layout
+            )
+        with tab_vermogen:
+            _render_vermogen_sectie(
+                scenario, scenario_lijst, persoon_opties, persoon_display, layout
+            )
+        with tab_eenmalig:
+            _render_eenmalige_posten_sectie(scenario, scenario_lijst, layout)
+        return
+
     st.divider()
-    st.markdown(section_header_html("Inkomsten & Uitgaven", "📊", COLORS["inkomen"]), unsafe_allow_html=True)
-    
-    _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties, persoon_display)
-    
-    # ========== SECTIE 2: VERMOGEN & BEZITTINGEN ==========
+    st.subheader("Inkomsten en uitgaven")
+    _render_inkomsten_uitgaven_sectie(
+        scenario, scenario_lijst, persoon_opties, persoon_display, layout
+    )
+
     st.divider()
-    st.markdown(section_header_html("Vermogen & Bezittingen", "💰", COLORS["vermogen"]), unsafe_allow_html=True)
-    
-    _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_display)
-    
-    # ========== SECTIE 3: EENMALIGE POSTEN ==========
+    st.subheader("Vermogen en bezittingen")
+    _render_vermogen_sectie(
+        scenario, scenario_lijst, persoon_opties, persoon_display, layout
+    )
+
     st.divider()
-    st.markdown(section_header_html("Eenmalige Ontvangsten & Uitgaven", "💸", COLORS["ontvangst"]), unsafe_allow_html=True)
-    
-    _render_eenmalige_posten_sectie(scenario, scenario_lijst)
+    st.subheader("Eenmalige ontvangsten en uitgaven")
+    _render_eenmalige_posten_sectie(scenario, scenario_lijst, layout)
 
 
 # ==============================================================================
 # SECTIE 1: INKOMSTEN & UITGAVEN
 # ==============================================================================
 
-def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties, persoon_display):
+def _render_inkomsten_uitgaven_sectie(
+    scenario, scenario_lijst, persoon_opties, persoon_display, layout: str = "kleur"
+):
     """Render inkomsten & uitgaven sectie met AOW info en filters."""
     
     # AOW automatische berekening info
-    st.markdown("### 🏛️ AOW (automatisch berekend)")
+    st.markdown("### AOW (automatisch berekend)")
     _render_aow_info()
     
     st.markdown("---")
-    st.markdown("### 💼 Periodieke inkomsten en uitgaven")
+    st.markdown("### Periodieke inkomsten en uitgaven")
     
     # Filters: categorie en persoon
     col_filter_cat, col_filter_pers = st.columns(2)
@@ -250,41 +480,46 @@ def _render_inkomsten_uitgaven_sectie(scenario, scenario_lijst, persoon_opties, 
         _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
-    # Toon tegels in grid van 4 kolommen
+    # Toon tegels in grid van 3 kolommen
     st.markdown("---")
     if not componenten_gefilterd:
         st.info("Geen componenten gevonden. Klik 'Nieuwe component' om er een toe te voegen.")
     else:
-        for row_start in range(0, len(componenten_gefilterd), 4):
-            cols = st.columns(4)
-            for col_idx in range(4):
+        aantal_kolommen = _aantal_tegelkolommen(layout)
+        for row_start in range(0, len(componenten_gefilterd), aantal_kolommen):
+            cols = st.columns(aantal_kolommen)
+            for col_idx in range(aantal_kolommen):
                 i = row_start + col_idx
                 if i < len(componenten_gefilterd):
                     cat_key, comp = componenten_gefilterd[i]
                     # Find original index in scenario.componenten
                     orig_idx = scenario.componenten.index(comp)
                     with cols[col_idx]:
-                        with st.container(border=True):
+                        with st.container(border=True, key=f"fin_tegel_comp_{orig_idx}"):
                             render_component_tile(comp, orig_idx, "comp")
+
+
+def _laad_aow_bedragen(jaar: int) -> tuple[Decimal | None, Decimal | None]:
+    """Laad de maandbedragen voor gehuwden en alleenstaanden uit de jaarconfig."""
+    from pensioen.tax.belasting_loader import laad_tarieven
+
+    try:
+        config, _ = laad_tarieven(jaar)
+        return (
+            config.aow_bedrag.gehuwd_of_samenwonend_per_maand,
+            config.aow_bedrag.alleenstaande_per_maand,
+        )
+    except (FileNotFoundError, KeyError, TypeError, ValueError):
+        return None, None
 
 
 def _render_aow_info():
     """Render AOW info sectie."""
     from pensioen.tax.aow_engine import bereken_aow_datum
-    from pensioen.tax.belasting_loader import laad_tarieven
     
     persoon1 = st.session_state.get("persoon1")
     persoon2 = st.session_state.get("persoon2")
-    
-    # Laad AOW bedragen uit huidige belastingconfig
-    huidig_jaar = date.today().year
-    try:
-        config = laad_tarieven(huidig_jaar)
-        aow_gehuwd = config.aow_bedrag.gehuwd_of_samenwonend_per_maand
-        aow_alleenstaand = config.aow_bedrag.alleenstaande_per_maand
-    except Exception:
-        aow_gehuwd = None
-        aow_alleenstaand = None
+    aow_gehuwd, aow_alleenstaand = _laad_aow_bedragen(date.today().year)
     
     col1, col2 = st.columns(2)
     
@@ -296,11 +531,14 @@ def _render_aow_info():
             aow_bedrag = aow_gehuwd if persoon2 else aow_alleenstaand
             bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
             
-            st.info(
-                f"**{persoon1.naam}**\n\n"
-                f"📅 AOW vanaf: {aow_datum_p1.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p1})\n\n"
-                f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
-            )
+            with st.container(border=True):
+                st.markdown(f"**{persoon1.naam}**")
+                st.caption(
+                    f"AOW vanaf {aow_datum_p1.strftime('%d-%m-%Y')} "
+                    f"(leeftijd {aow_leeftijd_p1})"
+                )
+                st.markdown(f"**{bedrag_tekst}**")
+                st.caption("Bruto, indicatief")
         else:
             st.caption("Persoon 1 niet ingevuld")
     
@@ -312,22 +550,27 @@ def _render_aow_info():
             aow_bedrag = aow_gehuwd
             bedrag_tekst = f"€ {float(aow_bedrag):,.0f}/maand" if aow_bedrag else "Config niet beschikbaar"
             
-            st.info(
-                f"**{persoon2.naam}**\n\n"
-                f"📅 AOW vanaf: {aow_datum_p2.strftime('%d-%m-%Y')} (leeftijd {aow_leeftijd_p2})\n\n"
-                f"💰 Verwacht bedrag: {bedrag_tekst} (bruto, indicatief)"
-            )
+            with st.container(border=True):
+                st.markdown(f"**{persoon2.naam}**")
+                st.caption(
+                    f"AOW vanaf {aow_datum_p2.strftime('%d-%m-%Y')} "
+                    f"(leeftijd {aow_leeftijd_p2})"
+                )
+                st.markdown(f"**{bedrag_tekst}**")
+                st.caption("Bruto, indicatief")
         else:
             st.caption("Partner niet ingevuld")
     
-    st.caption("ℹ️ AOW wordt automatisch berekend op basis van geboortedatum. Het bedrag is een indicatie en kan jaarlijks wijzigen.")
+    st.caption("AOW wordt automatisch berekend op basis van geboortedatum. Het bedrag is een indicatie en kan jaarlijks wijzigen.")
 
 
 # ==============================================================================
 # SECTIE 2: VERMOGEN & BEZITTINGEN
 # ==============================================================================
 
-def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_display):
+def _render_vermogen_sectie(
+    scenario, scenario_lijst, persoon_opties, persoon_display, layout: str = "kleur"
+):
     """Render vermogen & bezittingen sectie met filters."""
     
     # Filter vermogensitems
@@ -389,21 +632,22 @@ def _render_vermogen_sectie(scenario, scenario_lijst, persoon_opties, persoon_di
         _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
-    # Toon tegels in grid van 4 kolommen
+    # Toon tegels in grid van 3 kolommen
     st.markdown("---")
     if not items_gefilterd:
         st.info("Geen vermogensitems gevonden. Klik 'Nieuw vermogensitem' om er een toe te voegen.")
     else:
-        for row_start in range(0, len(items_gefilterd), 4):
-            cols = st.columns(4)
-            for col_idx in range(4):
+        aantal_kolommen = _aantal_tegelkolommen(layout)
+        for row_start in range(0, len(items_gefilterd), aantal_kolommen):
+            cols = st.columns(aantal_kolommen)
+            for col_idx in range(aantal_kolommen):
                 i = row_start + col_idx
                 if i < len(items_gefilterd):
                     filter_key, item = items_gefilterd[i]
                     # Find original index
                     orig_idx = scenario.vermogensitems.index(item)
                     with cols[col_idx]:
-                        with st.container(border=True):
+                        with st.container(border=True, key=f"fin_tegel_verm_{orig_idx}"):
                             render_vermogensitem_tile(item, orig_idx, "verm")
 
 
@@ -627,7 +871,9 @@ def _render_vermogensitem_form(mode: str, edit_idx: int | None, scenario, scenar
 # SECTIE 3: EENMALIGE POSTEN
 # ==============================================================================
 
-def _render_eenmalige_posten_sectie(scenario, scenario_lijst):
+def _render_eenmalige_posten_sectie(
+    scenario, scenario_lijst, layout: str = "kleur"
+):
     """Render eenmalige ontvangsten & uitgaven sectie."""
     
     # Filter
@@ -691,19 +937,20 @@ def _render_eenmalige_posten_sectie(scenario, scenario_lijst):
         _update_scenario(scenario, scenario_lijst)
         st.rerun()
     
-    # Toon tegels in grid van 4 kolommen
+    # Toon tegels in grid van 3 kolommen
     st.markdown("---")
     if not items_gefilterd:
         st.info("Geen eenmalige posten gevonden. Klik 'Nieuwe eenmalige post' om er een toe te voegen.")
     else:
-        for row_start in range(0, len(items_gefilterd), 4):
-            cols = st.columns(4)
-            for col_idx in range(4):
+        aantal_kolommen = _aantal_tegelkolommen(layout)
+        for row_start in range(0, len(items_gefilterd), aantal_kolommen):
+            cols = st.columns(aantal_kolommen)
+            for col_idx in range(aantal_kolommen):
                 i = row_start + col_idx
                 if i < len(items_gefilterd):
                     filter_key, item = items_gefilterd[i]
                     # Find original index
                     orig_idx = scenario.incidentele_items.index(item)
                     with cols[col_idx]:
-                        with st.container(border=True):
+                        with st.container(border=True, key=f"fin_tegel_inc_{orig_idx}"):
                             render_incidenteel_tile(item, orig_idx, "inc")

@@ -754,6 +754,361 @@ th {
   margin-top: 1rem;
 }
 
+/* Componentenpagina: drie functionele UX-richtingen */
+.components-page {
+  --component-accent: var(--primary);
+  --component-soft: var(--primary-soft);
+}
+
+.components-intro {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(460px, 1.35fr);
+  gap: 1rem;
+  align-items: end;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.components-intro h1 {
+  margin: 0.15rem 0 0.35rem;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+}
+
+.components-intro p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+.layout-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f2f5ef;
+}
+
+.layout-switcher button {
+  display: grid;
+  gap: 0.18rem;
+  min-height: 64px;
+  padding: 0.55rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.layout-switcher button span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.layout-switcher button.is-active {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(28, 52, 34, 0.08);
+}
+
+.component-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.component-group {
+  position: relative;
+}
+
+.group-heading {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.group-index {
+  display: none;
+}
+
+.item-count {
+  display: inline-flex;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.empty-component {
+  display: grid;
+  place-items: center;
+  min-height: 100px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.empty-component span {
+  font-size: 0.82rem;
+}
+
+.payload-details {
+  padding: 0;
+  overflow: hidden;
+}
+
+.payload-details > summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.payload-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.payload-details > summary small {
+  color: var(--muted);
+}
+
+.payload-details pre {
+  margin: 0 0.8rem 0.8rem;
+}
+
+/* 01 — kleur verandert, structuur blijft bewust vertrouwd */
+.variant-color .components-intro {
+  border-top: 5px solid #145ca8;
+  background: linear-gradient(115deg, #f7fbff, #fff);
+}
+
+.variant-color .group-inkomsten {
+  --primary: #126a58;
+  --bg-accent: #e4f5ef;
+  border-top: 5px solid #20a17f;
+  background: #fbfffd;
+}
+
+.variant-color .group-vermogen {
+  --primary: #255fb4;
+  --bg-accent: #e7f0ff;
+  border-top: 5px solid #4c86db;
+  background: #fbfdff;
+}
+
+.variant-color .component-card {
+  border-left: 4px solid var(--primary);
+}
+
+/* 02 — maximale informatiedichtheid en consequente uitlijning */
+.component-layout-scale {
+  grid-template-columns: 220px minmax(0, 1fr);
+  max-width: 1560px;
+}
+
+.variant-scale .components-intro {
+  grid-template-columns: 1fr 520px;
+  padding: 1rem 1.15rem;
+}
+
+.variant-scale .component-groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.variant-scale .section {
+  padding: 0.8rem;
+}
+
+.variant-scale .section-header h2 {
+  font-size: 1.35rem;
+}
+
+.variant-scale .section-header p {
+  min-height: 2.4em;
+  font-size: 0.82rem;
+}
+
+.variant-scale .add-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  margin: 0.75rem 0;
+  padding: 0.55rem;
+}
+
+.variant-scale .add-row div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.variant-scale .tiles {
+  grid-template-columns: 1fr;
+}
+
+.variant-scale .component-summary {
+  min-height: 60px;
+}
+
+/* 03 — taakgericht financieel werkblad */
+.component-layout-masterpiece {
+  max-width: 1600px;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+}
+
+.component-layout-masterpiece .sidebar {
+  top: 0;
+  min-height: 100vh;
+  border-radius: 0;
+  padding: 1.5rem 1rem;
+  background: #122a26;
+}
+
+.component-layout-masterpiece .page {
+  max-width: none;
+  padding: 1.25rem 1.4rem 2rem;
+}
+
+.variant-masterpiece .components-intro {
+  border: 0;
+  border-bottom: 1px solid #d9e1de;
+  border-radius: 0;
+  padding: 1.5rem 0;
+  background: transparent;
+}
+
+.variant-masterpiece .components-intro h1 {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-weight: 650;
+}
+
+.component-command {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) minmax(500px, 1.35fr);
+  gap: 1.25rem;
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #153f39;
+  color: #f3f8f6;
+  box-shadow: 0 18px 36px -24px rgba(10, 39, 34, 0.65);
+}
+
+.component-command h2 {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.component-command p {
+  margin: 0;
+  color: #b9d3cd;
+  font-size: 0.86rem;
+}
+
+.command-kicker {
+  color: #80d6c0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.component-command .add-row {
+  display: grid;
+  align-content: space-between;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #447067;
+  background: #204e47;
+}
+
+.component-command .add-row h4 {
+  font-size: 0.82rem;
+}
+
+.component-command .add-row div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.component-command .add-row button {
+  background: #d8ef7a;
+  border-color: #d8ef7a;
+  color: #17342e;
+}
+
+.variant-masterpiece .component-groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.variant-masterpiece .component-group {
+  padding: 1rem;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.variant-masterpiece .group-heading {
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.variant-masterpiece .group-index {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: #e2f2ed;
+  color: #176b59;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.variant-masterpiece .section-header h2 {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-size: 1.15rem;
+}
+
+.variant-masterpiece .section-header p {
+  font-size: 0.8rem;
+}
+
+.variant-masterpiece .tiles {
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.variant-masterpiece .component-summary {
+  min-height: 64px;
+  padding: 0.65rem 0.8rem;
+}
+
+.variant-masterpiece .component-card {
+  border-color: #dbe3df;
+  box-shadow: 0 3px 12px rgba(25, 50, 43, 0.04);
+}
+
 @media (max-width: 720px) {
   .layout {
     grid-template-columns: 1fr;
@@ -774,5 +1129,26 @@ th {
 
   .page {
     padding: 0;
+  }
+
+  .components-intro,
+  .variant-scale .components-intro,
+  .component-command {
+    grid-template-columns: 1fr;
+  }
+
+  .layout-switcher,
+  .variant-scale .component-groups,
+  .variant-masterpiece .component-groups,
+  .command-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .component-layout-masterpiece .sidebar {
+    min-height: auto;
+  }
+
+  .component-layout-masterpiece .page {
+    padding: 0.8rem 0.6rem 2rem;
   }
 }
