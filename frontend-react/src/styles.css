@@ -912,15 +912,63 @@ th {
   border-left: 4px solid var(--primary);
 }
 
-/* 02 — maximale informatiedichtheid en consequente uitlijning */
+/* 02 — zakelijke werkweergave met consequente uitlijning en kleur */
 .component-layout-scale {
+  --business-ink: #172033;
+  --business-muted: #5b667a;
+  --business-primary: #244a75;
+  --business-primary-hover: #193957;
+  --business-soft: #edf3f8;
+  --business-line: #cbd6e2;
+  --business-surface: #ffffff;
+  --business-canvas: #f4f7fa;
   grid-template-columns: 220px minmax(0, 1fr);
   max-width: 1560px;
+  background: var(--business-canvas);
+  color: var(--business-ink);
+}
+
+.component-layout-scale .page {
+  max-width: 1340px;
 }
 
 .variant-scale .components-intro {
   grid-template-columns: 1fr 520px;
   padding: 1rem 1.15rem;
+  border: 1px solid var(--business-line);
+  border-top: 4px solid var(--business-primary);
+  border-radius: 8px;
+  background: var(--business-surface);
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.06);
+}
+
+.variant-scale .components-intro h1,
+.variant-scale .section-header h2 {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--business-ink);
+}
+
+.variant-scale .components-intro p,
+.variant-scale .section-header p,
+.variant-scale .item-count {
+  color: var(--business-muted);
+}
+
+.variant-scale .layout-switcher {
+  border-color: var(--business-line);
+  border-radius: 6px;
+  background: var(--business-soft);
+}
+
+.variant-scale .layout-switcher button {
+  border-radius: 4px;
+}
+
+.variant-scale .layout-switcher button.is-active {
+  border-color: var(--business-primary);
+  background: var(--business-primary);
+  color: #fff;
+  box-shadow: none;
 }
 
 .variant-scale .component-groups {
@@ -929,6 +977,10 @@ th {
 
 .variant-scale .section {
   padding: 0.8rem;
+  border-color: var(--business-line);
+  border-radius: 8px;
+  background: var(--business-surface);
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.05);
 }
 
 .variant-scale .section-header h2 {
@@ -945,6 +997,9 @@ th {
   grid-template-columns: 110px 1fr;
   margin: 0.75rem 0;
   padding: 0.55rem;
+  border-color: var(--business-line);
+  border-radius: 5px;
+  background: var(--business-soft);
 }
 
 .variant-scale .add-row div {
@@ -958,6 +1013,48 @@ th {
 
 .variant-scale .component-summary {
   min-height: 60px;
+}
+
+.variant-scale .component-card {
+  border-color: var(--business-line);
+  border-left: 3px solid var(--business-primary);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.variant-scale .component-type,
+.variant-scale .field > span {
+  color: var(--business-primary);
+}
+
+.variant-scale button:not(.ghost) {
+  border-color: var(--business-primary);
+  background: var(--business-primary);
+  color: #fff;
+}
+
+.variant-scale button:not(.ghost):hover {
+  border-color: var(--business-primary-hover);
+  background: var(--business-primary-hover);
+}
+
+.variant-scale input:focus,
+.variant-scale select:focus,
+.variant-scale button:focus-visible,
+.variant-scale summary:focus-visible {
+  outline: 3px solid rgba(36, 74, 117, 0.24);
+  outline-offset: 2px;
+}
+
+.variant-scale .empty-component {
+  border-color: var(--business-line);
+  background: #f8fafc;
+  color: var(--business-muted);
+}
+
+.variant-scale .payload-details {
+  border-color: var(--business-line);
+  border-radius: 8px;
 }
 
 /* 03 — taakgericht financieel werkblad */

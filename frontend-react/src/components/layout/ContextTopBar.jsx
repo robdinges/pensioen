@@ -10,7 +10,7 @@ export default function ContextTopBar({
   isCalculating,
   canCalculate,
 }) {
-  const berekenLabel = calculationStatus === "stale" ? "Herberekenen" : "Berekenen";
+  const berekenLabel = calculationStatus === "stale" ? "Herberekenen" : "Bekijk mijn pensioenplan";
 
   return (
     <header className="context-topbar">
@@ -32,8 +32,8 @@ export default function ContextTopBar({
         </button>
       </div>
 
-      <div className="context-footnote">
-        <span>{autosaveStatus === "saving" ? "Opslaan..." : "Automatisch opgeslagen"}</span>
+      <div className="context-footnote" role="status">
+        <span>{autosaveStatus === "saving" ? "Opslaan..." : autosaveStatus === "error" ? "Niet opgeslagen" : "Opgeslagen in deze browser"}</span>
         {!canCalculate ? <span>Controleer personen en periode voordat je berekent.</span> : null}
         {lastCalculatedAt ? <span>Laatst berekend: {new Date(lastCalculatedAt).toLocaleString("nl-NL")}</span> : null}
       </div>

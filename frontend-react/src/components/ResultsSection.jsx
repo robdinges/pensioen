@@ -103,19 +103,31 @@ function TrendChart({ title, rows, series, euro }) {
   );
 }
 
-export default function ResultsSection({ SectionHeader, jaarRows, euro }) {
+export default function ResultsSection({ SectionHeader, jaarRows, euro, aannames = [], calculationStatus, onStepSelect }) {
   return (
     <section className="section">
-      <SectionHeader title="Resultaten op Jaarbasis" description="Uitkomst van de berekening gegroepeerd per jaar." />
+      <SectionHeader title="Je pensioenplan in beeld" description="Bekijk je inkomen, wat er overblijft en hoe je vermogen zich ontwikkelt." />
       {jaarRows.length === 0 ? (
-        <p>Voer een berekening uit om jaarresultaten te tonen.</p>
+        <div className="empty-state">
+          <h3>Hoe ziet jouw financiële toekomst eruit?</h3>
+          <p>Vul je inkomen, uitgaven en vermogen in. Kies daarna bovenaan ‘Bekijk mijn pensioenplan’.</p>
+          <button type="button" onClick={() => onStepSelect("componenten")}>Inkomen & vermogen invullen</button>
+        </div>
       ) : (
         <>
+          {calculationStatus !== "fresh" ? <p className="feedback-banner warning" role="status">Deze uitkomsten horen bij een eerdere berekening. Bereken opnieuw om je huidige invoer te bekijken.</p> : null}
           <div className="kpis">
             <div className="kpi"><span>Periode</span><strong>{`${jaarRows[0].jaar} - ${jaarRows[jaarRows.length - 1].jaar}`}</strong></div>
             <div className="kpi"><span>Gemiddeld netto per jaar</span><strong>{euro(jaarRows.reduce((sum, row) => sum + row.netto, 0) / jaarRows.length)}</strong></div>
             <div className="kpi"><span>Eindvermogen</span><strong>{euro(jaarRows[jaarRows.length - 1].vermogenEinde)}</strong></div>
           </div>
+          <p className="notice">Netto inkomen is je inkomen na belasting. Vrije cashflow laat zien wat er na de overige geldstromen overblijft; een negatief bedrag betekent dat je inteert op je vermogen.</p>
+          {aannames.length > 0 ? (
+            <details className="assumptions-panel">
+              <summary>Uitgangspunten en gebruikte tarieven ({aannames.length})</summary>
+              <ul>{aannames.map((aanname, index) => <li key={index}>{aanname}</li>)}</ul>
+            </details>
+          ) : null}
           <div className="charts-stack">
             <TrendChart
               title="Inkomen over de berekeningsperiode"

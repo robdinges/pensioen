@@ -48,8 +48,8 @@ export default function ComponentsSection({
     },
     scale: {
       number: "02",
-      title: "Ruimte & uitlijning",
-      description: "Compacte bediening, strakke kolommen en meer overzicht op één scherm.",
+      title: "Zakelijk overzicht",
+      description: "Een functionele werkweergave met heldere hiërarchie, vaste uitlijning en een rustig zakelijk kleurenpalet.",
     },
     masterpiece: {
       number: "03",
@@ -57,17 +57,18 @@ export default function ComponentsSection({
       description: "Een taakgerichte werkruimte: eerst kiezen, dan toevoegen, daarna controleren en verfijnen.",
     },
   };
-  const activeVariant = variantCopy[layoutVariant];
 
   return (
     <div className={`components-page variant-${layoutVariant}`}>
       <header className="components-intro">
         <div>
-          <p className="eyebrow">Componenten · ontwerpvoorbeeld {activeVariant.number}</p>
-          <h1>{activeVariant.title}</h1>
-          <p>{activeVariant.description}</p>
+          <p className="eyebrow">Je financiële situatie</p>
+          <h1>Inkomen & vermogen</h1>
+          <p>Vul in wat er binnenkomt, wat je uitgeeft en wat je hebt opgebouwd.</p>
         </div>
-        <div className="layout-switcher" role="group" aria-label="Kies een ontwerpvariant">
+        <details className="view-settings">
+          <summary>Weergave aanpassen</summary>
+          <div className="layout-switcher" role="group" aria-label="Kies een weergave">
           {Object.entries(variantCopy).map(([key, copy]) => (
             <button
               key={key}
@@ -80,7 +81,8 @@ export default function ComponentsSection({
               {copy.title}
             </button>
           ))}
-        </div>
+          </div>
+        </details>
       </header>
 
       {layoutVariant === "masterpiece" ? (

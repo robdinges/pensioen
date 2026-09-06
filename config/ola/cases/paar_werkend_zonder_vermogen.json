@@ -1,0 +1,17 @@
+{
+  "case_id": "ola_2025_paar_werkend_zonder_vermogen",
+  "naam": "Fiscale partners met alleen loon",
+  "jaar": 2025,
+  "fictieve_gegevens": true,
+  "huishouden": "fiscaal_partners_heel_jaar",
+  "personen": [
+    {"naam": "Blanco", "geboortedatum": "1970-04-12", "bruto_arbeid": "45000"},
+    {"naam": "Testpartner", "geboortedatum": "1972-05-15", "bruto_arbeid": "30000"}
+  ],
+  "uitgangspunten": [
+    "Heel 2025 gehuwd, in Nederland gewoond en verzekerd.",
+    "Alleen loon; geen kinderen, onderneming, vermogen, woning, aftrekposten of voorlopige aanslag.",
+    "Loonheffing en toegepaste arbeidskorting op loonopgave nul voor beide personen."
+  ],
+  "ola": {"keuzes": {"loonheffing": "0", "partner_bsn": "222222220"}}
+}

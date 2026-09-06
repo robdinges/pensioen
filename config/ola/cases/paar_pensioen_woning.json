@@ -1,0 +1,57 @@
+{
+  "versie": 1,
+  "case_id": "ola_2025_paar_pensioen_woning",
+  "naam": "Twee gepensioneerden met eigen woning",
+  "jaar": 2025,
+  "fictieve_gegevens": true,
+  "huishouden": "fiscaal_partners_heel_jaar",
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1955-03-15",
+      "bruto_pensioen": "25000",
+      "bruto_aow": "13000"
+    },
+    {
+      "naam": "Testpersoon Twee",
+      "geboortedatum": "1956-06-20",
+      "bruto_pensioen": "15000",
+      "bruto_aow": "13000"
+    }
+  ],
+  "vermogen": {
+    "spaargeld": "100000",
+    "beleggingen": "50000"
+  },
+  "woning": {
+    "woz_waarde": "400000",
+    "betaalde_hypotheekrente": "6000",
+    "eigenwoningschuld": "200000",
+    "verdeling_p1_pct": 50
+  },
+  "uitgangspunten": [
+    "Concept-invoer; nog geen uitgevoerde OLA-referentie.",
+    "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+    "Geen kinderen, onderneming, buitenland, overige aftrekposten of voorlopige aanslagen.",
+    "Vermogen op 1 januari; forfaitaire box 3; geen werkelijk-rendementroute.",
+    "AOW-bedragen zijn voorbeeldinvoer, geen gevalideerde bronwaarden. Controleer vóór opnemen."
+  ],
+  "tolerantie": "1.00",
+  "ola": {
+    "formulier": "IH2025 versie 1",
+    "casus": "Blanco",
+    "keuzes": {
+      "heel_jaar_nederland": "ja",
+      "heel_jaar_verzekerd": "ja",
+      "kinderen": "nee",
+      "ondernemer": "nee",
+      "fiscale_partner": "ja",
+      "heel_jaar_fiscaal_partner": "ja",
+      "gezamenlijke_aangifte": "ja",
+      "box3_verdeling_p1_pct": "50",
+      "loonheffing": "0",
+      "voorlopige_aanslag": "0"
+    },
+    "stappen": []
+  }
+}

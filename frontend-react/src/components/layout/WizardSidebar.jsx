@@ -28,9 +28,9 @@ export default function WizardSidebar({
   return (
     <aside className="sidebar">
       <p className="sidebar-title">Pensioenplanner</p>
-      <p className="sidebar-sub">Voortgang</p>
+      <p className="sidebar-sub">Inzicht in je financiële toekomst</p>
 
-      <nav className="step-list">
+      <nav className="step-list" aria-label="Stappen van je pensioenplan">
         {steps.map((step, index) => {
           const isCurrent = step.id === activeStep;
           const status = stepStatusMap[step.id] || "pending";
@@ -41,11 +41,12 @@ export default function WizardSidebar({
               key={step.id}
               type="button"
               className={`step-item ${className}`}
+              aria-current={isCurrent ? "step" : undefined}
               onClick={() => onStepSelect(step.id)}
             >
               <span className="step-num">{String(index + 1).padStart(2, "0")}</span>
-              <span className="step-symbol">{statusSymbol(status)}</span>
-              <span>{step.label}</span>
+              <span className="step-symbol" aria-hidden="true">{statusSymbol(status)}</span>
+              <span>{step.label}{step.id === "import" ? <small className="step-optional">Optioneel</small> : null}</span>
             </button>
           );
         })}

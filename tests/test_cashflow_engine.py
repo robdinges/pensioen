@@ -145,9 +145,10 @@ class TestCashflowHuishouden:
         te_betalen = max(Decimal("0"), totaal_voor_korting - hk_verrekend)
 
         assert abs(_r0(ib) - 13147) <= 1
-        assert abs(_r0(pvv) - 3948) <= 1
+        # De premiegrens is ook voor het oudere cohort 38.441 (IB-grens 40.502).
+        assert abs(_r0(pvv) - 3748) <= 1
         assert _r0(hk_verrekend) == 851
-        assert abs(_r0(te_betalen) - 16244) <= 1
+        assert abs(_r0(te_betalen) - 16044) <= 1
 
     def test_niet_verrekenbare_heffingskorting_is_geen_cashflow(
         self,

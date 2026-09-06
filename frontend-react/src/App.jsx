@@ -850,7 +850,12 @@ function AppContent() {
       activeScenario: activeScenarioName,
       calculationStatus: state.calculationStatus,
     };
-    localStorage.setItem("pensioen-ui-session-v1", JSON.stringify(payload));
+    try {
+      localStorage.setItem("pensioen-ui-session-v1", JSON.stringify(payload));
+    } catch {
+      actions.setAutosaveStatus("error");
+      return;
+    }
 
     const timer = setTimeout(() => actions.setAutosaveStatus("saved"), 250);
     return () => clearTimeout(timer);
@@ -988,7 +993,7 @@ function AppContent() {
   const stepCompletion = {
     huishouden: Boolean(activeHouseholdName && activeHouseholdName.trim()),
     personen: personenIsValid,
-    import: Boolean(importBestandP1Naam || (!heeftPartner || importBestandP2Naam)),
+    import: Boolean(importBestandP1Naam && (!heeftPartner || importBestandP2Naam)),
     periode: periodeIsValid,
     scenario: Boolean(activeScenarioName && activeScenarioName.trim()),
     componenten: posts.length > 0,
@@ -1147,7 +1152,12 @@ function AppContent() {
   };
 
   const renderResultaten = () => (
-    <ResultsSection SectionHeader={SectionHeader} jaarRows={jaarRows} euro={euro} />
+    <ResultsSection
+      SectionHeader={SectionHeader} jaarRows={jaarRows} euro={euro}
+      aannames={resultaat?.aannames || []}
+      calculationStatus={state.calculationStatus}
+      onStepSelect={actions.setActiveStep}
+    />
   );
 
   const renderStepContent = () => {
@@ -1181,7 +1191,7 @@ function AppContent() {
               <span>Nieuw huishouden</span>
               <input
                 value={newHouseholdName}
-                placeholder="Bijv. Scenario met verhuizing"
+                placeholder="Bijv. Familie De Vries"
                 onChange={(e) => setNewHouseholdName(e.target.value)}
               />
             </label>
@@ -1197,16 +1207,15 @@ function AppContent() {
           <header className="hero compact">
             <p className="eyebrow">Personen</p>
             <h1>Huishoudgegevens</h1>
-            <p>Leg de basis vast voor persoon en API-verbinding.</p>
+            <p>Voor wie maak je een pensioenplan? Je geboortedatum is nodig om je AOW-start te bepalen.</p>
             <div className="toolbar">
-              <label className="field"><span>API basis</span><input value={apiBase} onChange={(e) => updateHouseholdPreference("apiBase", e.target.value)} /></label>
-              <label className="field"><span>P1 naam</span><input value={persoonNaam} onChange={(e) => setPersoonNaam(e.target.value)} /></label>
-              <label className="field"><span>P1 geboortedatum</span><input type="date" value={geboortedatum} onChange={(e) => setGeboortedatum(e.target.value)} /></label>
+              <label className="field"><span>Je naam</span><input value={persoonNaam} onChange={(e) => setPersoonNaam(e.target.value)} /></label>
+              <label className="field"><span>Je geboortedatum</span><input type="date" value={geboortedatum} onChange={(e) => setGeboortedatum(e.target.value)} /></label>
             </div>
 
             <div className="toolbar">
               <label className="field inline-toggle">
-                <span>Partner (P2) meenemen</span>
+                <span>Samen met een partner plannen</span>
                 <input
                   type="checkbox"
                   checked={heeftPartner}
@@ -1220,14 +1229,17 @@ function AppContent() {
                   }}
                 />
               </label>
-              <label className="field"><span>P2 naam</span><input value={partnerNaam} disabled={!heeftPartner} onChange={(e) => setPartnerNaam(e.target.value)} /></label>
-              <label className="field"><span>P2 geboortedatum</span><input type="date" value={partnerGeboortedatum} disabled={!heeftPartner} onChange={(e) => setPartnerGeboortedatum(e.target.value)} /></label>
+              <label className="field"><span>Naam partner</span><input value={partnerNaam} disabled={!heeftPartner} onChange={(e) => setPartnerNaam(e.target.value)} /></label>
+              <label className="field"><span>Geboortedatum partner</span><input type="date" value={partnerGeboortedatum} disabled={!heeftPartner} onChange={(e) => setPartnerGeboortedatum(e.target.value)} /></label>
             </div>
 
             {!personenIsValid ? (
-              <p className="notice warning">Vul alle verplichte velden voor P1 en optioneel P2 volledig in.</p>
+              <p className="notice warning">Vul je naam en een geldige geboortedatum in. Doe dit ook voor je partner als je samen plant.</p>
             ) : null}
-            {errorMessage ? <p className="error">{errorMessage}</p> : null}
+            <details className="connection-settings">
+              <summary>Verbindingsinstellingen</summary>
+              <label className="field"><span>Adres rekenservice</span><input value={apiBase} onChange={(e) => updateHouseholdPreference("apiBase", e.target.value)} /></label>
+            </details>
           </header>
         </>
       );
@@ -1380,11 +1392,18 @@ function AppContent() {
       topbar={<ContextTopBar currentHousehold={activeHouseholdName} activeScenario={activeScenarioName} calculationStatus={state.calculationStatus} lastCalculatedAt={state.lastCalculatedAt} autosaveStatus={state.autosaveStatus} onCalculate={runBerekening} isCalculating={isLoading} canCalculate={canCalculate} />}
       footer={
         <div className="flow-nav">
-          <button type="button" onClick={gotoPreviousStep} disabled={currentStepIndex <= 0}>Vorige</button>
-          <button type="button" onClick={gotoNextStep} disabled={currentStepIndex >= FLOW_STEPS.length - 1}>Volgende</button>
+          <button type="button" className="ghost" onClick={gotoPreviousStep} disabled={currentStepIndex <= 0}>Terug</button>
+          <span className="flow-position">Stap {currentStepIndex + 1} van {FLOW_STEPS.length}</span>
+          <button type="button" onClick={gotoNextStep} disabled={currentStepIndex >= FLOW_STEPS.length - 1}>
+            {currentStepIndex < FLOW_STEPS.length - 1 ? `Verder: ${FLOW_STEPS[currentStepIndex + 1].label}` : "Laatste stap"}
+          </button>
         </div>
       }
     >
+      {errorMessage ? <p className="feedback-banner error" role="alert">{errorMessage}</p> : null}
+      {state.autosaveStatus === "error" ? (
+        <p className="feedback-banner error" role="alert">Opslaan in deze browser is mislukt. Houd dit venster open om je invoer te behouden. Controleer of browseropslag beschikbaar is.</p>
+      ) : null}
       {renderStepContent()}
     </AppShell>
   );

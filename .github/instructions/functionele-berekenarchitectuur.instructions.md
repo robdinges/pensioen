@@ -49,6 +49,14 @@ steps explicitly before editing.
 
 ## Required Cross-Checks For Calculation Changes
 
+For 2025 box-1 work, preserve the separate birth-cohort IB boundary and the
+common premium boundary; do not derive the premium boundary from an IB bracket.
+Preserve the configured employment-credit build-up segments through tariff
+period resolution. Regression cases: `tc_2025_013`, `tc_2025_014` and
+`tests/test_ola_fiscale_correcties.py`. Their whole-euro OLA comparison remains
+separate from the engine's cent-rounding contract; do not change source values
+or increase OLA tolerance to hide rounding debt.
+
 For any calculation-affecting change, verify all of the following:
 
 - the touched building block has direct tests, or this change adds them

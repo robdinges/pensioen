@@ -113,23 +113,23 @@ def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> 
         Functioneel contract:
         - Grondslag: uitsluitend arbeidsinkomen.
         - Geen arbeidsinkomen: korting = 0.
-        - Positief arbeidsinkomen: korting_voor_afbouw = min(max_bedrag, arbeidsinkomen).
+        - Positief arbeidsinkomen: opbouwsegment uit de jaarconfig, indien aanwezig.
         - Afbouw boven afbouw_drempel met afbouw_pct, met ondergrens minimum.
         - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
             compositieniveau.
 
-        Vereenvoudigde berekening voor MVP:
-    - Geen arbeidsinkomen → 0
-    - Arbeidsinkomen aanwezig → min(max, arbeidsinkomen) minus afbouw boven drempel
-
-    Let op: de volledige opbouwfases vereisen nadere parametrisatie in de JSON.
-    De huidige implementatie is conservatief: bij laag arbeidsinkomen kan de werkelijke
-    korting lager zijn dan berekend.
+        Configuraties zonder opbouwsegmenten behouden het legacy rekenpad.
+        De tabel in belasting_2025.json geldt onder de AOW-leeftijd; reductie
+        voor werkende AOW-gerechtigden is bestaande, afzonderlijke rekenachterstand.
     """
     if arbeidsinkomen <= Decimal("0"):
         return Decimal("0")
 
     ak = config.arbeidskorting
+    for segment in ak.opbouw:
+        if arbeidsinkomen <= segment['tot']:
+            korting = segment['basis'] + (arbeidsinkomen - segment['vanaf']) * segment['percentage']
+            return max(ak.minimum, min(ak.max_bedrag, korting))
     # Benadering: maximale korting bij inkomen ≥ max (opbouw vereenvoudigd)
     korting_voor_afbouw = min(ak.max_bedrag, arbeidsinkomen)
 

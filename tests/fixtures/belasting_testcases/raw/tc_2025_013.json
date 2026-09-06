@@ -1,0 +1,45 @@
+{
+  "testcase_id": "tc_2025_013",
+  "naam": "Alleenstaand werkend",
+  "jaar": 2025,
+  "bron_formaat": "OLA IH2025 + schermafbeeldingen",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1970-04-12",
+      "bruto_arbeid": "45000",
+      "bruto_pensioen": "0",
+      "bruto_aow": "0"
+    }
+  ],
+  "vermogen": {
+    "spaargeld_fractie": 0,
+    "totaal": "0",
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "eigen_woning": null,
+  "verwachte_belasting": {
+    "totaal_verschuldigd": "8735",
+    "box1_ib_p1": "5598",
+    "ahk_p1": "2017",
+    "arbeidskorting_p1": "5474"
+  },
+  "metadata": {
+    "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
+    "uitgangspunten": [
+      "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+      "Geen kinderen, onderneming, buitenland, overige aftrekposten of voorlopige aanslagen.",
+      "Vermogen op 1 januari; forfaitaire box 3; geen werkelijk-rendementroute.",
+      "Live opgenomen op 5 september 2026. Loonheffing en voorlopige aanslagen nul; daardoor is het getoonde totaal gelijk aan de verschuldigde IB/PVV."
+    ],
+    "data_kwaliteit": "gedeeltelijk",
+    "opmerkingen": "Gecontroleerde live OLA 2025-bron; bewijs in validatie/ola/runs/ola_2025_alleen_werkend/20260906T143000Z-738356db. Rekenfix 6 september 2026: bronbedragen ongewijzigd, afrondingsverschil afzonderlijk geregistreerd.",
+    "_incomplete": false
+  }
+}

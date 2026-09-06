@@ -1,48 +1,60 @@
 {
-  "laatste_validatie": "2026-07-26",
+  "laatste_validatie": "2026-09-06",
   "tolerantie_verschil": "0.01",
   "afwijkingen": {
     "tc_2025_006": {
-      "status": "WARN",
-      "verschil": "-31.29",
+      "status": "PASS",
+      "verschil": "2.93",
       "classificatie": "tolerantieverschil",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "bevestig externe componentbron en afrondingsniveau"
+      "vervolgstap": "bevestig externe componentbron en afrondingsniveau",
+      "vorig_verschil": "-31.29",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     },
     "tc_2025_007": {
-      "status": "WARN",
-      "verschil": "-31.49",
+      "status": "PASS",
+      "verschil": "2.73",
       "classificatie": "tolerantieverschil",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "bevestig externe componentbron en afrondingsniveau"
+      "vervolgstap": "bevestig externe componentbron en afrondingsniveau",
+      "vorig_verschil": "-31.49",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     },
     "tc_2025_008": {
       "status": "FAIL",
-      "verschil": "-300.32",
+      "verschil": "-374.32",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "valideer AOW-heffingskortingen tegen de primaire bron"
+      "vervolgstap": "valideer AOW-heffingskortingen tegen de primaire bron",
+      "vorig_verschil": "-300.32",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     },
     "tc_2025_009": {
-      "status": "FAIL",
-      "verschil": "-60.58",
+      "status": "WARN",
+      "verschil": "7.86",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "valideer premie- en box-1-componenten per partner"
+      "vervolgstap": "valideer premie- en box-1-componenten per partner",
+      "vorig_verschil": "-60.58",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     },
     "tc_2025_010": {
       "status": "FAIL",
-      "verschil": "-788.20",
+      "verschil": "-954.92",
       "classificatie": "bronconflict",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "kies leidende AOW-bron voor fiscaal partnerschap"
+      "vervolgstap": "kies leidende AOW-bron voor fiscaal partnerschap",
+      "vorig_verschil": "-788.20",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     },
     "tc_2025_011": {
       "status": "FAIL",
-      "verschil": "-1826.06",
+      "verschil": "-2227.94",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
-      "vervolgstap": "valideer AOW-kortingen en premies voor twee gepensioneerden"
+      "vervolgstap": "valideer AOW-kortingen en premies voor twee gepensioneerden",
+      "vorig_verschil": "-1826.06",
+      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
     }
   }
 }

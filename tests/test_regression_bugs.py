@@ -307,7 +307,7 @@ def test_validatie_tc010_bewaakt_bekende_externe_afwijking() -> None:
 
     assert resultaat["verwacht_bron"] == "huishoudtotaal"
     assert resultaat["status"] == "FAIL"
-    assert float(resultaat["verschil"]) == pytest.approx(-788.20, abs=0.01)
+    assert float(resultaat["verschil"]) == pytest.approx(-954.92, abs=0.01)
     assert not any(
         "huishoudtotaal is intern inconsistent" in waarschuwing
         for waarschuwing in resultaat["data_waarschuwingen"]
@@ -322,7 +322,7 @@ def test_validatie_tc008_bewaakt_bekende_heffingskortingafwijking() -> None:
     detail = resultaat["details"]
 
     assert resultaat["status"] == "FAIL"
-    assert float(resultaat["verschil"]) == pytest.approx(-300.32, abs=0.01)
+    assert float(resultaat["verschil"]) == pytest.approx(-374.32, abs=0.01)
     assert float(detail["totale_hk_p1"]) == pytest.approx(3759.83, abs=0.01)
 
 

@@ -6,7 +6,7 @@
   "box1_niet_aow": {
     "_toelichting": "Schijven voor personen onder de AOW-leeftijd. PURE INKOMSTENBELASTING (zonder premies).",
     "schijven": [
-      {"tot": 40502, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB 8,17% (gelijk aan AOW-tarief). Premies worden apart berekend."},
+      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB 8,17% (gelijk aan AOW-tarief). Premies worden apart berekend."},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
@@ -15,16 +15,26 @@
   "box1_aow": {
     "_toelichting": "Schijven voor AOW-gerechtigden (geen AOW-premie in schijf 1). PURE INKOMSTENBELASTING.",
     "schijven": [
-      {"tot": 40502, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB zonder AOW-premie (uit aangifte 2025)"},
+      {"tot": 38441, "tarief": 0.0817, "_omschrijving": "Schijf 1: pure IB zonder AOW-premie (uit aangifte 2025)"},
       {"tot": 76817, "tarief": 0.3748, "_omschrijving": "Schijf 2"},
       {"tot": null,  "tarief": 0.4950, "_omschrijving": "Schijf 3"}
     ]
   },
 
+  "box1_ouder_cohort": {
+    "geboortejaar_grens": 1946,
+    "_bron": "https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/belastingberekening",
+    "schijven": [
+      {"tot": 40502, "tarief": 0.0817},
+      {"tot": 76817, "tarief": 0.3748},
+      {"tot": null, "tarief": 0.4950}
+    ]
+  },
+
   "premies_volksverzekeringen": {
-    "_toelichting": "Premies volksverzekeringen worden ALLEEN geheven over inkomen tot de premiegrens (schijf 1).",
-    "_bron": "Aangifte 2025 + Belastingdienst",
-    "premiegrens": 40502,
+    "_toelichting": "Premiegrens 38.441 voor alle geboortecohorten; onafhankelijk van de verhoogde IB-schijfgrens voor geboren vóór 1946.",
+    "_bron": "https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/premie_volksverzekeringen",
+    "premiegrens": 38441,
     "aow": {
       "_toelichting": "AOW-premie alleen voor niet-AOW-gerechtigden. Te verifiëren: verschil tussen 36,97% en 19,07% = 17,90%?",
       "tarief_niet_aow": 0.1790,
@@ -51,7 +61,13 @@
   },
 
   "arbeidskorting": {
-    "_toelichting": "Korting op arbeidsinkomen. Vereenvoudigd: gebruik max bij arbeidsinkomen > 0, corrigeer voor afbouw. Voor gepensioneerden: 0. Parameters geijkt op Belastingdienst simulator 2025.",
+    "_toelichting": "Arbeidskorting: officiële opbouwsegmenten voor personen onder de AOW-leeftijd; daarna afbouw.",
+    "_bron": "https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/heffingskortingen/arbeidskorting/tabel-arbeidskorting-2025",
+    "opbouw": [
+      {"vanaf": 0, "tot": 12169, "basis": 0, "percentage": 0.08053},
+      {"vanaf": 12169, "tot": 26288, "basis": 980, "percentage": 0.30030},
+      {"vanaf": 26288, "tot": 43071, "basis": 5220, "percentage": 0.02258}
+    ],
     "max": 5599,
     "afbouw_drempel": 43071,
     "afbouw_pct": 0.0651,

@@ -1,0 +1,45 @@
+{
+  "versie": 1,
+  "case_id": "ola_2025_alleen_werkend",
+  "naam": "Alleenstaand werkend",
+  "jaar": 2025,
+  "fictieve_gegevens": true,
+  "huishouden": "alleenstaand",
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1970-04-12",
+      "bruto_arbeid": "45000"
+    }
+  ],
+  "vermogen": {
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "woning": null,
+  "uitgangspunten": [
+    "Concept-invoer; nog geen uitgevoerde OLA-referentie.",
+    "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+    "Geen kinderen, onderneming, buitenland, overige aftrekposten of voorlopige aanslagen.",
+    "Vermogen op 1 januari; forfaitaire box 3; geen werkelijk-rendementroute.",
+    "AOW-bedragen zijn voorbeeldinvoer, geen gevalideerde bronwaarden. Controleer vóór opnemen."
+  ],
+  "tolerantie": "1.00",
+  "ola": {
+    "formulier": "IH2025 versie 1",
+    "casus": "Blanco",
+    "keuzes": {
+      "heel_jaar_nederland": "ja",
+      "heel_jaar_verzekerd": "ja",
+      "kinderen": "nee",
+      "ondernemer": "nee",
+      "fiscale_partner": "nee",
+      "heel_jaar_fiscaal_partner": "nee",
+      "gezamenlijke_aangifte": "nee",
+      "box3_verdeling_p1_pct": "100",
+      "loonheffing": "0",
+      "voorlopige_aanslag": "0"
+    },
+    "stappen": []
+  }
+}

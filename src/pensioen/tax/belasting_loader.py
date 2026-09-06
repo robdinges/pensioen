@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -48,6 +48,7 @@ class ArbeidskortingConfig:
     afbouw_drempel: Decimal
     afbouw_pct: Decimal
     minimum: Decimal = Decimal("0")
+    opbouw: list[dict[str, Decimal]] = field(default_factory=list)
 
 
 @dataclass
@@ -114,6 +115,8 @@ class BelastingConfig:
     ahk_aow_factor: Decimal = Decimal("1")
     ahk_aow_afbouw_pct: Decimal | None = None
     eigen_woning: EigenWoningConfig | None = None  # Eigen woning forfait en aftrek
+    box1_geboortejaar_grens: int | None = None
+    box1_ouder_cohort: list[SchijfConfig] = field(default_factory=list)
 
 
 @dataclass
@@ -205,6 +208,8 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
         jaar=data["jaar"],
         box1_niet_aow=_laad_schijven(data["box1_niet_aow"]["schijven"]),
         box1_aow=_laad_schijven(data["box1_aow"]["schijven"]),
+        box1_geboortejaar_grens=data.get("box1_ouder_cohort", {}).get("geboortejaar_grens"),
+        box1_ouder_cohort=_laad_schijven(data.get("box1_ouder_cohort", {}).get("schijven", [])),
         ahk=HeffingskortingConfig(
             max_bedrag=_d(data["algemene_heffingskorting"]["max"]),
             afbouw_inkomen_van=_d(data["algemene_heffingskorting"]["afbouw_inkomen_van"]),
@@ -222,6 +227,7 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             afbouw_drempel=_d(data["arbeidskorting"]["afbouw_drempel"]),
             afbouw_pct=_d(data["arbeidskorting"]["afbouw_pct"]),
             minimum=_d(data["arbeidskorting"].get("minimum", 0)),
+            opbouw=[{k: _d(v) for k, v in s.items()} for s in data["arbeidskorting"].get("opbouw", [])],
         ),
         ouderenkorting=HeffingskortingConfig(
             max_bedrag=_d(data["ouderenkorting"]["max"]),
@@ -393,6 +399,8 @@ def pas_tariefwaarden_toe_op_config(
         jaar=config.jaar,
         box1_niet_aow=box1_niet_aow,
         box1_aow=box1_aow,
+        box1_geboortejaar_grens=config.box1_geboortejaar_grens,
+        box1_ouder_cohort=config.box1_ouder_cohort,
         ahk=HeffingskortingConfig(
             max_bedrag=waarden.get("ahk_max", config.ahk.max_bedrag),
             afbouw_inkomen_van=waarden.get("ahk_afbouw_van", config.ahk.afbouw_inkomen_van),
@@ -406,6 +414,7 @@ def pas_tariefwaarden_toe_op_config(
             afbouw_drempel=waarden.get("ak_afbouw_drempel", config.arbeidskorting.afbouw_drempel),
             afbouw_pct=waarden.get("ak_afbouw_pct", config.arbeidskorting.afbouw_pct),
             minimum=waarden.get("ak_minimum", config.arbeidskorting.minimum),
+            opbouw=config.arbeidskorting.opbouw,
         ),
         ouderenkorting=HeffingskortingConfig(
             max_bedrag=waarden.get("ok_max", config.ouderenkorting.max_bedrag),

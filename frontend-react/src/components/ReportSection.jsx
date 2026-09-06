@@ -9,7 +9,7 @@ export default function ReportSection({
     <section className="section">
       <SectionHeader
         title="Rapport"
-        description="Download een Excel-rapport via het API endpoint /rapportages/excel."
+        description="Bewaar je pensioenplan of bespreek de uitkomsten met je adviseur."
       />
       <p className="notice">
         Het rapport wordt gegenereerd op basis van de huidige invoer in het actieve huishouden en scenario.

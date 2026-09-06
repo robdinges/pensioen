@@ -1,12 +1,12 @@
 export const FLOW_STEPS = [
   { id: "huishouden", label: "Huishouden" },
   { id: "personen", label: "Personen" },
-  { id: "import", label: "Import" },
+  { id: "import", label: "Pensioen importeren" },
   { id: "periode", label: "Berekeningsperiode" },
   { id: "scenario", label: "Scenario's" },
-  { id: "componenten", label: "Componenten" },
+  { id: "componenten", label: "Inkomen & vermogen" },
   { id: "resultaten", label: "Resultaten" },
-  { id: "accountant", label: "Accountant" },
+  { id: "accountant", label: "Berekening in detail" },
   { id: "rapport", label: "Rapport" },
 ];
 

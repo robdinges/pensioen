@@ -1,0 +1,519 @@
+{
+  "versie": 1,
+  "case_id": "ola_2025_alleen_werkend",
+  "naam": "Alleenstaand werkend",
+  "jaar": 2025,
+  "fictieve_gegevens": true,
+  "huishouden": "alleenstaand",
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1970-04-12",
+      "bruto_arbeid": "45000",
+      "bruto_pensioen": "0",
+      "bruto_aow": "0"
+    }
+  ],
+  "vermogen": {
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "woning": null,
+  "uitgangspunten": [
+    "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+    "Geen kinderen, onderneming, buitenland, overige aftrekposten of voorlopige aanslagen.",
+    "Vermogen op 1 januari; forfaitaire box 3; geen werkelijk-rendementroute.",
+    "Live opgenomen op 5 september 2026. Loonheffing en voorlopige aanslagen nul; daardoor is het getoonde totaal gelijk aan de verschuldigde IB/PVV."
+  ],
+  "tolerantie": "1.00",
+  "ola": {
+    "formulier": "IH2025 versie 1",
+    "casus": "Blanco",
+    "keuzes": {
+      "heel_jaar_nederland": "ja",
+      "heel_jaar_verzekerd": "ja",
+      "kinderen": "nee",
+      "ondernemer": "nee",
+      "fiscale_partner": "nee",
+      "heel_jaar_fiscaal_partner": "nee",
+      "gezamenlijke_aangifte": "nee",
+      "box3_verdeling_p1_pct": "100",
+      "loonheffing": "0",
+      "voorlopige_aanslag": "0"
+    },
+    "stappen": [
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "vul",
+        "locator": {
+          "soort": "css",
+          "waarde": "#aangeverinvoer_pgaanggebd",
+          "rol": null
+        },
+        "waarde_pad": "personen.0.geboortedatum",
+        "waarde": null,
+        "veld": null,
+        "formaat": "datum_nl"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#button_Nee",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-9\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-11\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-41\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-63\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-74\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "selecteer",
+        "locator": {
+          "soort": "css",
+          "waarde": "#inkomstenuitwerkinvoer_looninvoerlijst1_inkwerksoort",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": "Loon binnen Nederland",
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "vul",
+        "locator": {
+          "soort": "css",
+          "waarde": "#inkomstenuitwerkinvoer_looninvoerlijst1_inkwerkwg",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": "Testwerkgever",
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "vul",
+        "locator": {
+          "soort": "css",
+          "waarde": "#inkomstenuitwerkinvoer_looninvoerlijst1_inkwerknlloon",
+          "rol": null
+        },
+        "waarde_pad": "personen.0.bruto_arbeid",
+        "waarde": null,
+        "veld": null,
+        "formaat": "euro_nl"
+      },
+      {
+        "actie": "vul",
+        "locator": {
+          "soort": "css",
+          "waarde": "#inkomstenuitwerkinvoer_looninvoerlijst1_inkwerknlloonh",
+          "rol": null
+        },
+        "waarde_pad": "ola.keuzes.loonheffing",
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "vul",
+        "locator": {
+          "soort": "css",
+          "waarde": "#inkomstenuitwerkinvoer_looninvoerlijst1_inkwerknlarbk",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": "0",
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-125\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-93\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-101\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen"
+        },
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-135\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-268\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-274\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "label[for=\"gwt-uid-278\"]",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "#ola-akkoordbutton-screen",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "lees",
+        "locator": {
+          "soort": "css",
+          "waarde": "div.text-nowrap:has(> #overzichtberekeninguitvoer_brkvasubtot1)"
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": "ib_pvv_box1_voor_kortingen_p1",
+        "formaat": "tekst"
+      },
+      {
+        "actie": "klik",
+        "locator": {
+          "soort": "css",
+          "waarde": "button:visible:has-text(\"Heffingskortingen\")",
+          "rol": null
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": null,
+        "formaat": "tekst"
+      },
+      {
+        "actie": "lees",
+        "locator": {
+          "soort": "css",
+          "waarde": "div.text-nowrap:has(> #overzichtberekeninguitvoer_brktotaal)"
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": "verschuldigd_ib_pvv_p1",
+        "formaat": "tekst"
+      },
+      {
+        "actie": "lees",
+        "locator": {
+          "soort": "css",
+          "waarde": "#brkib_tabel div.text-nowrap:visible"
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": "box1_ib_voor_kortingen_p1",
+        "formaat": "tekst"
+      },
+      {
+        "actie": "lees",
+        "locator": {
+          "soort": "css",
+          "waarde": "div.text-nowrap:has(> #heffingskortingenpaneluitvoer_brkhkalg)"
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": "algemene_heffingskorting_p1",
+        "formaat": "tekst"
+      },
+      {
+        "actie": "lees",
+        "locator": {
+          "soort": "css",
+          "waarde": "div.text-nowrap:has(> #heffingskortingenpaneluitvoer_brkhkarb)"
+        },
+        "waarde_pad": null,
+        "waarde": null,
+        "veld": "arbeidskorting_p1",
+        "formaat": "tekst"
+      }
+    ],
+    "timeout_ms": 15000
+  }
+}

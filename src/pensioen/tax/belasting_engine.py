@@ -116,6 +116,7 @@ def bereken_box1_belasting(
     bruto: Decimal,
     config: BelastingConfig,
     aow_breuk: Decimal,
+    geboortedatum: date | None = None,
 ) -> Decimal:
     """
     Bereken de box 1 belasting voor een jaarinkomen, rekening houdend met AOW-status.
@@ -135,6 +136,9 @@ def bereken_box1_belasting(
     aow_breuk = max(Decimal("0"), min(Decimal("1"), aow_breuk))
     niet_aow_breuk = Decimal("1") - aow_breuk
 
+    if (geboortedatum is not None and config.box1_geboortejaar_grens is not None
+            and geboortedatum.year < config.box1_geboortejaar_grens and config.box1_ouder_cohort):
+        return rond_af(_bereken_schijven(bruto, config.box1_ouder_cohort))
     belasting_niet_aow = _bereken_schijven(bruto, config.box1_niet_aow)
     belasting_aow = _bereken_schijven(bruto, config.box1_aow)
 
@@ -236,7 +240,7 @@ def netto_uit_bruto(
     is_aow_deels = aow_breuk > Decimal("0")  # Voor kortingen: deels AOW?
 
     # Box 1 inkomstenbelasting (pure IB, zonder premies)
-    ib = bereken_box1_belasting(bruto, config, aow_breuk)
+    ib = bereken_box1_belasting(bruto, config, aow_breuk, geboortedatum=geboortedatum)
     
     # Premies volksverzekeringen (apart berekend, alleen over schijf 1)
     premie_aow, premie_anw, premie_wlz, totaal_premies = bereken_premies_volksverzekeringen(

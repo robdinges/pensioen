@@ -1,0 +1,54 @@
+{
+  "testcase_id": "tc_2025_014",
+  "naam": "Fiscale partners met alleen loon",
+  "jaar": 2025,
+  "bron_formaat": "OLA IH2025 + schermafbeeldingen",
+  "huishouden": {
+    "type": "PAAR",
+    "aantal_personen": 2,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Blanco",
+      "geboortedatum": "1970-04-12",
+      "bruto_arbeid": "45000",
+      "bruto_pensioen": "0",
+      "bruto_aow": "0"
+    },
+    {
+      "naam": "Testpartner",
+      "geboortedatum": "1972-05-15",
+      "bruto_arbeid": "30000",
+      "bruto_pensioen": "0",
+      "bruto_aow": "0"
+    }
+  ],
+  "vermogen": {
+    "spaargeld_fractie": 0,
+    "totaal": "0",
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "eigen_woning": null,
+  "verwachte_belasting": {
+    "totaal_verschuldigd": "11210",
+    "box1_ib_p1": "5598",
+    "ahk_p1": "2017",
+    "arbeidskorting_p1": "5474",
+    "box1_ib_p2": "2451",
+    "ahk_p2": "2967",
+    "arbeidskorting_p2": "5304"
+  },
+  "metadata": {
+    "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
+    "uitgangspunten": [
+      "Heel 2025 gehuwd, in Nederland gewoond en verzekerd.",
+      "Alleen loon; geen kinderen, onderneming, vermogen, woning, aftrekposten of voorlopige aanslag.",
+      "Loonheffing en toegepaste arbeidskorting op loonopgave nul voor beide personen."
+    ],
+    "data_kwaliteit": "gedeeltelijk",
+    "opmerkingen": "Gecontroleerde live OLA 2025-bron; bewijs in validatie/ola/runs/ola_2025_paar_werkend_zonder_vermogen/20260906T143702Z-19f4954c. Rekenfix 6 september 2026: bronbedragen ongewijzigd, afrondingsverschil afzonderlijk geregistreerd.",
+    "_incomplete": false
+  }
+}
