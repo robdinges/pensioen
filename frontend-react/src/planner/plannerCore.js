@@ -587,6 +587,104 @@ export function selectYearRows(cashflow) {
   });
 }
 
+export function computeStopmomentSummary(jaarRows = []) {
+  if (!Array.isArray(jaarRows) || jaarRows.length === 0) {
+    return {
+      firstShortfallYear: null,
+      stopMomentLabel: "Onbekend",
+      wealthAt80: 0,
+      summaryText: "Vul eerst een berekening in om je stopmoment te beoordelen.",
+    };
+  }
+
+  const firstShortfallYear = jaarRows.find((row) => decimalLike(row.cashflow) < 0)?.jaar ?? null;
+  const wealthAt80 = decimalLike(jaarRows[jaarRows.length - 1]?.vermogenEinde ?? 0);
+
+  let stopMomentLabel = "Haalbaar";
+  if (firstShortfallYear !== null) {
+    stopMomentLabel = "Risico";
+  }
+
+  const summaryText = firstShortfallYear === null
+    ? "Je huidige situatie blijft op de hele horizon positief. Er is geen eerste tekortjaar in de huidige berekening."
+    : `Je eerste tekortjaar ligt in ${firstShortfallYear}. Daarna ontstaat een tekort in je vrije cashflow.`;
+
+  return {
+    firstShortfallYear,
+    stopMomentLabel,
+    wealthAt80,
+    summaryText,
+  };
+}
+
+export function buildScenarioDecisionCards(comparisonResult, activeScenarioName = "", compareScenarioName = "") {
+  if (!comparisonResult || !Array.isArray(comparisonResult.scenario_resultaten) || comparisonResult.scenario_resultaten.length === 0) {
+    return [];
+  }
+
+  const scenarios = comparisonResult.scenario_resultaten;
+  const activeItem = scenarios.find((item) => item.scenario_naam === activeScenarioName) || scenarios[0];
+  const compareItem = scenarios.find((item) => item.scenario_naam === compareScenarioName) || scenarios[1] || scenarios[0];
+
+  const bestItem = (() => {
+    const bestCandidate = comparisonResult.beste_scenario_netto && comparisonResult.beste_scenario_netto.scenario_naam
+      ? scenarios.find((item) => item.scenario_naam === comparisonResult.beste_scenario_netto.scenario_naam)
+      : null;
+
+    if (bestCandidate) {
+      return bestCandidate;
+    }
+
+    return scenarios.reduce((best, current) => (
+      decimalLike(current.netto_per_maand_mediaan) > decimalLike(best.netto_per_maand_mediaan) ? current : best
+    ));
+  })();
+
+  return [
+    {
+      label: "Actieve keuze",
+      scenarioName: activeItem.scenario_naam,
+      nettoDelta: 0,
+      vermogenDelta: 0,
+      note: "Huidig gekozen scenario",
+    },
+    {
+      label: "Vergelijking",
+      scenarioName: compareItem.scenario_naam,
+      nettoDelta: decimalLike(compareItem.netto_per_maand_mediaan) - decimalLike(activeItem.netto_per_maand_mediaan),
+      vermogenDelta: decimalLike(compareItem.vermogen_op_80) - decimalLike(activeItem.vermogen_op_80),
+      note: "Alternatief in vergelijking",
+    },
+    {
+      label: "Beste netto",
+      scenarioName: bestItem.scenario_naam,
+      nettoDelta: decimalLike(bestItem.netto_per_maand_mediaan) - decimalLike(activeItem.netto_per_maand_mediaan),
+      vermogenDelta: decimalLike(bestItem.vermogen_op_80) - decimalLike(activeItem.vermogen_op_80),
+      note: "Sterkste financiële uitkomst",
+    },
+  ];
+}
+
+export function buildScenarioDecisionAdvice(comparisonResult, activeScenarioName = "", compareScenarioName = "") {
+  const cards = buildScenarioDecisionCards(comparisonResult, activeScenarioName, compareScenarioName);
+  if (!cards.length) {
+    return "Vergelijk eerst een tweede scenario om een helder advies te krijgen.";
+  }
+
+  const bestCard = cards.find((card) => card.label === "Beste netto") || cards[cards.length - 1];
+  const bestDelta = decimalLike(bestCard.nettoDelta);
+
+  const bestLabel = bestCard.scenarioName || "het beste alternatief";
+  const direction = bestDelta >= 0 ? "aanbevolen" : "minder gunstig";
+  const comparisonText = bestDelta === 0
+    ? "Je gekozen plan is gelijkwaardig aan het beste scenario."
+    : bestDelta > 0
+      ? `Het beste scenario is € ${Math.abs(bestDelta).toFixed(2).replace(".", ",")} per maand beter dan het huidige plan.`
+      : `Het huidige plan is € ${Math.abs(bestDelta).toFixed(2).replace(".", ",")} per maand beter dan het beste scenario.`;
+
+  return `${bestLabel} is ${direction} voor het huidige plan. ${comparisonText}`;
+}
+
 export function validateCalculationResponse(resultaat) {
   if (resultaat?.output_contract?.versie !== OUTPUT_CONTRACT_VERSION) {
     throw new Error("Onbekend of ontbrekend API-outputcontract.");

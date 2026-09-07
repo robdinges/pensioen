@@ -1176,10 +1176,17 @@ function AppContent() {
 
   const renderResultaten = () => (
     <ResultsSection
-      SectionHeader={SectionHeader} jaarRows={jaarRows} euro={euro}
+      SectionHeader={SectionHeader}
+      jaarRows={jaarRows}
+      euro={euro}
+      signedEuro={signedEuro}
+      signedPercentagePoints={signedPercentagePoints}
       aannames={resultaat?.aannames || []}
       calculationStatus={state.calculationStatus}
       onStepSelect={actions.setActiveStep}
+      comparisonResult={comparisonResult}
+      activeScenarioName={activeScenarioName}
+      compareScenarioName={compareScenarioName}
     />
   );
 
