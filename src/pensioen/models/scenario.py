@@ -96,7 +96,9 @@ class Scenario(BaseModel):
             raise ValueError("spaargeld_start mag niet negatief zijn.")
         if self.beleggingen_start < Decimal("0"):
             raise ValueError("beleggingen_start mag niet negatief zijn.")
-        # Deprecated rendement velden: skip validatie (backward compatibility)
+        for rendement in (self.rendement_pct, self.rendement_sparen_pct, self.rendement_beleggen_pct):
+            if rendement is not None and (not rendement.is_finite() or rendement < Decimal("-100")):
+                raise ValueError("Rendement moet eindig zijn en minimaal -100% bedragen.")
         if not (Decimal("0") <= self.inflatie_pct <= Decimal("20")):
             raise ValueError("inflatie_pct moet tussen 0% en 20% liggen.")
         for p in self.tarief_periodes:

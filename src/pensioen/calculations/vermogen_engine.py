@@ -340,7 +340,8 @@ class LiquidePortefeuille:
         for n in indices[:-1]:
             deel = _rond_af(bedrag * self.saldis[n] / totaal) if totaal else _rond_af(bedrag / len(indices))
             # Een onttrekking mag geen afzonderlijke post negatief maken.
-            deel = max(-self.saldis[n], deel)
+            deel = (min(rest, max(Decimal('0'), deel)) if bedrag >= 0
+                    else max(rest, -self.saldis[n], min(Decimal('0'), deel)))
             self.saldis[n] += deel
             rest -= deel
         laatste = indices[-1]
@@ -434,7 +435,7 @@ class LiquidePortefeuille:
                 beleggen += waarde
         return sparen, beleggen
 
-    def detail(self) -> dict:
+    def detail(self) -> dict[str, object]:
         """Alleen bestaande rekenstaat voor API en accountantoutput."""
         return {'bron': 'vermogensitems', 'kas': self.kas, 'posten': [
             {'omschrijving': i.omschrijving, 'type': i.type.value,

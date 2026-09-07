@@ -193,15 +193,23 @@ def bouw_accountant_detail(
     inleg_per_jaar = _d(vermogen_payload.get("inleg_per_jaar"))
     inleg_per_maand = (inleg_per_jaar / Decimal("12")).quantize(CENT) if inleg_per_jaar else Decimal("0")
 
+    per_post = vermogen_payload.get("bron") == "vermogensitems"
+    if per_post:
+        inleg_per_jaar = sum((_d(m.gebruikte_tarieven["vermogen"].get("inleg_per_maand")) for m in maanden), Decimal("0"))
+
     vermogen_rijen = []
     saldo_begin_maand = saldo_begin_jaar
     for maand in maanden:
-        netto_cashflow = maand.netto + inleg_per_maand
+        maand_inleg = _d(maand.gebruikte_tarieven["vermogen"].get("inleg_per_maand")) if per_post else inleg_per_maand
+        netto_cashflow = maand.netto + maand_inleg
         vermogen_rijen.append(
             {
                 "maand": maand.maand,
                 "saldo_begin": saldo_begin_maand,
                 "rente": _d(maand.rente_bruto),
+                "inleg": maand_inleg,
+                "posten": maand.gebruikte_tarieven.get("vermogen", {}).get("posten", []),
+                "kas": maand.gebruikte_tarieven.get("vermogen", {}).get("kas"),
                 "netto_cashflow": netto_cashflow,
                 "saldo_eind": _d(maand.vermogen_einde_maand),
             }

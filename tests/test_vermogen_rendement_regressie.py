@@ -6,6 +6,7 @@ import pytest
 
 from pensioen.calculations.vermogen_engine import bereken_rente_maand, maandrendement
 from pensioen.calculations.cashflow_engine import bereken_huishouden
+from pensioen.models.cashflow import HuishoudCashflow
 from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import Scenario
 from pensioen.models.vermogensitem import VermogensItem
@@ -29,7 +30,7 @@ def test_total_loss_is_bounded_at_balance() -> None:
     assert bereken_rente_maand(Decimal('1000'), Decimal('-100')) == Decimal('-1000.00')
 
 
-def flow(scenario: Scenario, end: int = 2025):
+def flow(scenario: Scenario, end: int = 2025) -> HuishoudCashflow:
     return bereken_huishouden(scenario, Persoon(naam='Test', geboortedatum=date(1990, 1, 1)),
                              None, [], [], 2025, end, laad_tarieven_bereik(2025, end))
 
@@ -101,3 +102,59 @@ def test_future_account_does_not_activate_legacy_mirrored_balance_early() -> Non
                         aanschafdatum=date(2025, 7, 1), groei_pct='0')]))
     assert result.jaren[0].maanden[5].vermogen_einde_maand == 0
     assert result.jaren[0].maanden[6].vermogen_einde_maand == 1000
+
+
+@pytest.mark.engine
+def test_report_reconciles_actual_partial_year_contributions() -> None:
+    result = flow(Scenario(naam='Deeljaar', box3_meenemen=False,
+        vermogensitems=[VermogensItem(omschrijving='Later', type='spaargeld', aanschafwaarde='1000',
+                        aanschafdatum=date(2025, 7, 1), groei_pct='0', jaarlijkse_inleg='1200')]))
+    detail = result.jaren[0].accountant_detail
+    assert detail['inleg_per_jaar'] == Decimal('600')
+    assert detail['jaar_netto_cashflow'] == Decimal('1600')
+    for row in detail['vermogen_rijen']:
+        assert row['saldo_eind'] - row['saldo_begin'] == row['netto_cashflow']
+    assert detail['vermogen_rijen'][6]['inleg'] == Decimal('100')
+
+
+@pytest.mark.bouwsteen
+def test_general_cashflow_and_returns_conserve_money() -> None:
+    from pensioen.calculations.vermogen_engine import LiquidePortefeuille
+    items = [VermogensItem(omschrijving=str(i), type='spaargeld', aanschafwaarde='0.01', groei_pct='0') for i in range(20)]
+    p = LiquidePortefeuille(items, date(2025, 1, 1))
+    for amount in ('0.10', '-0.07', '-100', '100', '0.01'):
+        before = p.saldo
+        p.begin_maand(2025, 1)
+        p.sluit_maand(Decimal(amount))
+        assert p.saldo == before + Decimal(amount)
+        assert all(s >= 0 for s in p.saldis)
+
+
+@pytest.mark.contract
+def test_invalid_legacy_rate_is_input_error() -> None:
+    with pytest.raises(ValueError, match='minimaal -100'):
+        Scenario(naam='Ongeldig', rendement_beleggen_pct=Decimal('-101'))
+
+
+@pytest.mark.bouwsteen
+def test_interest_stops_at_closing_date_and_money_is_retained() -> None:
+    from pensioen.calculations.vermogen_engine import LiquidePortefeuille
+    p = LiquidePortefeuille([VermogensItem(omschrijving='Beleggen', type='beleggingen',
+                            aanschafwaarde='1000', groei_pct='12', verkoopdatum=date(2025, 1, 15))], date(2025, 1, 1))
+    rente, _, _ = p.begin_maand(2025, 1)
+    assert rente == Decimal('4.58')
+    p.sluit_maand(Decimal('0'))
+    assert p.saldo == Decimal('1004.58')
+    assert p.begin_maand(2025, 2)[0] == 0
+
+
+@pytest.mark.engine
+def test_box3_next_year_uses_actual_post_balances() -> None:
+    scenario = Scenario(naam='Actuele verdeling', box3_meenemen=False, vermogensitems=[
+        VermogensItem(omschrijving='Spaar', type='spaargeld', aanschafwaarde='10000', groei_pct='0', jaarlijkse_inleg='12000'),
+        VermogensItem(omschrijving='Beleg', type='beleggingen', aanschafwaarde='10000', groei_pct='-10', jaarlijkse_inleg='0'),
+    ])
+    result = flow(scenario, 2026)
+    detail = result.jaren[1].accountant_detail
+    assert detail['box3_grondslag'] == result.jaren[0].vermogen_einde_jaar
+    assert abs(detail['box3_spaargeld_fractie'] - Decimal('22000') / Decimal('31000')) < Decimal('.00001')
