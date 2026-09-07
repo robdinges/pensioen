@@ -51,25 +51,25 @@ export const TYPE_CONFIG = {
     section: "vermogen",
     label: "Sparen",
     hint: "Spaarrekening of deposito.",
-    fields: ["persoon", "beginwaarde", "inleg", "groei_pct", "startdatum", "einddatum"],
+    fields: ["persoon", "beginwaarde", "peildatum", "inleg", "groei_pct"],
   },
   beleggen: {
     section: "vermogen",
     label: "Beleggen",
     hint: "ETF, aandelen, beleggingsrekening.",
-    fields: ["persoon", "beginwaarde", "inleg", "groei_pct", "startdatum", "einddatum"],
+    fields: ["persoon", "beginwaarde", "peildatum", "inleg", "groei_pct"],
   },
   eigen_woning: {
     section: "vermogen",
     label: "Eigen woning",
     hint: "WOZ-waarde en verwachte waardegroei.",
-    fields: ["persoon", "beginwaarde", "groei_pct", "startdatum", "einddatum"],
+    fields: ["persoon", "beginwaarde", "peildatum", "groei_pct"],
   },
   overige_bezittingen: {
     section: "vermogen",
     label: "Overige bezittingen",
     hint: "Auto, kunst, bedrijfsmiddelen, overig.",
-    fields: ["persoon", "beginwaarde", "groei_pct", "startdatum", "einddatum"],
+    fields: ["persoon", "beginwaarde", "peildatum", "groei_pct"],
   },
   hypotheek: {
     section: "vermogen",
@@ -83,8 +83,8 @@ export const FIELD_META = {
   persoon: { label: "Persoon", type: "select", options: ["P1", "P2", "Huishouden"], defaultValue: "P1" },
   bedrag: { label: "Bedrag", type: "number", step: "100", defaultValue: "0" },
   bedrag_type: { label: "Bedrag type", type: "select", options: ["bruto", "netto"], defaultValue: "bruto" },
-  beginwaarde: { label: "Beginwaarde", type: "number", step: "1000", defaultValue: "0" },
-  inleg: { label: "Periodieke inleg", type: "number", step: "100", defaultValue: "0" },
+  beginwaarde: { label: "Saldo / waarde", type: "number", step: "1000", defaultValue: "0" },
+  inleg: { label: "Inleg per jaar", type: "number", step: "100", defaultValue: "0" },
   maandlast: { label: "Maandlast", type: "number", step: "50", defaultValue: "0" },
   frequentie: {
     label: "Frequentie",
@@ -93,8 +93,9 @@ export const FIELD_META = {
     defaultValue: "maandelijks",
   },
   datum: { label: "Datum", type: "date", defaultValue: "" },
-  startdatum: { label: "Begin datum", type: "date", defaultValue: "" },
-  einddatum: { label: "Eind datum", type: "date", defaultValue: "" },
+  peildatum: { label: "Peildatum saldo / waarde", type: "date", defaultValue: "" },
+  startdatum: { label: "Vanaf", type: "date", defaultValue: "" },
+  einddatum: { label: "T/m", type: "date", defaultValue: "" },
   groei_pct: { label: "Groei / rendement %", type: "number", step: "0.1", defaultValue: "0" },
   inflatie_pct: { label: "Inflatiecorrectie %", type: "number", step: "0.1", defaultValue: "2" },
   rente_pct: { label: "Rente %", type: "number", step: "0.1", defaultValue: "0" },
@@ -497,6 +498,18 @@ export function buildRequestPayload({
       groei_pct: String(toAmount(values.groei_pct)),
       box3_belast: post.type !== "eigen_woning" && post.type !== "hypotheek",
     };
+
+    if (post.type !== "hypotheek") {
+      const peildatum = values.peildatum ?? values.startdatum ?? "";
+      item.aanschafdatum = null;
+      item.verkoopdatum = null;
+      item.saldostanden = [
+        { peildatum: peildatum || `${jaarVan}-01-01`, bedrag: item.aanschafwaarde },
+        ...(Array.isArray(values.saldostanden) ? values.saldostanden.map(stand => ({
+          peildatum: stand.peildatum || "", bedrag: String(stand.bedrag ?? ""),
+        })) : []),
+      ];
+    }
 
     if (post.type === "sparen" || post.type === "beleggen") {
       item.jaarlijkse_inleg = String(Math.max(0, toAmount(values.inleg)));

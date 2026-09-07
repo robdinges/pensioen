@@ -652,6 +652,9 @@ def _bereken_jaar(
             f"Box 3 grondslag bron: {box3_bron}; rendementsgrondslag start op € {saldo_begin_jaar:,}."
         )
 
+    if portefeuille is not None:
+        aannames.append("Rendement per liquide vermogenspost; inleg en algemene cashflow aan het maandeinde. "
+                        "Algemene cashflow naar rato; gesloten posten blijven renteloos kasgeld.")
     maandrendement = vermogen_engine.maandrendement(scenario.rendement_pct or Decimal("0"))
 
     bruto_inkomen = BrutoInkomenJaar(
@@ -773,9 +776,15 @@ def _bereken_jaar(
         )
         if portefeuille is not None:
             resultaat.gebruikte_tarieven["vermogen"].update(portefeuille.detail())
+            resultaat.vermogen_correctie = sum(portefeuille.correcties, Decimal("0"))
             resultaat.gebruikte_tarieven["vermogen"]["maandrendement"] = None
             resultaat.gebruikte_tarieven["vermogen"]["inleg_per_maand"] = inleg_per_maand
         maandresultaten.append(resultaat)
+
+    if portefeuille is not None:
+        verwerkte_inleg = sum((m.gebruikte_tarieven["vermogen"]["inleg_per_maand"] for m in maandresultaten), Decimal("0"))
+        for m in maandresultaten:
+            m.gebruikte_tarieven["vermogen"]["inleg_per_jaar"] = verwerkte_inleg
 
     jaar_resultaat = JaarResultaat(
         jaar=jaar,

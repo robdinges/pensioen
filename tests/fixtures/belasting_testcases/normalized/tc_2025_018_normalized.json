@@ -42,6 +42,46 @@
     "opmerkingen": "Live OLA IH2025, 7 september 2026; opname 20260907T071730Z-f00dd7ba. SVB-bronjaarbedrag inclusief vakantiegeld op centen; OLA-invoer expliciet hele euro omlaag. Geen wijziging van historische referenties. OLA-schermbedragen, SVB-invoer en formulierafronding gecontroleerd vóór opname in raw/. Casehash: 75c4b38048abeb2cb705d34e97a66bb24ad24c17733187d28f305bcfd62a8fc7. Controleur: Codex",
     "data_kwaliteit": "gedeeltelijk",
     "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
-    "_incomplete": false
+    "_incomplete": false,
+    "regressies_vermogen": [
+      {
+        "id": "verlies_legacy",
+        "bron": "Interne vermogensacceptatie; geen OLA-referentie. Meetkundig jaarrendement -10%.",
+        "scenario": {
+          "naam": "Verlies",
+          "box3_meenemen": false,
+          "beleggingen_start": "100000",
+          "rendement_sparen_pct": "0",
+          "rendement_beleggen_pct": "-10"
+        },
+        "verwacht_eindvermogen": "90000",
+        "tolerantie": "0.05"
+      },
+      {
+        "id": "afzonderlijke_rekeningen",
+        "bron": "Interne vermogensacceptatie; geen OLA-referentie. 1000 * 1.01 + 99000 * 1.05.",
+        "scenario": {
+          "naam": "Afzonderlijk",
+          "box3_meenemen": false,
+          "rendement_sparen_pct": "3",
+          "vermogensitems": [
+            {
+              "omschrijving": "Klein",
+              "type": "spaargeld",
+              "aanschafwaarde": "1000",
+              "groei_pct": "1"
+            },
+            {
+              "omschrijving": "Groot",
+              "type": "spaargeld",
+              "aanschafwaarde": "99000",
+              "groei_pct": "5"
+            }
+          ]
+        },
+        "verwacht_eindvermogen": "104960",
+        "tolerantie": "0.05"
+      }
+    ]
   }
 }

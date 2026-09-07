@@ -158,3 +158,45 @@ def test_box3_next_year_uses_actual_post_balances() -> None:
     detail = result.jaren[1].accountant_detail
     assert detail['box3_grondslag'] == result.jaren[0].vermogen_einde_jaar
     assert abs(detail['box3_spaargeld_fractie'] - Decimal('22000') / Decimal('31000')) < Decimal('.00001')
+
+
+@pytest.mark.engine
+def test_normalized_wealth_acceptance_fixtures() -> None:
+    import json
+    from pathlib import Path
+    fixture = json.loads(Path('tests/fixtures/belasting_testcases/normalized/tc_2025_018_normalized.json').read_text())
+    for case in fixture['metadata']['regressies_vermogen']:
+        result = flow(Scenario.model_validate(case['scenario']))
+        assert abs(result.jaren[0].vermogen_einde_jaar - Decimal(case['verwacht_eindvermogen'])) <= Decimal(case['tolerantie']), case['id']
+
+
+@pytest.mark.contract
+@pytest.mark.parametrize(('rate', 'expected'), [('-10', '90000'), ('5', '105000')])
+def test_api_preserves_per_post_return(rate: str, expected: str) -> None:
+    from fastapi.testclient import TestClient
+    from pensioen.api.main import app
+    scenario = Scenario(naam='API', box3_meenemen=False, vermogensitems=[
+        VermogensItem(omschrijving='Portefeuille', type='beleggingen', aanschafwaarde='100000', groei_pct=rate,
+                      jaarlijkse_inleg='0')])
+    response = TestClient(app).post('/api/v1/berekeningen', json={
+        'scenario': scenario.model_dump(mode='json'),
+        'persoon1': {'naam': 'Test', 'geboortedatum': '1990-01-01', 'heeft_partner': False},
+        'persoon2': None, 'records1': [], 'records2': [], 'jaar_van': 2025, 'jaar_tot': 2025,
+        'scenario_lijst': [scenario.model_dump(mode='json')],
+    })
+    assert response.status_code == 200, response.text
+    year = response.json()['cashflow']['jaren'][0]
+    assert abs(Decimal(str(year['maanden'][-1]['vermogen_einde_maand'])) - Decimal(expected)) < Decimal('.05')
+    assert Decimal(year['maanden'][0]['gebruikte_tarieven']['vermogen']['posten'][0]['rendement_pct']) == Decimal(rate)
+
+
+@pytest.mark.engine
+def test_depleted_portfolio_keeps_deficit_without_return_on_debt() -> None:
+    from pensioen.models.scenario import IncidenteelItem
+    result = flow(Scenario(naam='Tekort', box3_meenemen=False,
+        incidentele_items=[IncidenteelItem(datum=date(2025, 1, 31), bedrag='-2000', omschrijving='Uitgave')],
+        vermogensitems=[VermogensItem(omschrijving='Beleggen', type='beleggingen', aanschafwaarde='1000', groei_pct='-10')]))
+    jan, feb = result.jaren[0].maanden[:2]
+    assert jan.vermogen_einde_maand == Decimal('-1008.74')
+    assert feb.vermogen_einde_maand == jan.vermogen_einde_maand
+    assert feb.rente_bruto == 0

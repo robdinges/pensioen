@@ -114,3 +114,21 @@ test("geeft expliciete vanafDatum in pensioenitem voorrang op historisch tijdvak
   assert.equal(rows[0].ingangsdatum, "2040-04-19");
   assert.equal(rows[0].einddatum, "");
 });
+
+test('levenslang tijdvak vervangt een eerdere einddatum in 2030', () => {
+  const item = { PensioenUitvoerder: 'Fonds', HerkenningsNummer: 'A', StandPer: '2026-01-01', vanafDatum: '2028-01-01', TeBereiken: 12000 };
+  const rows = parseJsonText(JSON.stringify({ Details: { OuderdomsPensioenDetails: { OuderdomsPensioen: [
+    { Van: { Leeftijd: { Jaren: 60 } }, Tot: { Leeftijd: { Jaren: 70 } }, Pensioen: [item] },
+    { Van: { Leeftijd: { Jaren: 70 } }, Tot: { OuderdomsPensioenEvent: 'Overlijden' }, Pensioen: [item] },
+  ] } } }), { geboortedatum: '1960-01-01' });
+  assert.equal(rows[0].einddatum, '');
+});
+
+test('een expliciet tijdelijk pensioen behoudt de echte einddatum', () => {
+  const rows = parseJsonText(JSON.stringify({ Details: { OuderdomsPensioenDetails: { OuderdomsPensioen: [
+    { Van: { Leeftijd: { Jaren: 60 } }, Tot: { Leeftijd: { Jaren: 70 } }, Pensioen: [
+      { PensioenUitvoerder: 'Fonds', HerkenningsNummer: 'B', StandPer: '2026-01-01', vanafDatum: '2028-01-01', totDatum: '2032-04-01', TeBereiken: 1000 }
+    ] },
+  ] } } }), { geboortedatum: '1960-01-01' });
+  assert.equal(rows[0].einddatum, '2032-04-01');
+});

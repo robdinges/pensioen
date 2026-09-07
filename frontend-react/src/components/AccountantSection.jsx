@@ -166,6 +166,18 @@ function AccountantYear({ jaarResultaat, euro }) {
       </div>
       {detail.box3_info ? <DetailNotice>{detail.box3_info}</DetailNotice> : null}
 
+      {detail.vermogen_rijen?.length ? <details>
+        <summary>Saldoverloop en bijgewerkte standen</summary>
+        <p>Een correctie uit een nieuwe saldostand vervangt de berekende waarde. Dit is geen inkomen of inleg.</p>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Maand</th><th>Beginsaldo</th><th>Cashflow incl. inleg</th><th>Correctie saldostand</th><th>Eindsaldo</th></tr></thead>
+          <tbody>{detail.vermogen_rijen.map(row => <tr key={row.maand}>
+            <td>{row.maand}</td><td>{euro(row.saldo_begin)}</td><td>{euro(row.netto_cashflow)}</td>
+            <td>{euro(row.saldo_correctie || 0)}</td><td>{euro(row.saldo_eind)}</td>
+          </tr>)}</tbody>
+        </table></div>
+      </details> : null}
+
       <details>
         <summary>Gebruikte tarieven en aannames</summary>
         <div className="table-wrap">

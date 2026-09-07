@@ -22,6 +22,13 @@ class VermogensType(str, Enum):
     OVERIG = "overig"                    # overige bezittingen
 
 
+class Saldostand(BaseModel):
+    """Bekend saldo/waarde aan het begin van een peildatum."""
+
+    peildatum: date
+    bedrag: Decimal = Field(ge=0, allow_inf_nan=False)
+
+
 class VermogensItem(BaseModel):
     """
     Een vermogensitem met aanschafwaarde, waardering en fiscale behandeling.
@@ -29,7 +36,8 @@ class VermogensItem(BaseModel):
     Voor spaargeld en beleggingen: 
     - aanschafwaarde = beginsaldo
     - groei_pct = verwacht jaarlijks rendement
-    - verkoopdatum = niet van toepassing
+    - verkoopdatum = sluitdatum; resterend saldo blijft renteloos kasgeld
+    - jaarlijkse_inleg = externe jaarinleg, per actieve maand/dag verdeeld
     
     Voor fysieke bezittingen (auto, kunst, boot):
     - aanschafwaarde = aankoopprijs
@@ -63,6 +71,8 @@ class VermogensItem(BaseModel):
     
     jaarlijkse_inleg: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)
     # None behoudt oude scenario-inleg; expliciet 0 schakelt die fallback uit.
+
+    saldostanden: list[Saldostand] = Field(default_factory=list)
 
     # Verkoop (optioneel)
     verkoopdatum: date | None = None     # datum verkoop (None = behouden)
@@ -134,6 +144,18 @@ class VermogensItem(BaseModel):
             self.box3_belast = False  # Hypotheekschuld niet in box 3
         return self
     
+    @model_validator(mode="after")
+    def valideer_saldostanden(self) -> VermogensItem:
+        datums = [s.peildatum for s in self.saldostanden]
+        if len(datums) != len(set(datums)):
+            raise ValueError("Gebruik per peildatum precies één saldostand.")
+        self.saldostanden = sorted(self.saldostanden, key=lambda s: s.peildatum)
+        return self
+
+    def laatste_saldostand(self, peildatum: date) -> Saldostand | None:
+        standen = [s for s in self.saldostanden if s.peildatum <= peildatum]
+        return max(standen, key=lambda s: s.peildatum) if standen else None
+
     def waarde_op_datum(self, peildatum: date) -> Decimal:
         """
         Bereken de waarde van dit item op een specifieke datum.
@@ -151,6 +173,16 @@ class VermogensItem(BaseModel):
         # Al verkocht
         if self.verkoopdatum and peildatum > self.verkoopdatum:
             return Decimal("0")
+
+        if self.saldostanden:
+            stand = self.laatste_saldostand(peildatum)
+            if stand is None:
+                return Decimal("0")  # Vóór de eerste waarneming is geen saldo bekend.
+            groei = self.woz_jaarlijkse_stijging_pct if self.type == VermogensType.EIGEN_WONING else self.groei_pct
+            dagen = Decimal((peildatum - stand.peildatum).days)
+            if not dagen:
+                return stand.bedrag
+            return stand.bedrag * (Decimal("1") + groei / Decimal("100")) ** (dagen / Decimal("365.25"))
 
         # Eigen woning: gebruik expliciete WOZ-waarde en eigen groeiperiode
         if self.type == VermogensType.EIGEN_WONING:

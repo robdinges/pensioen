@@ -297,10 +297,10 @@ function normalizeStructuredMpoJson(parsed, options = {}) {
           tijdvakPensioenstart || standPerIso,
           referentieDatum,
         );
-        const volgendeEinde = chooseLatestIsoDate(
-          bestaande?.einddatum || "",
-          effectieveEinddatum,
-        );
+        // Een open einde (bijv. tot overlijden) mag niet worden vervangen
+        // door de einddatum van een eerder leeftijdstijdvak.
+        const volgendeEinde = bestaande && (!bestaande.einddatum || !effectieveEinddatum)
+          ? "" : chooseLatestIsoDate(bestaande?.einddatum || "", effectieveEinddatum);
         const volgende = {
           herkenningsNummer,
           uitvoerder,

@@ -313,8 +313,10 @@ class LiquidePortefeuille:
         self.peildatum = start
         self.inleg_legacy = {VermogensType.SPAARGELD: inleg_sparen,
                             VermogensType.BELEGGINGEN: inleg_beleggen}
+        self.correcties = [Decimal('0') for _ in self.items]
         self.rentes = [Decimal('0') for _ in self.items]
         self.inleggen = [Decimal('0') for _ in self.items]
+        self.verwerkte_stand = [i.laatste_saldostand(start).peildatum if i.laatste_saldostand(start) else None for i in self.items]
         for n, item in enumerate(self.items):
             if item.verkoopdatum and item.verkoopdatum < start:
                 self.geopend[n] = self.gesloten[n] = True
@@ -324,6 +326,8 @@ class LiquidePortefeuille:
                 if item.aanschafdatum and item.aanschafdatum < start:
                     dagen = Decimal((start - item.aanschafdatum).days)
                     waarde *= (Decimal('1') + item.groei_pct / Decimal('100')) ** (dagen / Decimal('365.25'))
+                if item.saldostanden:
+                    waarde = item.waarde_op_datum(start)
                 self.saldis[n] = _rond_af(waarde)
 
     @property
@@ -362,6 +366,7 @@ class LiquidePortefeuille:
         laatste = date(jaar, maand, calendar.monthrange(jaar, maand)[1])
         self.peildatum = laatste
         opening = Decimal('0')
+        self.correcties = [Decimal('0') for _ in self.items]
         self.rentes = [Decimal('0') for _ in self.items]
         self.inleggen = [Decimal('0') for _ in self.items]
         for n, item in enumerate(self.items):
@@ -376,9 +381,25 @@ class LiquidePortefeuille:
             if tot < vanaf:
                 continue
             aandeel = Decimal((tot - vanaf).days + 1) / Decimal(laatste.day)
-            factor = (Decimal('1') + maandrendement(item.groei_pct)) ** aandeel - Decimal('1')
-            self.rentes[n] = _rond_af(self.saldis[n] * factor)
-            self.saldis[n] += self.rentes[n]
+            # Een waarneming vervangt de projectie aan het begin van die dag.
+            cursor = vanaf
+            maandfactor = Decimal('1') + maandrendement(item.groei_pct)
+            standen = [s for s in item.saldostanden if vanaf <= s.peildatum <= tot
+                       and (self.verwerkte_stand[n] is None or s.peildatum > self.verwerkte_stand[n])]
+            for stand in standen:
+                dagen = Decimal((stand.peildatum - cursor).days)
+                rente = _rond_af(self.saldis[n] * (maandfactor ** (dagen / Decimal(laatste.day)) - Decimal('1'))) if dagen else Decimal('0')
+                self.saldis[n] += rente
+                self.rentes[n] += rente
+                nieuw = _rond_af(stand.bedrag)
+                self.correcties[n] += nieuw - self.saldis[n]
+                self.saldis[n] = nieuw
+                self.verwerkte_stand[n] = stand.peildatum
+                cursor = stand.peildatum
+            dagen = Decimal((tot - cursor).days + 1)
+            rente = _rond_af(self.saldis[n] * (maandfactor ** (dagen / Decimal(laatste.day)) - Decimal('1')))
+            self.saldis[n] += rente
+            self.rentes[n] += rente
             self.inleggen[n] = _rond_af((item.jaarlijkse_inleg or Decimal('0')) / Decimal('12') * aandeel)
             self._stort(n, self.inleggen[n])
 
@@ -429,6 +450,9 @@ class LiquidePortefeuille:
             waarde = self.saldis[n]
             if not self.geopend[n] and item.aanschafdatum == peildatum:
                 waarde = item.aanschafwaarde
+            stand = item.laatste_saldostand(peildatum)
+            if stand and stand.peildatum == peildatum:
+                waarde = stand.bedrag
             if item.type == VermogensType.SPAARGELD:
                 sparen += waarde
             else:
@@ -437,8 +461,9 @@ class LiquidePortefeuille:
 
     def detail(self) -> dict[str, object]:
         """Alleen bestaande rekenstaat voor API en accountantoutput."""
-        return {'bron': 'vermogensitems', 'kas': self.kas, 'posten': [
+        return {'bron': 'vermogensitems', 'kas': self.kas, 'saldo_correctie': sum(self.correcties, Decimal('0')), 'posten': [
             {'omschrijving': i.omschrijving, 'type': i.type.value,
              'saldo': self.saldis[n], 'rendement_pct': i.groei_pct,
-             'rente': self.rentes[n], 'inleg': self.inleggen[n]}
+             'rente': self.rentes[n], 'inleg': self.inleggen[n],
+             'saldo_correctie': self.correcties[n], 'laatste_peildatum': self.verwerkte_stand[n]}
             for n, i in enumerate(self.items)]}

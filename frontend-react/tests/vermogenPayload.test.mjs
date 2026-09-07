@@ -16,6 +16,19 @@ test('sends each balance, rate, contribution and date without averaging returns'
   assert.equal(payload.scenario.rendement_beleggen_pct, undefined);
   assert.deepEqual(payload.scenario.vermogensitems.map(i => [i.aanschafwaarde, i.groei_pct, i.jaarlijkse_inleg]),
     [['1000', '1', '1200'], ['99000', '5', '2400'], ['10000', '-10', '0']]);
-  assert.equal(payload.scenario.vermogensitems[0].aanschafdatum, '2025-07-01');
-  assert.equal(payload.scenario.vermogensitems[0].verkoopdatum, '2026-06-30');
+  assert.equal(payload.scenario.vermogensitems[0].aanschafdatum, null);
+  assert.deepEqual(payload.scenario.vermogensitems[0].saldostanden, [{ peildatum: '2025-07-01', bedrag: '1000' }]);
+  assert.equal(payload.scenario.vermogensitems[0].verkoopdatum, null);
+});
+
+
+test('balance history is passed intact and an empty reference date means planning start', () => {
+  const payload = buildRequestPayload({ persoonNaam: 'Test', geboortedatum: '1990-01-01', jaarVan: 2025, jaarTot: 2026,
+    scenarioNaam: 'Standen', heeftPartner: false, posts: [
+      { type: 'sparen', titel: 'Spaar', values: { beginwaarde: '1000', peildatum: '', groei_pct: '2',
+          saldostanden: [{ peildatum: '2025-07-16', bedrag: '500' }] } },
+    ] });
+  assert.deepEqual(payload.scenario.vermogensitems[0].saldostanden, [
+    { peildatum: '2025-01-01', bedrag: '1000' }, { peildatum: '2025-07-16', bedrag: '500' },
+  ]);
 });

@@ -89,3 +89,12 @@ accrual history only. No 8% shortcut and no holiday double counting. Tests:
 Historic sources 016/017 keep their original gross inputs in fiscal tests;
 current API comparisons explicitly register their AOW input conflict.
 Whole-euro OLA input formatting belongs to the case recipe, not engine formulas.
+
+
+For liquid wealth, `vermogen_engine.LiquidePortefeuille` owns balances, returns
+and contributions per item. Never average item rates in the frontend or apply
+scenario rates on top of item growth. Preserve negative returns, active dates,
+end-of-month cashflow, cash deficits and closing transfers. Item contributions
+(including explicit zero) override legacy contributions per asset type. Keep
+accountant rows reconciled to actual monthly contributions. See
+`docs/VERMOGEN_REKENCONTRACT.md` and `tests/test_vermogen_rendement_regressie.py`.

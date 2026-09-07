@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { compactSession, saveSession } from "./planner/sessionStorage";
 import AccountantSection from "./components/AccountantSection";
 import AppShell from "./components/layout/AppShell";
 import ComponentsSection from "./components/ComponentsSection";
@@ -716,6 +717,7 @@ function AppContent() {
   );
 
   useEffect(() => {
+    if (hydrated) return; // Bewaar actuele invoer bij hot reload; hydrateer alleen bij openen.
     try {
       const raw = localStorage.getItem("pensioen-ui-session-v1");
       if (raw) {
@@ -807,51 +809,72 @@ function AppContent() {
     setHydrated(true);
   }, [actions]);
 
+  const buildSessionPayload = () => ({
+    households,
+    activeHouseholdId,
+    householdSnapshots: {
+      ...householdSnapshots,
+      [activeHouseholdId]: buildCurrentSnapshot(),
+    },
+    householdPreferences: {
+      ...householdPreferences,
+      [activeHouseholdId]: buildCurrentPreferences(),
+    },
+    posts,
+    apiBase,
+    persoonNaam,
+    geboortedatum,
+    heeftPartner,
+    partnerNaam,
+    partnerGeboortedatum,
+    scenarios,
+    activeScenarioId,
+    importBestandP1Naam,
+    importBestandP2Naam,
+    importPreviewP1,
+    importPreviewP2,
+    importWarningsP1,
+    importWarningsP2,
+    importStatsP1,
+    importStatsP2,
+    jaarVan,
+    jaarTot,
+    resultaat,
+    inputSignatureAtCalculation,
+    activeStep: state.activeStep,
+    currentHousehold: activeHouseholdName,
+    activeScenario: activeScenarioName,
+    calculationStatus: state.calculationStatus,
+  });
+
+  const retrySaveSession = () => {
+    try {
+      saveSession(buildSessionPayload());
+      actions.setAutosaveStatus("saved");
+    } catch {
+      actions.setAutosaveStatus("error");
+    }
+  };
+
+  const downloadInputBackup = () => {
+    const content = JSON.stringify(compactSession(buildSessionPayload()), null, 2);
+    const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pensioen-invoer-backup.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   useEffect(() => {
     if (!hydrated) {
       return;
     }
 
     actions.setAutosaveStatus("saving");
-    const payload = {
-      households,
-      activeHouseholdId,
-      householdSnapshots: {
-        ...householdSnapshots,
-        [activeHouseholdId]: buildCurrentSnapshot(),
-      },
-      householdPreferences: {
-        ...householdPreferences,
-        [activeHouseholdId]: buildCurrentPreferences(),
-      },
-      posts,
-      apiBase,
-      persoonNaam,
-      geboortedatum,
-      heeftPartner,
-      partnerNaam,
-      partnerGeboortedatum,
-      scenarios,
-      activeScenarioId,
-      importBestandP1Naam,
-      importBestandP2Naam,
-      importPreviewP1,
-      importPreviewP2,
-      importWarningsP1,
-      importWarningsP2,
-      importStatsP1,
-      importStatsP2,
-      jaarVan,
-      jaarTot,
-      resultaat,
-      inputSignatureAtCalculation,
-      activeStep: state.activeStep,
-      currentHousehold: activeHouseholdName,
-      activeScenario: activeScenarioName,
-      calculationStatus: state.calculationStatus,
-    };
+    const payload = buildSessionPayload();
     try {
-      localStorage.setItem("pensioen-ui-session-v1", JSON.stringify(payload));
+      saveSession(payload);
     } catch {
       actions.setAutosaveStatus("error");
       return;
@@ -1402,7 +1425,11 @@ function AppContent() {
     >
       {errorMessage ? <p className="feedback-banner error" role="alert">{errorMessage}</p> : null}
       {state.autosaveStatus === "error" ? (
-        <p className="feedback-banner error" role="alert">Opslaan in deze browser is mislukt. Houd dit venster open om je invoer te behouden. Controleer of browseropslag beschikbaar is.</p>
+        <div className="feedback-banner error" role="alert">
+          <p>Je invoer kon niet worden opgeslagen. De browseropslag kan vol of geblokkeerd zijn. Houd dit tabblad open en download je invoer voordat je herlaadt.</p>
+          <button type="button" onClick={downloadInputBackup}>Download back-up van mijn invoer</button>{" "}
+          <button type="button" onClick={retrySaveSession}>Opnieuw opslaan</button>
+        </div>
       ) : null}
       {renderStepContent()}
     </AppShell>

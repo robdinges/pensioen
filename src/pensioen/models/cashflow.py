@@ -49,6 +49,7 @@ class MaandResultaat:
     # Transparantie
     aannames: list[str] = field(default_factory=list)
     gebruikte_tarieven: dict = field(default_factory=dict)
+    vermogen_correctie: Decimal = Decimal("0")  # Nieuw bekende saldostand; geen inkomen/inleg.
 
     @property
     def totaal_bruto(self) -> Decimal:

@@ -266,7 +266,7 @@ def normalize_metadata(data: dict, report: NormalizationReport, testcase_id: str
     result = {}
     
     # Bewaar bestaande velden
-    for key in ["uitgangspunten", "opmerkingen", "data_kwaliteit", "bron", "_incomplete"]:
+    for key in ["uitgangspunten", "opmerkingen", "data_kwaliteit", "bron", "_incomplete", "regressies_vermogen"]:
         if key in metadata:
             result[key] = metadata[key]
     

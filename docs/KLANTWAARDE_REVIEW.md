@@ -1,5 +1,10 @@
 # Review pensioenplanner — 5 september 2026
 
+Update vervolgwerk: de twee hieronder oorspronkelijk gevonden P0-vermogensbugs
+zijn opgelost: negatieve rendementen en de ongewogen frontendmiddeling.
+Zie [het vermogenscontract](VERMOGEN_REKENCONTRACT.md) voor werking, tests en
+beperkingen. De oorspronkelijke bevindingen hieronder blijven als historie staan.
+
 De grootste klantwaarde zit in een betrouwbaar antwoord op: **kan ik op mijn
 gewenste moment stoppen met werken, wat houd ik over en hoe lang kan mijn
 vermogen dat dragen?** De technische basis is bruikbaar, maar er zijn nog
@@ -131,3 +136,27 @@ Belangrijkste functionele diff:
 +   return;
 + }
 ```
+
+## Vervolgfix: opslagfout na berekenen in Edge
+
+De app bewaarde volledige berekeningsresultaten op meerdere niveaus van de
+sessie. Een fictief plan 2025–2055 gaf circa 1,88 MB API-output; drie kopieën
+leveren ruim 5,6 MB JSON op. Dit kan de localStorage-limiet overschrijden.
+De melding bewijst op zichzelf niet dat het Edge-profiel opslag blokkeert.
+
+De opslagfunctie bewaart nu invoer, importgegevens en alle huishoudens/scenario's,
+maar geen opnieuw te berekenen resultaten. Na herladen is de berekenstatus idle
+zodat de gebruiker opnieuw berekent. Resultaten in het geopende tabblad blijven
+beschikbaar. Bestaande sessies worden bij de volgende succesvolle opslag
+compact opgeslagen, zonder de vorige sessie eerst te verwijderen.
+
+Bij blijvend falen zijn 'Download back-up van mijn invoer' en 'Opnieuw opslaan'
+beschikbaar. Wis geen browsergegevens om deze fout te omzeilen. De JSON-download
+is een reservekopie; een algemene import/herstelinterface blijft vervolgwerk.
+Tijdens hot reload wordt de actuele invoer niet opnieuw uit de oude cache geladen.
+
+Borging: `frontend-react/tests/sessionStorage.test.mjs` test een sessie met
+meerdere grote resultaten, behoud van invoer en foutdoorgifte zonder wissen.
+Alle 13 frontendtests en de productiebuild slagen. Het persoonlijke Edge-profiel
+is niet rechtstreeks onderzocht. Bron voor de opslaglimiet:
+[MDN Web Storage quota](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria).

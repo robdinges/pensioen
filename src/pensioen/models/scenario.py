@@ -458,7 +458,8 @@ class Scenario(BaseModel):
         relevante_hypotheken = [item for item in hypotheek_items if is_relevant_voor_jaar(item)]
 
         woz_waarde = sum(
-            (item.woz_waarde if item.woz_waarde is not None else item.aanschafwaarde)
+            (item.waarde_op_datum(peildatum) if item.saldostanden else
+             item.woz_waarde if item.woz_waarde is not None else item.aanschafwaarde)
             for item in relevante_woningen
         )
         betaalde_hypotheekrente = sum(

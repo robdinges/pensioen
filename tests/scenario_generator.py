@@ -189,6 +189,12 @@ def genereer_scenario(
     # Genereer componenten
     componenten = genereer_financiele_componenten(testcase, jaar)
     vermogensitems = genereer_vermogensitems(testcase)
+    # Rendement hoort bij de post; scenario-rendement is alleen legacy fallback.
+    for item in vermogensitems:
+        if item.type == VermogensType.SPAARGELD:
+            item.groei_pct = rendement_sparen_pct
+        elif item.type == VermogensType.BELEGGINGEN:
+            item.groei_pct = rendement_beleggen_pct
     
     # Bereken spaargeld en beleggingen bedragen
     spaargeld_bedrag = testcase.vermogen.spaargeld_berekend
