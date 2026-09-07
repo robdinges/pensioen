@@ -216,6 +216,7 @@ class TestVergelijkScenarios:
         )
         assert len(vergelijking.scenario_resultaten) == 2
         assert set(vergelijking.scenario_namen) == {"Stoppen op 62", "Stoppen op 67"}
+        assert vergelijking.scenario_resultaten[1].klantbeeld["leeftijden_op_laatste_werkdag"] == {"P1": "67j 0 m"}
 
     def test_beste_scenario_bepaald(
         self, persoon1: Persoon, pensioenrecord_p1: PensioenRecord

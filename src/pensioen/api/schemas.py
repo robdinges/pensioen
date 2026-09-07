@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pensioen.models.opbouw_simulatie import OpbouwKeuze
+
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -159,3 +161,17 @@ class RapportageRequest(BaseModel):
         if isinstance(data, dict):
             return _normaliseer_payload_codes(data)
         return data
+
+
+class PensioenopbouwRequest(BaseModel):
+    """Afzonderlijke simulator; de basisinvoer wordt niet overschreven."""
+    berekening: BerekeningRequest
+    keuze: OpbouwKeuze
+
+    @model_validator(mode="after")
+    def valideer_horizon(self) -> "PensioenopbouwRequest":
+        if not self.berekening.jaar_van <= self.keuze.laatste_werkdag.year <= self.berekening.jaar_tot:
+            raise ValueError("De stopdatum moet binnen de berekeningsperiode liggen, zodat alle premies meetellen.")
+        if self.keuze.pensioen_vanaf.year > self.berekening.jaar_tot:
+            raise ValueError("Verleng de berekeningsperiode tot minstens het jaar waarin het pensioen ingaat.")
+        return self

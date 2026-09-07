@@ -11,10 +11,11 @@ from fastapi import File, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from pensioen.api.referentietabellen import codes_en_labels, input_hints
-from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest
+from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest, PensioenopbouwRequest
 from pensioen.api.serialisatie import naar_json_compatibel
 from pensioen.calculations.resultaat_service import bereken_resultaten
-from pensioen.calculations.inheritance_engine import validate_inheritance_tree
+from pensioen.calculations.inheritance_engine import validate_inheritance_tree, resolve_scenario
+from pensioen.calculations.pensioenopbouw_simulator import bouw_opbouwscenarios, bouw_opbouwuitkomst
 from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
 from pensioen.models.output_contract import OUTPUT_CONTRACT
@@ -161,7 +162,43 @@ def vergelijking_endpoint(request: VergelijkingRequest) -> JSONResponse:
         jaar_tot=request.jaar_tot,
     )
 
-    return JSONResponse({"vergelijking": naar_json_compatibel(vergelijking)})
+    payload = naar_json_compatibel(vergelijking)
+    beste = vergelijking.beste_scenario_netto
+    # Properties worden niet meegenomen door dataclass-serialisatie.
+    # Geef de enginekeuze door zonder de volledige cashflow te dupliceren.
+    payload["beste_scenario_netto"] = {"scenario_naam": beste.scenario_naam} if beste else None
+    return JSONResponse({"vergelijking": payload})
+
+
+@app.post("/api/v1/simulaties/pensioenopbouw")
+def pensioenopbouw_endpoint(request: PensioenopbouwRequest) -> JSONResponse:
+    basis = request.berekening
+    lijst = basis.scenario_lijst or [basis.scenario]
+    _valideer_inheritance(lijst)
+    try:
+        opgelost = resolve_scenario(basis.scenario, lijst)
+        scenarios = bouw_opbouwscenarios(opgelost, request.keuze)
+        persoon = opgelost.componenten[request.keuze.pensioen_index].persoon
+        deelnemer = basis.persoon1 if persoon == "P1" else basis.persoon2
+        if deelnemer is None:
+            raise ValueError("Deze pensioenpost hoort bij een ontbrekende partner.")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    vergelijking = vergelijk_scenarios(scenarios, basis.persoon1, basis.persoon2,
+                                      basis.records1, basis.records2, basis.jaar_van, basis.jaar_tot)
+    return JSONResponse(naar_json_compatibel({
+        "vergelijking": vergelijking,
+        "opbouw": bouw_opbouwuitkomst(vergelijking, request.keuze, deelnemer.geboortedatum),
+        "keuze": request.keuze,
+        "aannames": [
+            "De ingevulde pensioenbedragen zijn aannames." if request.keuze.modus == "aannames" else "De uitvoerdersgegevens zijn door jou ingevuld; de app heeft ze niet bij de uitvoerder geverifieerd.",
+            "De premie is een extra uitgave, inclusief het eventuele werkgeversdeel. Er is geen belastingaftrek voor de premie toegepast.",
+            "Vrijwillige voortzetting en het opgegeven pensioen zijn niet gegarandeerd door deze simulatie; bevestig de mogelijkheden bij je uitvoerder.",
+            "Alleen de gekozen pensioenpost en het werkinkomen van die persoon veranderen. Andere pensioenposten en de partner blijven ongewijzigd.",
+            "De bestaande rendements- en indexatieaannames blijven gelden. De opgegeven pensioenbedragen gelden vanaf de gekozen pensioendatum.",
+            "Het omslagpunt vergelijkt cumulatieve netto cashflow met en zonder doorbetalen, inclusief berekend rendement, tot het einde van de horizon; geen levenslange garantie.",
+        ],
+    }))
 
 
 @app.post("/api/v1/rapportages/excel")

@@ -89,6 +89,26 @@
       "netto_maand_p2": "2000",
       "verwacht_jaar_p1": "12000",
       "verwacht_jaar_p2": "24000"
+    },
+    "regressies_scenariokaarten": {
+      "bron": "Interne resultaatacceptatie; geen externe OLA-verwachting",
+      "maanden": [
+        {
+          "over": "100",
+          "saldo": "1000"
+        },
+        {
+          "over": "-200",
+          "saldo": "-50"
+        },
+        {
+          "over": "1000",
+          "saldo": "2000"
+        }
+      ],
+      "gemiddelde": "300.00",
+      "laagste_buffer": "-50",
+      "laagste_buffer_maand": "2025-02"
     }
   }
 }

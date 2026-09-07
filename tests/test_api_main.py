@@ -247,6 +247,9 @@ def test_vergelijkingen_endpoint_happy_path(persoon1, scenario_standaard) -> Non
     assert response.status_code == 200
     data = response.json()["vergelijking"]
     assert len(data["scenario_resultaten"]) == 2
+    assert data["beste_scenario_netto"]["scenario_naam"] == max(
+        data["scenario_resultaten"], key=lambda item: Decimal(item["netto_per_maand_mediaan"])
+    )["scenario_naam"]
 
 
 def test_vergelijkingen_endpoint_inheritance_cycle_returns_422(

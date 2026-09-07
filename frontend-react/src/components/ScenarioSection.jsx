@@ -1,3 +1,5 @@
+import ScenarioComparison from "./ScenarioComparison";
+
 export default function ScenarioSection({
   SectionHeader,
   activeScenario,
@@ -13,6 +15,8 @@ export default function ScenarioSection({
   duplicateActiveScenario,
   compareScenarioId,
   setCompareScenarioId,
+  thirdScenarioId,
+  setThirdScenarioId,
   runScenarioComparison,
   isComparing,
   comparisonError,
@@ -96,6 +100,15 @@ export default function ScenarioSection({
             ))}
           </select>
         </label>
+        <label className="field inline-field">
+          <span>Derde scenario (optioneel)</span>
+          <select value={thirdScenarioId} onChange={e => setThirdScenarioId(e.target.value)}>
+            <option value="">Geen derde scenario</option>
+            {scenarios.filter(item => item.id !== activeScenarioId && item.id !== compareScenarioId).map(item => (
+              <option key={item.id} value={item.id}>{item.naam}</option>
+            ))}
+          </select>
+        </label>
         <button type="button" onClick={runScenarioComparison} disabled={isComparing || scenarios.length <= 1}>
           {isComparing ? "Vergelijken..." : "Vergelijk scenario's"}
         </button>
@@ -104,80 +117,8 @@ export default function ScenarioSection({
       {comparisonError ? <p className="error">{comparisonError}</p> : null}
 
       {comparisonResult?.scenario_resultaten?.length ? (
-        <div className="table-wrap import-preview">
-          <p className="notice">
-            Vergelijking over {comparisonResult.jaar_van} - {comparisonResult.jaar_tot}
-            {comparisonResult.beste_scenario_netto?.scenario_naam
-              ? ` | Beste mediaan netto: ${comparisonResult.beste_scenario_netto.scenario_naam}`
-              : ""}
-          </p>
-          {comparisonSummary ? (
-            <div className="kpis comparison-kpis">
-              <div className="kpi comparison-kpi">
-                <span>Vergelijkd scenario</span>
-                <strong>{compareScenarioName}</strong>
-              </div>
-              <div className="kpi comparison-kpi">
-                <span>Delta netto p/j</span>
-                <strong className={comparisonSummary.nettoDelta >= 0 ? "trend-positive" : "trend-negative"}>
-                  {signedEuro(comparisonSummary.nettoDelta * 12)}
-                </strong>
-              </div>
-              <div className="kpi comparison-kpi">
-                <span>Delta vermogen op 80</span>
-                <strong className={comparisonSummary.vermogen80Delta >= 0 ? "trend-positive" : "trend-negative"}>
-                  {signedEuro(comparisonSummary.vermogen80Delta)}
-                </strong>
-              </div>
-              <div className="kpi comparison-kpi">
-                <span>Delta belastingdruk</span>
-                <strong className={comparisonSummary.belastingdrukDelta <= 0 ? "trend-positive" : "trend-negative"}>
-                  {signedPercentagePoints(comparisonSummary.belastingdrukDelta)}
-                </strong>
-              </div>
-            </div>
-          ) : null}
-          <table>
-            <thead>
-              <tr>
-                <th>Scenario</th>
-                <th>Mediaan netto p/j</th>
-                <th>Laagste jaar</th>
-                <th>Vermogen op 70</th>
-                <th>Vermogen op 80</th>
-                <th>Belastingdruk</th>
-                <th>Tekortjaren</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonResult.scenario_resultaten.map((item) => (
-                <tr
-                  key={item.scenario_naam}
-                  className={[
-                    "comparison-row",
-                    item.scenario_naam === activeScenarioName ? "is-active" : "",
-                    item.scenario_naam === comparisonResult.beste_scenario_netto?.scenario_naam ? "is-best" : "",
-                  ].filter(Boolean).join(" ")}
-                >
-                  <td>{item.scenario_naam}</td>
-                  <td>{euro(decimalLike(item.netto_per_maand_mediaan) * 12)}</td>
-                  <td>
-                    {item.laagste_inkomensjaar ? `${item.laagste_inkomensjaar}: ${euro(decimalLike(item.netto_laagste_jaar))}` : "-"}
-                  </td>
-                  <td>{euro(decimalLike(item.vermogen_op_70))}</td>
-                  <td>{euro(decimalLike(item.vermogen_op_80))}</td>
-                  <td>{`${decimalLike(item.gemiddelde_belastingdruk).toFixed(1)}%`}</td>
-                  <td>{item.aantal_tekortjaren ?? 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ScenarioComparison comparisonResult={comparisonResult} activeScenarioName={activeScenarioName} euro={euro} />
       ) : null}
-
-      <p className="notice">
-        Het actieve scenario wordt gebruikt als naam in de berekenpayload.
-      </p>
     </section>
   );
 }

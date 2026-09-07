@@ -74,7 +74,7 @@ cashflowprognose voor een huishouden.
   - huishouden-stap met toevoegen, hernoemen, verwijderen en wisselen tussen meerdere huishoudens
   - scenario-stap met toevoegen, hernoemen, verwijderen en kiezen van actief scenario per huishouden
   - scenario-stap met dupliceren van actief scenario en aparte invoersnapshots per scenario
-  - scenario-stap met basale scenariovergelijking via API (`/api/v1/vergelijkingen`) inclusief KPI-tabel
+  - scenario-stap met scenariovergelijking via API (`/api/v1/vergelijkingen`), KPI's en leeftijd per persoon op de laatste werkdag
   - personen-stap met optionele partner (P2), inclusief validatie en correcte payload naar de API
   - periode-stap met jaarvalidatie; berekenen is geblokkeerd tot invoer geldig is
   - rapport-stap met directe Excel-download via API (`/api/v1/rapportages/excel`) op basis van actieve invoer
@@ -176,6 +176,8 @@ Om te berekenen in de React UI:
   - kies het standaardscenario via de radioknoppen
   - gebruik de actieknoppen in dezelfde rij om een scenario actief te maken,
     te bewerken of te verwijderen.
+  - bekijk in de scenariovergelijking per persoon de laatste werkdag en de
+    leeftijd op die datum.
 
 9. Vul in het scherm Financiële Planning alle componenten in:
   - **Inkomsten & Uitgaven**: Periodieke inkomsten, pensioenen, uitgaven en inhoudingen

@@ -106,3 +106,12 @@ Each row and the total reconcile P1 + P2 + gezamenlijk to huishouden. Returns
 and unallocated deductions stay explicit; legacy annual tax `netto_p1/p2` fields
 are not interchangeable with household cashflow totals. Regression:
 `tests/test_netto_aansluiting.py`, internal acceptance metadata in testcase 018.
+
+For understandable scenario cards, the Resultaten owner is
+`calculations/scenario_klantbeeld.py`. Preserve one common averaging window,
+Decimal arithmetic, negative monthly buffers and an explicit unknown age-80
+value outside the horizon. Yearly cashflow deficits are withdrawals, not proof
+of insolvency. `ScenarioComparison` renders engine `klantbeeld` on both pages;
+never relabel median as average or recreate these KPI formulas in React.
+Fixture: internal `regressies_scenariokaarten` in case 018; tests:
+`tests/test_scenario_klantbeeld.py` and `uiPresentation.test.mjs`.

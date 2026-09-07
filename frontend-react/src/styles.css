@@ -1249,3 +1249,18 @@ th {
     padding: 0.8rem 0.6rem 2rem;
   }
 }
+
+/* Scenariovergelijking: één kaart per keuze; details blijven uitklapbaar. */
+.scenario-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 1rem; margin: 1rem 0; align-items: start; }
+.scenario-card { border: 1px solid #d8e5df; border-radius: 16px; padding: 1.25rem; background: #fff; min-width: 0; }
+.scenario-card.is-active { border: 2px solid #165d48; background: #f7fbf8; }
+.scenario-card h3 { margin: 0 0 .35rem; }
+.scenario-metrics { margin: 1rem 0; }
+.scenario-metrics > div { padding: .8rem 0; border-bottom: 1px solid #e4ece7; }
+.scenario-metrics dt { color: #41564b; }
+.scenario-metrics dd { margin: .3rem 0; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scenario-metrics .scenario-primary dd { font-size: 1.9rem; }
+.scenario-card small { color: #52675c; display: block; line-height: 1.5; }
+.scenario-explanation { line-height: 1.65; }
+.scenario-year-detail summary, .scenario-technical summary { cursor: pointer; padding: .8rem 0; color: #165d48; font-weight: 600; }
+.scenario-interen { background: #fff5ee; }

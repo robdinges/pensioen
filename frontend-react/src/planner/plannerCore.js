@@ -271,6 +271,7 @@ export function createHouseholdSnapshot(state) {
     activeScenarioId: state.activeScenarioId,
     scenarioSnapshots: state.scenarioSnapshots,
     compareScenarioId: state.compareScenarioId,
+    thirdScenarioId: state.thirdScenarioId || "",
     comparisonResult: state.comparisonResult,
     importBestandP1Naam: state.importBestandP1Naam,
     importBestandP2Naam: state.importBestandP2Naam,
@@ -311,6 +312,7 @@ export function createInitialHouseholdSnapshot({
       [activeScenarioId]: scenarioData,
     },
     compareScenarioId: "",
+    thirdScenarioId: "",
     comparisonResult: null,
     importBestandP1Naam: scenarioData.importBestandP1Naam,
     importBestandP2Naam: scenarioData.importBestandP2Naam,
@@ -383,6 +385,7 @@ export function normalizeHouseholdSnapshot(snapshot) {
     activeScenarioId,
     scenarioSnapshots,
     compareScenarioId: typeof source.compareScenarioId === "string" ? source.compareScenarioId : "",
+    thirdScenarioId: typeof source.thirdScenarioId === "string" ? source.thirdScenarioId : "",
     comparisonResult:
       source.comparisonResult && typeof source.comparisonResult === "object" ? source.comparisonResult : null,
     activeScenarioSnapshot: scenarioSnapshots[activeScenarioId] || fallbackScenarioData,
@@ -583,106 +586,90 @@ export function selectYearRows(cashflow) {
       cashflow: toAmount(samenvatting.netto_cashflow ?? samenvatting.netto),
       nettoPerMaand: toAmount(samenvatting.netto_inkomen_per_maand ?? samenvatting.netto_per_maand),
       vermogenEinde: toAmount(samenvatting.vermogen_einde_jaar),
+      heeftNegatiefMaandvermogen: Array.isArray(jaar.maanden) && jaar.maanden.some(maand => Number(maand.vermogen_einde_maand) < 0),
     };
   });
 }
 
-export function computeStopmomentSummary(jaarRows = []) {
-  if (!Array.isArray(jaarRows) || jaarRows.length === 0) {
-    return {
-      firstShortfallYear: null,
-      stopMomentLabel: "Onbekend",
-      wealthAt80: 0,
-      summaryText: "Vul eerst een berekening in om je stopmoment te beoordelen.",
-    };
+export function buildScenarioComparisonRequest(ids, resolveRequest, jaarVan, jaarTot) {
+  const selected = ids.filter(Boolean);
+  if (selected.length < 2 || selected.length > 3 || new Set(selected).size !== selected.length) {
+    throw new Error("Kies twee of drie verschillende scenario’s.");
   }
-
-  const firstShortfallYear = jaarRows.find((row) => decimalLike(row.cashflow) < 0)?.jaar ?? null;
-  const wealthAt80 = decimalLike(jaarRows[jaarRows.length - 1]?.vermogenEinde ?? 0);
-
-  let stopMomentLabel = "Haalbaar";
-  if (firstShortfallYear !== null) {
-    stopMomentLabel = "Risico";
+  const requests = selected.map(resolveRequest);
+  if (new Set(requests.map(request => request.scenario.naam)).size !== requests.length) {
+    throw new Error("Geef de te vergelijken scenario’s verschillende namen.");
   }
-
-  const summaryText = firstShortfallYear === null
-    ? "Je huidige situatie blijft op de hele horizon positief. Er is geen eerste tekortjaar in de huidige berekening."
-    : `Je eerste tekortjaar ligt in ${firstShortfallYear}. Daarna ontstaat een tekort in je vrije cashflow.`;
-
   return {
-    firstShortfallYear,
-    stopMomentLabel,
-    wealthAt80,
-    summaryText,
+    scenarios: requests.map(request => request.scenario),
+    persoon1: requests[0].persoon1, persoon2: requests[0].persoon2,
+    records1: [], records2: [], jaar_van: Number(jaarVan), jaar_tot: Number(jaarTot),
   };
 }
 
+export function selectCurrentComparison(result, request) {
+  return result?.inputSignature === JSON.stringify(request) ? result : null;
+}
+
+export function computeStopmomentSummary(jaarRows = [], geboortedatum = "") {
+  const rows = Array.isArray(jaarRows) ? [...jaarRows].sort((a,b) => a.jaar - b.jaar) : [];
+  const firstShortfallYear = rows.find(row => Number(row.cashflow) < 0)?.jaar ?? null;
+  const firstNegativeWealthYear = rows.find(row => Number(row.vermogenEinde) < 0 || row.heeftNegatiefMaandvermogen)?.jaar ?? null;
+  const birthYear = /^\d{4}-\d{2}-\d{2}$/.test(geboortedatum) ? Number(geboortedatum.slice(0,4)) : null;
+  const wealthRow = birthYear === null ? null : rows.find(row => row.jaar === birthYear + 80);
+  const wealthAt80 = wealthRow ? Number(wealthRow.vermogenEinde) : null;
+  const stopMomentLabel = !rows.length ? "Onbekend" : firstNegativeWealthYear !== null
+    ? "Vermogen negatief" : firstShortfallYear !== null ? "Interen op vermogen" : "Geen jaarlijks cashflowtekort";
+  const summaryText = !rows.length ? "Bereken eerst je plan."
+    : firstNegativeWealthYear !== null ? `In ${firstNegativeWealthYear} wordt een negatief vermogen berekend. Het plan vraagt aanpassing.`
+    : firstShortfallYear !== null ? `In ${firstShortfallYear} is de vrije cashflow voor het eerst negatief. Dit vraagt dekking uit vermogen; latere jaren kunnen herstellen.`
+    : "De berekende jaarlijkse vrije cashflow is nergens negatief. Dit bewijst niet dat eerder stoppen haalbaar is.";
+  return {firstShortfallYear, firstNegativeWealthYear, stopMomentLabel, wealthAt80, summaryText};
+}
+
 export function buildScenarioDecisionCards(comparisonResult, activeScenarioName = "", compareScenarioName = "") {
-  if (!comparisonResult || !Array.isArray(comparisonResult.scenario_resultaten) || comparisonResult.scenario_resultaten.length === 0) {
-    return [];
-  }
-
-  const scenarios = comparisonResult.scenario_resultaten;
-  const activeItem = scenarios.find((item) => item.scenario_naam === activeScenarioName) || scenarios[0];
-  const compareItem = scenarios.find((item) => item.scenario_naam === compareScenarioName) || scenarios[1] || scenarios[0];
-
-  const bestItem = (() => {
-    const bestCandidate = comparisonResult.beste_scenario_netto && comparisonResult.beste_scenario_netto.scenario_naam
-      ? scenarios.find((item) => item.scenario_naam === comparisonResult.beste_scenario_netto.scenario_naam)
-      : null;
-
-    if (bestCandidate) {
-      return bestCandidate;
-    }
-
-    return scenarios.reduce((best, current) => (
-      decimalLike(current.netto_per_maand_mediaan) > decimalLike(best.netto_per_maand_mediaan) ? current : best
-    ));
-  })();
-
-  return [
-    {
-      label: "Actieve keuze",
-      scenarioName: activeItem.scenario_naam,
-      nettoDelta: 0,
-      vermogenDelta: 0,
-      note: "Huidig gekozen scenario",
-    },
-    {
-      label: "Vergelijking",
-      scenarioName: compareItem.scenario_naam,
-      nettoDelta: decimalLike(compareItem.netto_per_maand_mediaan) - decimalLike(activeItem.netto_per_maand_mediaan),
-      vermogenDelta: decimalLike(compareItem.vermogen_op_80) - decimalLike(activeItem.vermogen_op_80),
-      note: "Alternatief in vergelijking",
-    },
-    {
-      label: "Beste netto",
-      scenarioName: bestItem.scenario_naam,
-      nettoDelta: decimalLike(bestItem.netto_per_maand_mediaan) - decimalLike(activeItem.netto_per_maand_mediaan),
-      vermogenDelta: decimalLike(bestItem.vermogen_op_80) - decimalLike(activeItem.vermogen_op_80),
-      note: "Sterkste financiële uitkomst",
-    },
-  ];
+  const scenarios = comparisonResult?.scenario_resultaten;
+  if (!Array.isArray(scenarios) || scenarios.length < 2) return [];
+  const active = scenarios.find(item => item.scenario_naam === activeScenarioName);
+  if (!active || new Set(scenarios.map(item => item.scenario_naam)).size !== scenarios.length) return [];
+  const bestName = comparisonResult.beste_scenario_netto?.scenario_naam;
+  const knownWealth = item => comparisonResult.vermogen80Beschikbaar === false ? null
+    : item.vermogen_op_80 == null ? null : decimalLike(item.vermogen_op_80);
+  const baselineWealth = knownWealth(active);
+  return [active, ...scenarios.filter(item => item !== active)].map(item => {
+    const wealth = knownWealth(item);
+    return {
+      label: item === active ? "Actieve keuze" : "Alternatief",
+      scenarioName: item.scenario_naam,
+      nettoDelta: decimalLike(item.netto_per_maand_mediaan) - decimalLike(active.netto_per_maand_mediaan),
+      vermogenDelta: wealth === null || baselineWealth === null ? null : wealth - baselineWealth,
+      wealthAt80: wealth,
+      shortfallYears: item.aantal_tekortjaren ?? null,
+      isBest: item.scenario_naam === bestName,
+      note: item.scenario_naam === bestName ? "Hoogste mediane vrije cashflow" : "Verschillen ten opzichte van de actieve keuze",
+    };
+  });
 }
 
 export function buildScenarioDecisionAdvice(comparisonResult, activeScenarioName = "", compareScenarioName = "") {
   const cards = buildScenarioDecisionCards(comparisonResult, activeScenarioName, compareScenarioName);
-  if (!cards.length) {
-    return "Vergelijk eerst een tweede scenario om een helder advies te krijgen.";
-  }
-
-  const bestCard = cards.find((card) => card.label === "Beste netto") || cards[cards.length - 1];
-  const bestDelta = decimalLike(bestCard.nettoDelta);
-
-  const bestLabel = bestCard.scenarioName || "het beste alternatief";
-  const direction = bestDelta >= 0 ? "aanbevolen" : "minder gunstig";
-  const comparisonText = bestDelta === 0
-    ? "Je gekozen plan is gelijkwaardig aan het beste scenario."
-    : bestDelta > 0
-      ? `Het beste scenario is € ${Math.abs(bestDelta).toFixed(2).replace(".", ",")} per maand beter dan het huidige plan.`
-      : `Het huidige plan is € ${Math.abs(bestDelta).toFixed(2).replace(".", ",")} per maand beter dan het beste scenario.`;
-
-  return `${bestLabel} is ${direction} voor het huidige plan. ${comparisonText}`;
+  if (!cards.length) return "Vergelijk opnieuw minstens twee verschillende scenario’s.";
+  const best = cards.find(card => card.isBest);
+  if (!best) return "De engine heeft geen beste scenario aangewezen. Vergelijk opnieuw.";
+  if (cards.some(card => card.nettoDelta > best.nettoDelta)) return "De enginekeuze en de cashflowverschillen spreken elkaar tegen. Vergelijk opnieuw.";
+  const amount = value => new Intl.NumberFormat("nl-NL", {minimumFractionDigits:2, maximumFractionDigits:2}).format(Math.abs(value));
+  const delta = best.nettoDelta;
+  const conclusion = delta > 0
+    ? `${best.scenarioName} heeft volgens de engine € ${amount(delta)} meer mediane vrije cashflow per maand dan ${activeScenarioName}.`
+    : delta === 0 ? `${best.scenarioName} heeft dezelfde mediane vrije cashflow als ${activeScenarioName}. Vergelijk bij gelijke cashflow ook vermogen en tekortjaren.`
+    : `De enginekeuze en de cashflowverschillen spreken elkaar tegen. Vergelijk opnieuw voordat je een keuze maakt.`;
+  const details = cards.map(card => {
+    const wealth = card.wealthAt80 === null ? "vermogen op 80 niet beschikbaar binnen de berekeningsperiode"
+      : `vermogen op 80: ${card.wealthAt80 < 0 ? "−" : ""}€ ${amount(card.wealthAt80)}`;
+    const difference = card.vermogenDelta === null ? "" : ` (${card.vermogenDelta < 0 ? "−" : "+"}€ ${amount(card.vermogenDelta)} ten opzichte van actief)`;
+    return `${card.scenarioName}: ${card.shortfallYears === null ? "aantal tekortjaren onbekend" : `${card.shortfallYears} tekortjaren`}, ${wealth}${difference}.`;
+  }).join(" ");
+  return `${conclusion} ${details} Kies niet alleen op cashflow: beoordeel ook de vermogensbuffer en de gewenste stopdatum. Dit is geen automatische aanbeveling om eerder te stoppen.`;
 }
 
 export function validateCalculationResponse(resultaat) {

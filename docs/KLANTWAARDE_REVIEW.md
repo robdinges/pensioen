@@ -175,3 +175,61 @@ als niet toegewezen. Oude resultaten vereisen een nieuwe berekening.
 
 Borging: directe assemblertest, partner-enginetest, frontendpresentatietest;
 interne testcase-018-metadata (geen aanpassing van de externe OLA-verwachtingen).
+
+### Plancontrole en scenario-afweging (7 september 2026)
+
+Functionele stap: Resultaten. De bestaande jaar-/maandoutput en
+`scenario_engine.ScenarioVergelijking` blijven source of truth; geen gewijzigde
+belasting- of vermogensberekeningen. De UI vergelijkt maximaal drie unieke
+scenario's op dezelfde personen en horizon. Delta = alternatief minus actief.
+De enginevariabele `netto_per_maand_mediaan` betreft mediane vrije cashflow,
+niet netto inkomen vóór uitgaven. Rendements- en belastingformules blijven in
+de engine; UI toont uitsluitend selectie, verschillen en toelichting.
+
+Vermogen op 80 betreft het einde van het jaar waarin P1 80 wordt. Buiten de
+horizon is dit onbekend, niet nul. Plancontrole onderscheidt negatieve jaarlijkse
+cashflow (interen) van negatief vermogen, inclusief negatieve maandstanden.
+De vroegere claim “stopmoment haalbaar” is verwijderd: er wordt geen vroegste
+haalbare stopdatum geoptimaliseerd. Het advies noemt cashflow, vermogen en
+tekortjaren per scenario; hoogste cashflow is geen algehele aanbeveling.
+Veranderde selectie of berekeninvoer maakt eerder vergelijkingsadvies ongeldig.
+
+Borging: resultsMapping.test.mjs en uiPresentation.test.mjs bevatten regressies
+voor leeftijd/horizon, negatieve maandstanden, drie unieke kaarten/verzoeken,
+tegenstrijdige afwegingen, delta-richting en verouderde vergelijkingen.
+
+Bij de API-ketencontrole bleek `beste_scenario_netto` als dataclass-property
+niet geserialiseerd te worden. De API geeft nu expliciet de naam door van de
+bestaande enginekeuze; geen tweede rangschikkingsberekening in de frontend.
+De API-regressietest borgt dat deze naam aansluit op de hoogste engine-mediaan.
+
+### Begrijpelijke scenariokaarten (7 september 2026)
+
+Stap **Resultaten**, eigenaar `calculations/scenario_klantbeeld.py`. Invoer:
+bestaande maandcashflow, scenario-werkdatums na inheritance-resolutie en
+geboortedatum P1. Uitvoer: `ScenarioResultaat.klantbeeld` en gedeelde
+`ScenarioVergelijking.klantvergelijking`. Geen nieuwe tarieven; fiscale en
+vermogensformules blijven bij hun bestaande eigenaren. API en de gedeelde
+Reactcomponent `ScenarioComparison` presenteren uitsluitend deze output.
+
+- Gemiddelde over per maand = Decimal-som van maandcashflow gedeeld door het
+  aantal geselecteerde maanden, afgerond op centen. Dit vervangt de mediaan in
+  de hoofdweergave. Cashflow omvat belasting, uitgaven, rendement en eenmalige
+  posten; het bedrag is geen garantie voor vrij besteedbaar inkomen.
+- Voor alle scenario's dezelfde maanden: vanaf de eerste volledige maand na de
+  laatste werk-einddatum van alle personen in alle scenario's. Zonder volledig
+  vastgelegde einddatums gebruiken we expliciet de hele horizon. Zonder maanden
+  na stoppen binnen de horizon is het gemiddelde onbekend. Overbruggingsjaren
+  vóór deze gemeenschappelijke periode blijven in de buffer- en jaarrisico's.
+- Grootste jaarlijkse tekort = grootste negatieve jaarsom als positief aan te
+  vullen bedrag. Jaren met interen zijn geen jaren zonder geld; de jaaropbouw
+  toont ieder jaar en bedrag. Jaren met negatieve maandstanden staan apart.
+- Laagste buffer = laagste berekende maandultimo over de hele horizon, inclusief
+  maand en jaar. Geen claim over de laagste stand binnen een maand.
+- Vermogen op 80 blijft einde van het jaar waarin P1 80 wordt; ontbrekend jaar
+  is onbekend. Verschillen worden centraal ten opzichte van het eerste/actieve
+  scenario bepaald. Belastingsdruk en de oude mediaan staan onder Rekendetails.
+
+Directe en API-regressies: `tests/test_scenario_klantbeeld.py`; interne broncase
+018 met `regressies_scenariokaarten` en hernieuwde normalized fixture. Externe
+OLA-verwachtingen blijven ongewijzigd. UI-regressie in `uiPresentation.test.mjs`.

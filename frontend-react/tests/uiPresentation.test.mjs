@@ -41,6 +41,7 @@ test("storage failure never claims the plan was saved", () => {
 
 const { default: PostCard } = await server.ssrLoadModule("/src/components/PostCard.jsx");
 const { TYPE_CONFIG, FIELD_META } = await server.ssrLoadModule("/src/planner/plannerCore.js");
+const { default: ScenarioComparison } = await server.ssrLoadModule("/src/components/ScenarioComparison.jsx");
 
 test("empty income dates explicitly mean no start or end", () => {
   const html = renderToStaticMarkup(React.createElement(PostCard, {
@@ -76,4 +77,79 @@ test("accountant presents engine reconciliation with a shared column", async () 
   assert.match(html, /EUR 12000/);
   assert.match(html, /EUR 24000/);
   assert.match(html, /EUR 36300/);
+});
+
+test('results show actual age-80 value and all three engine scenario deltas', () => {
+  const comparisonResult = {vermogen80Beschikbaar:true,scenario_resultaten:[
+    {scenario_naam:'Actief',netto_per_maand_mediaan:5000,vermogen_op_80:800000,aantal_tekortjaren:0},
+    {scenario_naam:'Eerder',netto_per_maand_mediaan:4300,vermogen_op_80:720000,aantal_tekortjaren:2},
+    {scenario_naam:'Later',netto_per_maand_mediaan:5600,vermogen_op_80:920000,aantal_tekortjaren:0},
+  ],beste_scenario_netto:{scenario_naam:'Later'},klantvergelijking:{actief_scenario:'Actief',gemiddelde_van:'2040-01-01',gemiddelde_tot:'2041-12-31',horizon_van:2040,horizon_tot:2041,na_stoppen:true}};
+  comparisonResult.scenario_resultaten.forEach((item,i)=>{item.klantbeeld={
+    gemiddeld_over_per_maand:[5100,4400,5700][i],aantal_maanden_gemiddelde:24,
+    verschil_gemiddeld_over_per_maand:[0,-700,600][i],verschil_vermogen_op_80:[0,-80000,120000][i],
+    vermogen_op_80:item.vermogen_op_80,laagste_buffer:50000,laagste_buffer_maand:'2040-02',
+    grootste_jaartekort:2000,grootste_jaartekort_jaar:2040,jaren_interen:i===1?2:0,jaren_negatief_vermogen:0,
+    jaarregels:[{jaar:2040,over_na_uitgaven:-2000,interen:2000,vermogen_eind:50000,negatief_vermogen:false}],
+  }});
+  const html = renderToStaticMarkup(React.createElement(ResultsSection, {
+    SectionHeader, euro:value=>`EUR ${value}`, calculationStatus:'fresh',
+    geboortedatum:'1960-01-01',activeScenarioName:'Actief',compareScenarioName:'Eerder',comparisonResult,
+    jaarRows:[{jaar:2040,bruto:0,netto:0,cashflow:0,vermogenEinde:800000},
+              {jaar:2041,bruto:0,netto:0,cashflow:0,vermogenEinde:900000}],
+  }));
+  assert.match(html,/persoon 1 80 wordt: EUR 800000/);
+  assert.match(html,/EUR 700 minder/);
+  assert.match(html,/EUR 600 meer/);
+  assert.match(html,/EUR 80000 minder/);
+  assert.match(html,/EUR 120000 meer/);
+  assert.match(html,/2 jaren met interen/);
+  assert.match(html,/EUR 4400/);
+  assert.match(html,/Laagste verwachte vermogensbuffer/);
+  assert.match(html,/Rekendetails/);
+});
+
+test('scenario comparison shows each person age at the last workday', () => {
+  const html = renderToStaticMarkup(React.createElement(ScenarioComparison, {
+    activeScenarioName: 'Actief', euro: value => `EUR ${value}`,
+    comparisonResult: {
+      klantvergelijking: { actief_scenario: 'Actief' },
+      scenario_resultaten: [{ scenario_naam: 'Actief', klantbeeld: {
+        jaarregels: [], laatste_werkdagen: { P1: '2030-03-15', P2: '2031-06-22' },
+        leeftijden_op_laatste_werkdag: { P1: '67j 3 m', P2: '66j 0 m' },
+      } }],
+    },
+  }));
+  assert.match(html, /Laatste werkdag P1: 2030-03-15/);
+  assert.match(html, /Laatste werkdag P1: 2030-03-15 \(67j 3 m\)/);
+  assert.match(html, /Laatste werkdag P2: 2031-06-22/);
+  assert.match(html, /Laatste werkdag P2: 2031-06-22 \(66j 0 m\)/);
+});
+
+test('scenario comparison derives ages when an older API response lacks age data', () => {
+  const html = renderToStaticMarkup(React.createElement(ScenarioComparison, {
+    activeScenarioName: 'Actief', euro: value => `EUR ${value}`,
+    geboortedatum: '1963-03-15', partnerGeboortedatum: '1965-06-22',
+    comparisonResult: {
+      klantvergelijking: { actief_scenario: 'Actief' },
+      scenario_resultaten: [{ scenario_naam: 'Actief', klantbeeld: {
+        jaarregels: [], laatste_werkdagen: { P1: '2030-03-14', P2: '2031-06-22' },
+      } }],
+    },
+  }));
+  assert.match(html, /Laatste werkdag P1: 2030-03-14 \(66j 11 m\)/);
+  assert.match(html, /Laatste werkdag P2: 2031-06-22 \(66j 0 m\)/);
+});
+
+test('scenario selection offers a distinct optional third plan', async () => {
+  const {default:ScenarioSection} = await server.ssrLoadModule('/src/components/ScenarioSection.jsx');
+  const html = renderToStaticMarkup(React.createElement(ScenarioSection, {
+    SectionHeader,scenarios:[{id:'a',naam:'Actief'},{id:'b',naam:'Tweede'},{id:'c',naam:'Derde'}],
+    activeScenarioId:'a',activeScenarioName:'Actief',compareScenarioId:'b',thirdScenarioId:'c',
+    comparisonResult:null,
+  }));
+  assert.match(html,/Derde scenario \(optioneel\)/);
+  const thirdSelect = html.slice(html.indexOf('Derde scenario (optioneel)'),html.indexOf("Vergelijk scenario&#x27;s"));
+  assert.match(thirdSelect,/value="c" selected=""/);
+  assert.doesNotMatch(thirdSelect,/value="a"|value="b"/);
 });

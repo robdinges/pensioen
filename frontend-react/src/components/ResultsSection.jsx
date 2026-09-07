@@ -1,5 +1,6 @@
+import ScenarioComparison from "./ScenarioComparison";
 import { useState } from "react";
-import { buildScenarioDecisionAdvice, buildScenarioDecisionCards, computeStopmomentSummary } from "../planner/plannerCore.js";
+import { computeStopmomentSummary } from "../planner/plannerCore.js";
 
 function TrendChart({ title, rows, series, euro }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -114,12 +115,13 @@ export default function ResultsSection({
   comparisonResult,
   activeScenarioName,
   compareScenarioName,
+  geboortedatum = "",
+  partnerGeboortedatum = "",
   signedEuro,
   signedPercentagePoints,
 }) {
-  const stopmoment = computeStopmomentSummary(jaarRows);
-  const decisionCards = comparisonResult ? (comparisonResult.scenario_resultaten?.length ? buildScenarioDecisionCards(comparisonResult, activeScenarioName, compareScenarioName) : []) : [];
-  const decisionAdvice = comparisonResult ? buildScenarioDecisionAdvice(comparisonResult, activeScenarioName, compareScenarioName) : "Vergelijk eerst een tweede scenario om een helder advies te krijgen.";
+  const stopmoment = computeStopmomentSummary(jaarRows, geboortedatum);
+
 
   return (
     <section className="section">
@@ -137,32 +139,14 @@ export default function ResultsSection({
             <div className="kpi"><span>Periode</span><strong>{`${jaarRows[0].jaar} - ${jaarRows[jaarRows.length - 1].jaar}`}</strong></div>
             <div className="kpi"><span>Gemiddeld netto per jaar</span><strong>{euro(jaarRows.reduce((sum, row) => sum + row.netto, 0) / jaarRows.length)}</strong></div>
             <div className="kpi"><span>Eindvermogen</span><strong>{euro(jaarRows[jaarRows.length - 1].vermogenEinde)}</strong></div>
-            <div className="kpi"><span>Stopmoment</span><strong>{stopmoment.stopMomentLabel}</strong></div>
+            <div className="kpi"><span>Plancontrole</span><strong>{calculationStatus === "fresh" ? stopmoment.stopMomentLabel : "Bereken opnieuw"}</strong></div>
           </div>
-          <div className="notice" role="status">
-            <strong>Stopmoment:</strong> {stopmoment.summaryText}
+          {calculationStatus === "fresh" ? <div className="notice" role="status">
+            <strong>Plancontrole:</strong> {stopmoment.summaryText}
             {stopmoment.firstShortfallYear !== null ? ` Eerste tekortjaar: ${stopmoment.firstShortfallYear}.` : ""}
-            {` Vermogen op 80: ${euro(stopmoment.wealthAt80)}.`}
-          </div>
-          {decisionCards.length > 0 ? (
-            <>
-              <div className="kpis comparison-kpis" aria-label="Scenario keuzecards">
-                {decisionCards.map((card) => (
-                  <div className="kpi comparison-kpi" key={`${card.label}-${card.scenarioName}`}>
-                    <span>{card.label}</span>
-                    <strong>{card.scenarioName}</strong>
-                    <small>{card.note}</small>
-                    <div className={card.nettoDelta >= 0 ? "trend-positive" : "trend-negative"}>
-                      {card.nettoDelta === 0 ? "Gelijk" : `${card.nettoDelta >= 0 ? "+" : "-"}${euro(Math.abs(card.nettoDelta))}/maand`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="notice" role="status">
-                <strong>Keuzeadvies:</strong> {decisionAdvice}
-              </div>
-            </>
-          ) : null}
+            {stopmoment.wealthAt80 === null ? " Vermogen op 80: niet beschikbaar binnen deze berekeningsperiode." : ` Vermogen eind jaar waarin persoon 1 80 wordt: ${euro(stopmoment.wealthAt80)}.`}
+          </div> : null}
+          {comparisonResult ? <ScenarioComparison comparisonResult={comparisonResult} activeScenarioName={activeScenarioName} euro={euro} geboortedatum={geboortedatum} partnerGeboortedatum={partnerGeboortedatum} /> : null}
           <p className="notice">Netto inkomen is je inkomen na belasting. Vrije cashflow laat zien wat er na de overige geldstromen overblijft; een negatief bedrag betekent dat je inteert op je vermogen.</p>
           {aannames.length > 0 ? (
             <details className="assumptions-panel">

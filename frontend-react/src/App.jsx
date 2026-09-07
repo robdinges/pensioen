@@ -6,6 +6,8 @@ import ComponentsSection from "./components/ComponentsSection";
 import ContextTopBar from "./components/layout/ContextTopBar";
 import {
   selectYearRows,
+  buildScenarioComparisonRequest,
+  selectCurrentComparison,
   validateCalculationResponse,
   buildRequestPayload,
   buildInputSignature,
@@ -100,6 +102,7 @@ function AppContent() {
   const [resultaat, setResultaat] = useState(null);
   const [inputSignatureAtCalculation, setInputSignatureAtCalculation] = useState("");
   const [compareScenarioId, setCompareScenarioId] = useState("");
+  const [thirdScenarioId, setThirdScenarioId] = useState("");
   const [comparisonResult, setComparisonResult] = useState(null);
   const [comparisonError, setComparisonError] = useState("");
   const [isComparing, setIsComparing] = useState(false);
@@ -312,6 +315,7 @@ function AppContent() {
       activeScenarioId,
       scenarioSnapshots: currentScenarioSnapshots,
       compareScenarioId,
+      thirdScenarioId,
       comparisonResult,
       importBestandP1Naam,
       importBestandP2Naam,
@@ -344,6 +348,7 @@ function AppContent() {
     setActiveScenarioId(source.activeScenarioId);
     setScenarioSnapshots(source.scenarioSnapshots);
     setCompareScenarioId(source.compareScenarioId);
+    setThirdScenarioId(source.thirdScenarioId || "");
     setComparisonResult(source.comparisonResult);
     hydrateFromScenarioSnapshot(source.activeScenarioSnapshot);
   };
@@ -513,44 +518,26 @@ function AppContent() {
     hydrateFromScenarioSnapshot(clonedData);
   };
 
+  const buildComparisonRequest = () => buildScenarioComparisonRequest(
+    [activeScenarioId, compareScenarioId, thirdScenarioId],
+    id => {
+      const scenario = scenarios.find(item => item.id === id);
+      const snapshot = id === activeScenarioId ? buildCurrentScenarioSnapshot() : scenarioSnapshots[id];
+      if (!scenario || !snapshot) throw new Error("Een gekozen scenario is niet meer beschikbaar. Kies opnieuw.");
+      return scenarioRequestFromSnapshot(snapshot, scenario.naam);
+    }, jaarVan, jaarTot,
+  );
+
   const runScenarioComparison = async () => {
-    if (!compareScenarioId) {
-      setComparisonError("Kies eerst een tweede scenario om te vergelijken.");
-      return;
-    }
-
-    const currentSnapshot = buildCurrentScenarioSnapshot();
-    const otherScenario = scenarios.find((scenario) => scenario.id === compareScenarioId);
-    const otherSnapshot = scenarioSnapshots[compareScenarioId];
-
-    if (!otherScenario || !otherSnapshot) {
-      setComparisonError("Het gekozen scenario kon niet worden geladen.");
-      return;
-    }
-
     setIsComparing(true);
     setComparisonError("");
-
     try {
-      const activeRequest = scenarioRequestFromSnapshot(currentSnapshot, activeScenarioName);
-      const otherRequest = scenarioRequestFromSnapshot(otherSnapshot, otherScenario.naam);
-      const jaarVanVergelijking = Number(jaarVan);
-      const jaarTotVergelijking = Number(jaarTot);
-
+      const request = buildComparisonRequest();
+      const comparisonSignature = JSON.stringify(request);
       const response = await fetch(`${apiBase}/vergelijkingen`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenarios: [activeRequest.scenario, otherRequest.scenario],
-          persoon1: activeRequest.persoon1,
-          persoon2: activeRequest.persoon2,
-          records1: [],
-          records2: [],
-          jaar_van: jaarVanVergelijking,
-          jaar_tot: jaarTotVergelijking,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
       });
-
       const data = await response.json();
       if (!response.ok) {
         const detail = data?.detail;
@@ -568,8 +555,13 @@ function AppContent() {
 
       setComparisonResult({
         ...data?.vergelijking,
-        jaar_van: jaarVanVergelijking,
-        jaar_tot: jaarTotVergelijking,
+        jaar_van: request.jaar_van,
+        jaar_tot: request.jaar_tot,
+        inputSignature: comparisonSignature,
+        vermogen70Beschikbaar: Number(request.persoon1.geboortedatum.slice(0,4)) + 70 >= request.jaar_van
+          && Number(request.persoon1.geboortedatum.slice(0,4)) + 70 <= request.jaar_tot,
+        vermogen80Beschikbaar: Number(request.persoon1.geboortedatum.slice(0,4)) + 80 >= request.jaar_van
+          && Number(request.persoon1.geboortedatum.slice(0,4)) + 80 <= request.jaar_tot,
       });
     } catch (err) {
       setComparisonError(err instanceof Error ? err.message : "Onbekende fout bij scenariovergelijking");
@@ -898,6 +890,7 @@ function AppContent() {
     scenarios,
     activeScenarioId,
     compareScenarioId,
+    thirdScenarioId,
     comparisonResult,
     importBestandP1Naam,
     importBestandP2Naam,
@@ -949,6 +942,11 @@ function AppContent() {
   }, [scenarios, activeScenarioId, scenarioSnapshots]);
 
   useEffect(() => {
+    if (thirdScenarioId && (thirdScenarioId === activeScenarioId || thirdScenarioId === compareScenarioId
+      || !scenarios.some(item => item.id === thirdScenarioId))) setThirdScenarioId("");
+  }, [scenarios, activeScenarioId, compareScenarioId, thirdScenarioId]);
+
+  useEffect(() => {
     actions.setContext({ activeScenario: activeScenarioName });
   }, [activeScenarioName, actions]);
 
@@ -996,6 +994,7 @@ function AppContent() {
     activeScenarioId,
     scenarioSnapshots,
     compareScenarioId,
+    thirdScenarioId,
     comparisonResult,
     importBestandP1Naam,
     importBestandP2Naam,
@@ -1174,19 +1173,26 @@ function AppContent() {
     }
   };
 
+  let validComparisonResult = null;
+  try {
+    validComparisonResult = selectCurrentComparison(comparisonResult, buildComparisonRequest());
+  } catch { /* Een gewijzigde selectie vereist een nieuwe vergelijking. */ }
+
   const renderResultaten = () => (
     <ResultsSection
       SectionHeader={SectionHeader}
       jaarRows={jaarRows}
+      geboortedatum={geboortedatum}
       euro={euro}
       signedEuro={signedEuro}
       signedPercentagePoints={signedPercentagePoints}
       aannames={resultaat?.aannames || []}
       calculationStatus={state.calculationStatus}
       onStepSelect={actions.setActiveStep}
-      comparisonResult={comparisonResult}
+      comparisonResult={validComparisonResult}
       activeScenarioName={activeScenarioName}
       compareScenarioName={compareScenarioName}
+      partnerGeboortedatum={partnerGeboortedatum}
     />
   );
 
@@ -1313,10 +1319,12 @@ function AppContent() {
           duplicateActiveScenario={duplicateActiveScenario}
           compareScenarioId={compareScenarioId}
           setCompareScenarioId={setCompareScenarioId}
+          thirdScenarioId={thirdScenarioId}
+          setThirdScenarioId={setThirdScenarioId}
           runScenarioComparison={runScenarioComparison}
           isComparing={isComparing}
-          comparisonError={comparisonError}
-          comparisonResult={comparisonResult}
+          comparisonError={comparisonError || (comparisonResult && !validComparisonResult ? "Invoer of selectie gewijzigd. Vergelijk opnieuw voor actueel advies." : "")}
+          comparisonResult={validComparisonResult}
           comparisonSummary={comparisonSummary}
           compareScenarioName={compareScenarioName}
           signedEuro={signedEuro}
