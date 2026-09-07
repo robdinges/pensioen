@@ -82,6 +82,13 @@
         "verwacht_eindvermogen": "104960",
         "tolerantie": "0.05"
       }
-    ]
+    ],
+    "regressies_netto": {
+      "bron": "Interne resultaatacceptatie, geen OLA-referentie",
+      "netto_maand_p1": "1000",
+      "netto_maand_p2": "2000",
+      "verwacht_jaar_p1": "12000",
+      "verwacht_jaar_p2": "24000"
+    }
   }
 }

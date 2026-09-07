@@ -160,3 +160,18 @@ meerdere grote resultaten, behoud van invoer en foutdoorgifte zonder wissen.
 Alle 13 frontendtests en de productiebuild slagen. Het persoonlijke Edge-profiel
 is niet rechtstreeks onderzocht. Bron voor de opslaglimiet:
 [MDN Web Storage quota](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria).
+
+### Aansluiting netto inkomen (7 september 2026)
+
+Stap: Resultaten. Source of truth: bestaande maandresultaten uit cashflow_engine;
+detail_output_engine assembleert de optelbare tabel `netto_aansluiting`.
+Netto loon en overig netto inkomen behouden hun persoon. Bruto, werkelijk over
+maanden verdeelde box 1 na kortingen, netto invoer, rendement en inhoudingen
+staan afzonderlijk. P1 + P2 + gezamenlijk/niet toegewezen = huishouden, zowel
+per rij als voor het totaal. Geen gewijzigde fiscale tarieven of kasstromen.
+Rendement blijft in het bestaande huishoudelijke netto totaal opgenomen en wordt
+nu expliciet benoemd. Inhoudingen zonder persoonsverdeling blijven zichtbaar
+als niet toegewezen. Oude resultaten vereisen een nieuwe berekening.
+
+Borging: directe assemblertest, partner-enginetest, frontendpresentatietest;
+interne testcase-018-metadata (geen aanpassing van de externe OLA-verwachtingen).

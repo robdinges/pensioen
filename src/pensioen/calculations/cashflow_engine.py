@@ -779,6 +779,12 @@ def _bereken_jaar(
             resultaat.vermogen_correctie = sum(portefeuille.correcties, Decimal("0"))
             resultaat.gebruikte_tarieven["vermogen"]["maandrendement"] = None
             resultaat.gebruikte_tarieven["vermogen"]["inleg_per_maand"] = inleg_per_maand
+        resultaat.gebruikte_tarieven["netto_componenten"] = {
+            sleutel: mb[sleutel] for sleutel in (
+                "arbeid_netto_p1", "arbeid_netto_p2", "overig_netto_p1", "overig_netto_p2",
+                "overig_p1", "overig_p2"
+            )
+        }
         maandresultaten.append(resultaat)
 
     if portefeuille is not None:

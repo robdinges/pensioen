@@ -1,6 +1,6 @@
 # Normalization Report
 
-**Datum**: 2026-09-07 14:20
+**Datum**: 2026-09-07 17:29
 
 ## Samenvatting
 

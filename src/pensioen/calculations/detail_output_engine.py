@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from collections.abc import Callable
 
 from pensioen.models.cashflow import JaarResultaat, MaandResultaat
 from pensioen.models.output_contract import AccountantDetailDTO, JaarSamenvattingDTO
@@ -140,6 +141,38 @@ def _bouw_eigen_woning_resultaat(payload: dict | None) -> EigenWoningResultaat:
     )
 
 
+def bouw_netto_aansluiting(maanden: list[MaandResultaat]) -> list[dict]:
+    """Tel engine-uitkomsten op; gezamenlijk rendement/inhoudingen blijven apart."""
+    def som(waarde: Callable[[MaandResultaat], Decimal]) -> Decimal:
+        return _som_maanden(maanden, waarde)
+
+    def component(persoon: str) -> Decimal:
+        return som(lambda m: sum((
+            _d(m.gebruikte_tarieven.get("netto_componenten", {}).get(f"{soort}_netto_{persoon}"))
+            for soort in ("arbeid", "overig")
+        ), Decimal("0")))
+
+    rijen = []
+    def rij(label: str, p1: Decimal, p2: Decimal, gezamenlijk: Decimal = Decimal("0")) -> None:
+        rijen.append({"label": label, "p1": p1, "p2": p2,
+                      "gezamenlijk": gezamenlijk, "huishouden": p1 + p2 + gezamenlijk})
+
+    rij("Bruto inkomen", som(lambda m: m.arbeid_p1_bruto + m.aow_p1_bruto + m.pensioen_p1_bruto + _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_p1"))),
+        som(lambda m: m.arbeid_p2_bruto + m.aow_p2_bruto + m.pensioen_p2_bruto + _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_p2"))),
+        som(lambda m: m.overig_bruto + m.lijfrente_bruto - _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_p1")) - _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_p2"))))
+    rij("Af: box 1-belasting na heffingskortingen",
+        som(lambda m: -m.belasting_p1 + m.heffingskorting_p1),
+        som(lambda m: -m.belasting_p2 + m.heffingskorting_p2))
+    p1, p2 = component("p1"), component("p2")
+    rij("Netto ingevoerde inkomsten", p1, p2,
+        som(lambda m: m.inkomen_componenten_netto) - p1 - p2)
+    rij("Rendement / rente", Decimal("0"), Decimal("0"), som(lambda m: m.rente_bruto))
+    rij("Af: overige inhoudingen", Decimal("0"), Decimal("0"), -som(lambda m: m.inhoudingen))
+    totalen = [sum((r[k] for r in rijen), Decimal("0")) for k in ("p1", "p2", "gezamenlijk")]
+    rij("Netto inkomen inclusief rendement", *totalen)
+    return rijen
+
+
 def bouw_accountant_detail(
     jaar_resultaat: JaarResultaat,
     aanname: str,
@@ -252,10 +285,10 @@ def bouw_accountant_detail(
         "jaar_arbeid_p2": jaar_arbeid_p2,
         "jaar_overig_p1": jaar_overig_p1,
         "jaar_overig_p2": jaar_overig_p2,
-        "jaar_arbeid_netto_p1": jaar_arbeid_netto,
-        "jaar_arbeid_netto_p2": Decimal("0"),
-        "jaar_overig_netto_p1": Decimal("0"),
-        "jaar_overig_netto_p2": Decimal("0"),
+        "jaar_arbeid_netto_p1": _som_maanden(maanden, lambda m: _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("arbeid_netto_p1"))),
+        "jaar_arbeid_netto_p2": _som_maanden(maanden, lambda m: _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("arbeid_netto_p2"))),
+        "jaar_overig_netto_p1": _som_maanden(maanden, lambda m: _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_netto_p1"))),
+        "jaar_overig_netto_p2": _som_maanden(maanden, lambda m: _d(m.gebruikte_tarieven.get("netto_componenten", {}).get("overig_netto_p2"))),
         "jaar_aow_p1": jaar_aow_p1,
         "jaar_aow_p2": jaar_aow_p2,
         "jaar_pen_p1": jaar_pen_p1,
@@ -314,6 +347,7 @@ def bouw_accountant_detail(
         ),
         "netto_p1": _d(box1_payload.get("netto_p1")),
         "netto_p2": _d(box1_payload.get("netto_p2")),
+        "netto_aansluiting": bouw_netto_aansluiting(maanden),
         "totaal_netto_inkomen": _som_maanden(maanden, lambda m: m.netto_inkomen),
         "jaar_netto_component_inkomen": jaar_arbeid_netto,
         "jaar_incidenteel_ontvangst": jaar_incidenteel_ontvangst,

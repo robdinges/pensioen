@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 
 OUTPUT_CONTRACT_VERSION = "1.0"
@@ -36,6 +36,7 @@ class JaarSamenvattingDTO(TypedDict):
 
 
 class AccountantDetailDTO(TypedDict, total=False):
+    netto_aansluiting: list[dict[str, Any]]
     """Kerncontract voor accountantoutput; uitbreidingen blijven additief."""
 
     jaar: int

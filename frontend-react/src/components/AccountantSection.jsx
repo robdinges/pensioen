@@ -7,7 +7,7 @@ function percentage(value, digits = 2) {
   return `${(number(value) * 100).toFixed(digits)}%`;
 }
 
-function CalculationTable({ rows, euro, hasPartner }) {
+function CalculationTable({ rows, euro, hasPartner, showShared = false }) {
   const visibleRows = rows.filter((row) => !row.optional || row.values.some((value) => number(value) !== 0));
 
   return (
@@ -18,6 +18,7 @@ function CalculationTable({ rows, euro, hasPartner }) {
             <th>Berekeningsregel</th>
             <th>Persoon 1</th>
             {hasPartner ? <th>Persoon 2</th> : null}
+            {showShared ? <th>Gezamenlijk / niet toegewezen</th> : null}
             <th>Huishouden</th>
           </tr>
         </thead>
@@ -31,6 +32,7 @@ function CalculationTable({ rows, euro, hasPartner }) {
                 <td><strong>{row.label}</strong>{row.note ? <><br /><small>{row.note}</small></> : null}</td>
                 <td>{euro(p1)}</td>
                 {hasPartner ? <td>{euro(p2)}</td> : null}
+                {showShared ? <td>{euro(number(row.shared))}</td> : null}
                 <td><strong>{euro(total)}</strong></td>
               </tr>
             );
@@ -101,12 +103,9 @@ function AccountantYear({ jaarResultaat, euro }) {
     { label: "Niet-benutte heffingskortingen", values: [detail.niet_verrekende_hk_p1, detail.niet_verrekende_hk_p2], optional: true },
     { label: "Verschuldigde box 1-belasting", values: [detail.netto_bel_p1, detail.netto_bel_p2] },
   ];
-  const nettoRows = [
-    { label: "Bruto inkomen", values: [detail.bruto_p1, detail.bruto_p2] },
-    { label: "Af: verschuldigde box 1-belasting", values: [-number(detail.netto_bel_p1), -number(detail.netto_bel_p2)] },
-    { label: "Netto inkomen", values: [detail.netto_p1, detail.netto_p2], total: detail.totaal_netto_inkomen },
-    { label: "Niet-belaste netto componenten", values: [detail.jaar_arbeid_netto_p1, detail.jaar_arbeid_netto_p2], total: detail.jaar_netto_component_inkomen, optional: true },
-  ];
+  const nettoRows = (detail.netto_aansluiting || []).map((row) => ({
+    label: row.label, values: [row.p1, row.p2], shared: row.gezamenlijk, total: row.huishouden,
+  }));
 
   return (
     <div className="accountant-year-detail">
@@ -148,7 +147,8 @@ function AccountantYear({ jaarResultaat, euro }) {
       </DetailNotice>
 
       <h3>7. Netto inkomen</h3>
-      <CalculationTable rows={nettoRows} euro={euro} hasPartner={hasPartner} />
+      <DetailNotice>Persoon 1 + persoon 2 + gezamenlijk sluiten aan op het huishoudtotaal. Rendement en niet per persoon toegewezen inhoudingen staan apart. Huishoudelijke uitgaven en box 3 volgen bij de vrije cashflow.</DetailNotice>
+      {nettoRows.length ? <CalculationTable rows={nettoRows} euro={euro} hasPartner={hasPartner} showShared /> : <DetailNotice>Bereken opnieuw om de volledige netto-opbouw te zien.</DetailNotice>}
 
       <h3>8. Box 3-heffing</h3>
       <div className="table-wrap">

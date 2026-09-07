@@ -62,3 +62,18 @@ test("assets show dated balances instead of duration fields", () => {
   assert.doesNotMatch(html, />Vanaf</);
   assert.doesNotMatch(html, />T\/m</);
 });
+
+test("accountant presents engine reconciliation with a shared column", async () => {
+  const { default: AccountantSection } = await server.ssrLoadModule('/src/components/AccountantSection.jsx');
+  const html = renderToStaticMarkup(React.createElement(AccountantSection, {
+    SectionHeader, euro: (value) => `EUR ${value}`,
+    resultaat: { cashflow: { jaren: [{ jaar: 2025, accountant_detail: {
+      heeft_partner: true, netto_aansluiting: [{ label: 'Netto inkomen inclusief rendement',
+        p1: 12000, p2: 24000, gezamenlijk: 300, huishouden: 36300 }],
+    } }] } },
+  }));
+  assert.match(html, /Gezamenlijk \/ niet toegewezen/);
+  assert.match(html, /EUR 12000/);
+  assert.match(html, /EUR 24000/);
+  assert.match(html, /EUR 36300/);
+});
