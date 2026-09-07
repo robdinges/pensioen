@@ -64,13 +64,10 @@ def test_resultaat_service_levert_dezelfde_engine_output(
 
 def test_presentatiepaden_bevatten_geen_fiscale_fallbacks() -> None:
     projectroot = Path(__file__).parents[1]
-    api_client = (projectroot / "app_api_client.py").read_text(encoding="utf-8")
     planner_core = (
         projectroot / "frontend-react/src/planner/plannerCore.js"
     ).read_text(encoding="utf-8")
 
-    assert "_bereken_maand_netto" not in api_client
     assert "belastingMaand" not in planner_core
     assert "nettoMaand" not in planner_core
-    assert "jaar_samenvatting ontbreekt" in api_client
     assert "jaar_samenvatting ontbreekt" in planner_core

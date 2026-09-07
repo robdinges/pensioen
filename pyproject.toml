@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "Nederlandse pensioenplanning en cashflowprognoses voor een huishouden"
 requires-python = ">=3.12"
 dependencies = [
-    "streamlit>=1.35",
     "pydantic>=2.7",
     "pandas>=2.2",
     "openpyxl>=3.1",

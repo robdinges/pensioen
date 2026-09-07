@@ -219,39 +219,6 @@ def test_accountant_p1_p2_breakdown():
     assert detail["jaar_overig_p2"] == Decimal("0")
 
 
-def test_accountant_eigen_woning_blok_bij_effect_partner2():
-    """Eigen woning sectie moet zichtbaar zijn als alleen partner 2 effect heeft."""
-    from pensioen.ui.pagina_accountant import _heeft_eigen_woning_effect
-
-    partner1 = EigenWoningResultaat(
-        eigenwoningforfait=Decimal("0"),
-        aftrekbare_hypotheekrente=Decimal("0"),
-        overige_aftrekbare_kosten=Decimal("0"),
-        totaal_aftrek=Decimal("0"),
-        saldo_eigen_woning=Decimal("0"),
-        hillen_correctie=Decimal("0"),
-        box1_mutatie=Decimal("0"),
-        tariefsaanpassing=Decimal("0"),
-        box3_bezittingen=Decimal("0"),
-        box3_schulden=Decimal("0"),
-    )
-    partner2 = EigenWoningResultaat(
-        eigenwoningforfait=Decimal("875"),
-        aftrekbare_hypotheekrente=Decimal("3000"),
-        overige_aftrekbare_kosten=Decimal("0"),
-        totaal_aftrek=Decimal("3000"),
-        saldo_eigen_woning=Decimal("-2125"),
-        hillen_correctie=Decimal("0"),
-        box1_mutatie=Decimal("-2125"),
-        tariefsaanpassing=Decimal("0"),
-        box3_bezittingen=Decimal("0"),
-        box3_schulden=Decimal("0"),
-    )
-
-    assert not _heeft_eigen_woning_effect(partner1)
-    assert _heeft_eigen_woning_effect(partner2)
-
-
 def test_accountant_gebruikt_vermogensitem_bron_voor_eigen_woning() -> None:
     """Accountantdetail moet de vermogensitem-bron gebruiken voor eigen woning en hypotheek."""
     from pensioen.tax.belasting_loader import laad_tarieven

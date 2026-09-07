@@ -2,9 +2,9 @@
 
 ## Besluit
 
-React is de primaire gebruikersinterface. Streamlit blijft voorlopig beschikbaar
-voor functioneel beheer en validatie. Beide consumeren dezelfde API- en
-resultaatcontracten; Streamlit bevat geen zelfstandig rekenpad.
+React is de enige gebruikersinterface van de pensioenplanner. Alle presentatie-
+en invoerschermen communiceren met de backend via de FastAPI-endpoints.
+Streamlit is volledig uit de codebase verwijderd.
 
 Dit frontendbesluit en het compatibiliteitsbeleid zijn door de producteigenaar
 goedgekeurd op 26 juli 2026.
@@ -23,16 +23,13 @@ Resultaten`
 | `calculations/detail_output_engine.py` | centrale afleiding van jaar- en accountantoutput |
 | `models/output_contract.py` | versie en typed publieke resultaatcontracten |
 | `api/` | inputvalidatie en serialisatie, geen herberekening |
-| React en Streamlit | presentatie en invoer, geen fiscale of cashflowformules |
+| React | presentatie en invoer, geen fiscale of cashflowformules |
 | `reports/` | export van bestaande engine-output |
 
 ## Frontendstrategie
 
-- React: primaire planner voor huishoudens, scenario's, import, berekening en rapportage.
-- Streamlit: beheer- en validatiescherm zolang functionele beheertaken nog niet
-  aantoonbaar in React zijn afgedekt.
-- Verwijdering van Streamlit vereist pariteitstoets, sessiemigratie en expliciete
-  productgoedkeuring.
+- React: enige planner voor huishoudens, scenario's, import, berekening en rapportage.
+- Streamlit: volledig uitgeschakeld en verwijderd.
 
 ## Compatibiliteit
 

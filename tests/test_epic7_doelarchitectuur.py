@@ -30,19 +30,7 @@ def test_presentatie_en_scenariovergelijking_omzeilen_resultaatservice_niet() ->
     gecontroleerde_bestanden = [
         projectroot / "src/pensioen/api/main.py",
         projectroot / "src/pensioen/calculations/scenario_engine.py",
-        projectroot / "src/pensioen/ui/pagina_accountant.py",
-        projectroot / "src/pensioen/ui/pagina_bereken.py",
     ]
     for bestand in gecontroleerde_bestanden:
         inhoud = bestand.read_text(encoding="utf-8")
         assert "bereken_huishouden" not in inhoud, bestand
-
-
-def test_streamlit_accountant_is_pure_detailconsument() -> None:
-    projectroot = Path(__file__).parents[1]
-    inhoud = (
-        projectroot / "src/pensioen/ui/pagina_accountant.py"
-    ).read_text(encoding="utf-8")
-    assert "bouw_accountant_detail" not in inhoud
-    assert "_bereken_jaar_detail" not in inhoud
-    assert "jr.accountant_detail" in inhoud

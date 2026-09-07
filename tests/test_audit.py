@@ -17,7 +17,7 @@ def test_audit_entry_creation() -> None:
         old_value=Decimal("3"),
         new_value=Decimal("5"),
         is_override=True,
-        user_process="streamlit",
+        user_process="react",
     )
 
     assert entry.scenario_naam == "Test Scenario"

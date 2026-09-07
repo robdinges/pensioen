@@ -63,14 +63,6 @@ cashflowprognose voor een huishouden.
   - automatische OpenAPI/Swagger documentatie
   - inheritance-validatie op scenario-lijsten (cycles, orphans, self-parenting)
   - code-normalisatie op API-input voor component- en vermogenscodes (hoofdletter/spatievarianten worden geharmoniseerd)
-- Simpele API-gedreven UI:
-  - minimale Streamlit client (`app_api_client.py`) die via HTTP de API aanroept
-  - expliciete Berekenen-knop
-  - melding wanneer invoer gewijzigd is sinds de laatste berekening
-  - sidebar met live API-status en handmatige referentie-refresh
-  - uitgebreid jaarresultaten-dashboard met KPI's, jaartabel en trendgrafieken
-  - jaarresultaten in tabellen worden primair uit engineveld `jaar_samenvatting` opgebouwd
-  - aparte tab voor ruwe API JSON-output
 - React UI (`frontend-react/`, opgenomen in `main`):
   - sectie **Inkomsten / Uitgaven** met tegel-cards voor loon, uitkering, pensioen en eenmalige posten
   - periodieke **Uitgave**-card in dezelfde sectie; wordt als negatieve cashflow verwerkt (buiten box 1/box 3)
@@ -124,11 +116,10 @@ eveneens afgerond.
 Epic 7-consolidatie:
 
 - `bereken_resultaten()` is de publieke ingang voor API, scenariovergelijking
-  en beide UI's.
+  en de React UI.
 - jaar- en accountantoutput hebben een centraal typed contract in
   `models/output_contract.py`.
-- React is de primaire gebruikers-UI; Streamlit blijft beheer/validatie totdat
-  een expliciet migratiebesluit verwijdering toestaat.
+- React is de enige gebruikers-UI.
 - legacyvelden blijven alleen behouden waar API-, sessie- of fixturecallers
   aantoonbaar bestaan; zie `docs/architecture/LEGACYREGISTER.md`.
 
@@ -142,34 +133,19 @@ python3 -m pip install -e ".[dev]"
 
 Gebruik Python 3.12+ (vereist door dit project).
 
-2. Start de app:
-
-```bash
-streamlit run app.py
-```
-
-3. Start de API (Epic 1 MVP):
+2. Start de API (FastAPI backend):
 
 ```bash
 python -m uvicorn --app-dir src pensioen.api.main:app --reload
 ```
 
-4. Open de Swagger/OpenAPI documentatie:
+3. Open de Swagger/OpenAPI documentatie:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-5. Start de simpele API-client UI:
-
-```bash
-streamlit run app_api_client.py
-```
-
-De API-client toont berekeningen primair op jaarbasis in de tab
-`Resultaten op Jaarbasis`.
-
-6. Start de React UI:
+4. Start de React UI:
 
 ```bash
 cd frontend-react

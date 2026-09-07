@@ -18,7 +18,7 @@ class AuditEntry:
     old_value: Any
     new_value: Any
     is_override: bool  # True als dit een override in afgeleid scenario is
-    user_process: str = "streamlit"  # gebruiker of proces dat wijziging deed
+    user_process: str = "react"  # gebruiker of proces dat wijziging deed
 
     def __repr__(self) -> str:
         override_marker = " [OVERRIDE]" if self.is_override else ""

@@ -7,14 +7,14 @@ Professionele Nederlandse pensioenplanner: dag-nauwkeurige cashflowprognoses voo
 
 - **Taal / Language**: Dutch voor domain-code, variabelenamen en comments; Engels voor infrastructure/tests
 - **Domain**: Dutch pension rules (AOW, werkgeverspensioen, Box 1/3, heffingskortingen)
-- **UI**: Streamlit (`streamlit run app.py`) en React (`frontend-react/`)
+- **UI**: React (`frontend-react/`) via FastAPI backend (`src/pensioen/api/`)
 
 ## Tech Stack
 - **Python 3.12+** — type hints overal
+- **FastAPI / Uvicorn** — REST API endpoints
 - **Pydantic v2** — validatie van alle inputmodellen
 - **Decimal** — alle geldbedragen (`from decimal import Decimal, ROUND_HALF_UP`)
 - **pandas 2.2+** — DataFrames voor tabellen en exports
-- **plotly 5.22+** — interactieve grafieken in de UI
 - **openpyxl 3.1+** — Excel-rapporten
 - **pdfplumber 0.11+** — PDF-parsing van MPO-exports
 - **pytest 8.2+ / pytest-cov** — testframework
@@ -25,8 +25,11 @@ Professionele Nederlandse pensioenplanner: dag-nauwkeurige cashflowprognoses voo
 # Installeer (inclusief dev-dependencies)
 pip install -e ".[dev]"
 
-# Start de applicatie
-streamlit run app.py
+# Start de backend API
+python -m uvicorn --app-dir src pensioen.api.main:app --reload
+
+# Start de React frontend (in een tweede terminal)
+cd frontend-react && npm run dev
 
 # Voer tests uit
 pytest tests/
@@ -39,14 +42,13 @@ pytest tests/ --cov=src --cov-report=term-missing
 
 ```
 pensioen/
-├── app.py                          # Streamlit entrypunt
-├── app_api_client.py               # Eenvoudige Streamlit API-client
 ├── frontend-react/                 # React/Vite frontend
 ├── pyproject.toml                  # Pakketdefinitie (build-backend: setuptools.build_meta)
 ├── config/
 │   ├── belasting_YYYY.json         # Belastingtarieven per jaar
 │   └── aow_leeftijden.json         # SVB AOW-leeftijdentabel
 ├── src/pensioen/
+│   ├── api/                        # FastAPI REST API endpoints
 │   ├── models/                     # Pydantic inputmodellen + cashflow dataclasses
 │   │   ├── persoon.py              # Persoon
 │   │   ├── pensioen_record.py      # PensioenRecord + TypePensioen
@@ -68,20 +70,13 @@ pensioen/
 │   │   ├── vermogen_engine.py      # Vermogensontwikkeling met maandrendement; ondersteunt sparen/beleggen split
 │   │   ├── cashflow_engine.py      # bereken_huishouden() — hoofdengine; doet rendement_sparen/beleggen door
 │   │   └── scenario_engine.py      # vergelijk_scenarios() — multi-scenario vergelijking
-│   ├── reports/
-│   │   └── rapport_engine.py       # genereer_rapport() → Excel bytes
-│   └── ui/
-│       ├── pagina_import.py         # Streamlit: MPO-import
-│       ├── pagina_persoon.py        # Streamlit: persoonsgegevens
-│       ├── pagina_scenario.py       # Streamlit: scenarioparameters
-│       ├── pagina_resultaten.py     # Streamlit: grafieken + tabel
-│       ├── pagina_instellingen.py   # Streamlit: tarieven inzien
-│       └── pagina_rapport.py        # Streamlit: rapport downloaden
+│   └── reports/
+│       └── rapport_engine.py       # genereer_rapport() → Excel bytes
 ├── tools/                          # Validatie-, export- en debughulpmiddelen
 └── tests/
     ├── conftest.py                  # Gedeelde fixtures
     ├── fixtures/                    # CSV-testbestanden (mpo_partner1.csv, mpo_partner2.csv)
-    └── test_*.py                    # 295 tests verzameld op 26 juli 2026
+    └── test_*.py
 ```
 
 Epic 6-poort op 26 juli 2026: 293 tests slagen, 2 bekende externe

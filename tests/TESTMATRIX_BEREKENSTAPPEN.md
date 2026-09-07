@@ -27,9 +27,7 @@ afdekken.
 | `test_referentie_governance.py` | Resultaten | `referentie` | Externe cases |
 | `test_regression_bugs.py` | Resultaten | `engine`, `referentie` | Volledige keten |
 | `test_rendement_split.py` | Vermogen | `engine` | Resultaten |
-| `test_scenario_context.py` | Scenario | `presentatie` | Streamlit |
 | `test_scenario_engine.py` | Scenario | `engine` | Resultaten |
-| `test_sessie_persistentie.py` | Scenario | `contract` | Streamlit |
 | `test_vermogen_engine.py` | Vermogen | `engine` | Box 3/resultaten |
 | `test_vermogensitem.py` | Vermogen | `bouwsteen` | Scenario |
 
