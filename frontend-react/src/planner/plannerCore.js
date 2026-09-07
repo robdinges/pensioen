@@ -437,8 +437,6 @@ export function buildRequestPayload({
   let jaarlijkse_inleg_beleggen = 0;
   let spaargeld_start = 0;
   let beleggingen_start = 0;
-  const sparenRendementen = [];
-  const beleggenRendementen = [];
 
   const mapPersoon = (persoon, fallback) => {
     if (!persoon) {
@@ -483,12 +481,10 @@ export function buildRequestPayload({
     if (post.type === "sparen") {
       spaargeld_start += Math.max(0, toAmount(values.beginwaarde));
       jaarlijkse_inleg_sparen += Math.max(0, toAmount(values.inleg));
-      sparenRendementen.push(toAmount(values.groei_pct));
     }
     if (post.type === "beleggen") {
       beleggingen_start += Math.max(0, toAmount(values.beginwaarde));
       jaarlijkse_inleg_beleggen += Math.max(0, toAmount(values.inleg));
-      beleggenRendementen.push(toAmount(values.groei_pct));
     }
 
     const item = {
@@ -501,6 +497,10 @@ export function buildRequestPayload({
       groei_pct: String(toAmount(values.groei_pct)),
       box3_belast: post.type !== "eigen_woning" && post.type !== "hypotheek",
     };
+
+    if (post.type === "sparen" || post.type === "beleggen") {
+      item.jaarlijkse_inleg = String(Math.max(0, toAmount(values.inleg)));
+    }
 
     if (post.type === "hypotheek") {
       item.is_primaire_woning = true;
@@ -516,14 +516,6 @@ export function buildRequestPayload({
     vermogensitems.push(item);
   }
 
-  const rendement_sparen_pct =
-    sparenRendementen.length > 0
-      ? sparenRendementen.reduce((sum, value) => sum + value, 0) / sparenRendementen.length
-      : 0;
-  const rendement_beleggen_pct =
-    beleggenRendementen.length > 0
-      ? beleggenRendementen.reduce((sum, value) => sum + value, 0) / beleggenRendementen.length
-      : 0;
 
   return {
     scenario: {
@@ -533,8 +525,6 @@ export function buildRequestPayload({
       jaarlijkse_inleg: "0",
       jaarlijkse_inleg_sparen: String(jaarlijkse_inleg_sparen),
       jaarlijkse_inleg_beleggen: String(jaarlijkse_inleg_beleggen),
-      rendement_sparen_pct: String(rendement_sparen_pct),
-      rendement_beleggen_pct: String(rendement_beleggen_pct),
       inflatie_pct: "2",
       box3_meenemen: true,
       componenten,

@@ -273,6 +273,8 @@ def _bereken_jaar(
     box3_liquide_grondslag_begin_jaar: Decimal,
     box3_vaste_grondslag_begin_jaar: Decimal,
     box3_bron: str,
+    portefeuille: vermogen_engine.LiquidePortefeuille | None = None,
+    box3_spaarfractie_actueel: Decimal | None = None,
 ) -> JaarResultaat:
     """
     Bereken alle cashflows voor één kalenderjaar voor het huishouden.
@@ -609,6 +611,8 @@ def _bereken_jaar(
     box3_jaar = Decimal("0")
     box3_disclaimer = ""
     spaargeld_fractie_box3 = scenario.bereken_spaargeld_fractie_startvermogen(date(jaar, 1, 1))
+    if box3_spaarfractie_actueel is not None:
+        spaargeld_fractie_box3 = box3_spaarfractie_actueel
     if scenario.box3_meenemen and box3_grondslag_begin_jaar > Decimal("0"):
         # Box 3 peildatum gebruikt startverdeling (1 januari), niet maandcomponenten.
         box3_jaar, box3_disclaimer = belasting_engine.bereken_box3_heffing(
@@ -672,13 +676,17 @@ def _bereken_jaar(
         peildatum = date(jaar, maand, 1)
         spaargeld_fractie_dynamisch = scenario.bereken_spaargeld_fractie_op_datum(peildatum)
 
-        rente = vermogen_engine.bereken_rente_maand(
-            saldo,
-            scenario.rendement_pct,
-            scenario.rendement_sparen_pct,
-            scenario.rendement_beleggen_pct,
-            spaargeld_fractie_dynamisch,
-        )
+        opening = Decimal("0")
+        if portefeuille is not None:
+            rente, inleg_per_maand, opening = portefeuille.begin_maand(jaar, maand)
+        else:
+            rente = vermogen_engine.bereken_rente_maand(
+                saldo,
+                scenario.rendement_pct,
+                scenario.rendement_sparen_pct,
+                scenario.rendement_beleggen_pct,
+                spaargeld_fractie_dynamisch,
+            )
 
         netto_cashflow = (
             mb["arbeid_p1"] + mb["arbeid_p2"]
@@ -696,7 +704,11 @@ def _bereken_jaar(
             + rente
             + inleg_per_maand
         )
-        saldo = _rond_af(saldo + netto_cashflow)
+        if portefeuille is not None:
+            portefeuille.sluit_maand(netto_cashflow - rente - inleg_per_maand)
+            saldo = portefeuille.saldo
+        else:
+            saldo = _rond_af(saldo + netto_cashflow)
 
         resultaat = MaandResultaat(
             jaar=jaar,
@@ -715,7 +727,7 @@ def _bereken_jaar(
                 + mb["overig_netto_p2"]
             ),
             rente_bruto=rente,
-            eenmalig_ontvangst=mb["ontvangst"],
+            eenmalig_ontvangst=mb["ontvangst"] + opening,
             eenmalig_uitgave=mb["uitgave"],
             belasting_p1=maand_bel_p1,
             heffingskorting_p1=maand_hk_p1,
@@ -759,6 +771,10 @@ def _bereken_jaar(
                 jaar_heffingskorting_p2,
             ),
         )
+        if portefeuille is not None:
+            resultaat.gebruikte_tarieven["vermogen"].update(portefeuille.detail())
+            resultaat.gebruikte_tarieven["vermogen"]["maandrendement"] = None
+            resultaat.gebruikte_tarieven["vermogen"]["inleg_per_maand"] = inleg_per_maand
         maandresultaten.append(resultaat)
 
     jaar_resultaat = JaarResultaat(
@@ -834,8 +850,30 @@ def bereken_huishouden(
         else Decimal("1")
     )
 
+    liquide_items = [i for i in scenario_resolved.vermogensitems
+                     if i.type.value in ("spaargeld", "beleggingen")]
+    portefeuille = None
+    if liquide_items:
+        inleg_sparen = scenario_resolved.jaarlijkse_inleg_sparen
+        if not inleg_sparen and not scenario_resolved.jaarlijkse_inleg_beleggen:
+            inleg_sparen = scenario_resolved.jaarlijkse_inleg
+        portefeuille = vermogen_engine.LiquidePortefeuille(
+            liquide_items, date(jaar_van, 1, 1), inleg_sparen,
+            scenario_resolved.jaarlijkse_inleg_beleggen,
+        )
+        saldo = portefeuille.saldo
+
     for jaar in range(jaar_van, jaar_tot + 1):
         config, aanname_melding = belasting_configs[jaar]
+        box3_spaarfractie_actueel = None
+        if portefeuille is not None:
+            sparen, beleggen = portefeuille.box3_saldi(date(jaar, 1, 1))
+            vaste = scenario_resolved.bepaal_vermogen_startwaarden(date(jaar, 1, 1))
+            box3_vaste_grondslag = Decimal(str(vaste["box3_vaste_grondslag"]))
+            box3_liquide_grondslag = sparen + beleggen
+            box3_grondslag = box3_liquide_grondslag + box3_vaste_grondslag
+            box3_spaarfractie_actueel = sparen / box3_grondslag if box3_grondslag else Decimal("0")
+            box3_bron = "vermogensitems" if jaar == jaar_van else "vermogensitems_prognose"
 
         jaar_resultaat = _bereken_jaar(
             jaar=jaar,
@@ -851,9 +889,13 @@ def bereken_huishouden(
             box3_liquide_grondslag_begin_jaar=box3_liquide_grondslag,
             box3_vaste_grondslag_begin_jaar=box3_vaste_grondslag,
             box3_bron=box3_bron,
+            portefeuille=portefeuille,
+            box3_spaarfractie_actueel=box3_spaarfractie_actueel,
         )
         cashflow.jaren.append(jaar_resultaat)
         saldo = jaar_resultaat.vermogen_einde_jaar
+        if portefeuille is not None:
+            continue  # Volgend jaar gebruikt de actuele saldi per post.
         if gebruikt_vermogensitems:
             volgende_startwaarden = scenario_resolved.bepaal_vermogen_startwaarden(
                 date(jaar + 1, 1, 1)

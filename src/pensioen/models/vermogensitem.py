@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class VermogensType(str, Enum):
@@ -61,6 +61,9 @@ class VermogensItem(BaseModel):
     aanschafdatum: date | None = None    # datum aankoop (None = bij start planning)
     groei_pct: Decimal = Decimal("0")    # jaarlijkse groei (+) of afschrijving (-)
     
+    jaarlijkse_inleg: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)
+    # None behoudt oude scenario-inleg; expliciet 0 schakelt die fallback uit.
+
     # Verkoop (optioneel)
     verkoopdatum: date | None = None     # datum verkoop (None = behouden)
     verkoopprijs: Decimal | None = None  # opbrengst verkoop (None = actuele waarde)

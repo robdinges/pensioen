@@ -23,13 +23,12 @@ def maandrendement(jaarrendement_pct: Decimal) -> Decimal:
     Returns:
         Maandrendement als Decimal (niet als percentage).
     """
-    if jaarrendement_pct == Decimal("0"):
-        return Decimal("0")
-    jaar = jaarrendement_pct / Decimal("100")
-    # Python werkt niet direct met Decimal voor machtsverheffing met fractionele exponent;
-    # we gebruiken float als tussenstap en converteren terug.
-    maand = Decimal(str((1 + float(jaar)) ** (1 / 12) - 1))
-    return maand
+    if not jaarrendement_pct.is_finite() or jaarrendement_pct < Decimal("-100"):
+        raise ValueError("Jaarrendement moet eindig zijn en minimaal -100% bedragen.")
+    if jaarrendement_pct == Decimal("-100"):
+        return Decimal("-1")
+    return (Decimal("1") + jaarrendement_pct / Decimal("100")) ** (Decimal("1") / Decimal("12")) - Decimal("1")
+
 
 
 def bereken_rente_maand(
@@ -67,12 +66,12 @@ def bereken_rente_maand(
         saldo_beleggen = saldo * (Decimal("1") - spaargeld_fractie)
         
         rente_sparen = Decimal("0")
-        if saldo_sparen > Decimal("0") and jaarrendement_sparen_pct > Decimal("0"):
+        if saldo_sparen > Decimal("0"):
             maand_rente = maandrendement(jaarrendement_sparen_pct)
             rente_sparen = _rond_af(saldo_sparen * maand_rente)
         
         rente_beleggen = Decimal("0")
-        if saldo_beleggen > Decimal("0") and jaarrendement_beleggen_pct > Decimal("0"):
+        if saldo_beleggen > Decimal("0"):
             maand_rente = maandrendement(jaarrendement_beleggen_pct)
             rente_beleggen = _rond_af(saldo_beleggen * maand_rente)
         
@@ -289,3 +288,156 @@ def update_vermogensitems_waarde(
         item.aanschafwaarde = max(Decimal("0"), item.aanschafwaarde)
     
     return nieuwe_items
+
+
+class LiquidePortefeuille:
+    """Rekenstaat per liquide post; bronitems blijven ongewijzigd.
+
+    Openingen zijn externe toevoegingen. Sluitingen gaan naar renteloos kasgeld.
+    Inleg en huishoudcashflow vallen aan het maandeinde. Algemene cashflow wordt
+    naar rato verdeeld; ongedekte tekorten blijven negatief kasgeld. Dit is de
+    eigenaar van de saldi; herwaardering van aanschafwaarde tijdens de prognose
+    zou rendement dubbel tellen.
+    """
+
+    def __init__(
+        self, items: list[VermogensItem], start: date,
+        inleg_sparen: Decimal = Decimal('0'), inleg_beleggen: Decimal = Decimal('0'),
+    ) -> None:
+        self.items = [i.model_copy(deep=True) for i in items
+                      if i.type in (VermogensType.SPAARGELD, VermogensType.BELEGGINGEN)]
+        self.saldis = [Decimal('0') for _ in self.items]
+        self.geopend = [False for _ in self.items]
+        self.gesloten = [False for _ in self.items]
+        self.kas = Decimal('0')
+        self.peildatum = start
+        self.inleg_legacy = {VermogensType.SPAARGELD: inleg_sparen,
+                            VermogensType.BELEGGINGEN: inleg_beleggen}
+        self.rentes = [Decimal('0') for _ in self.items]
+        self.inleggen = [Decimal('0') for _ in self.items]
+        for n, item in enumerate(self.items):
+            if item.verkoopdatum and item.verkoopdatum < start:
+                self.geopend[n] = self.gesloten[n] = True
+            elif not item.aanschafdatum or item.aanschafdatum <= start:
+                self.geopend[n] = True
+                waarde = item.aanschafwaarde
+                if item.aanschafdatum and item.aanschafdatum < start:
+                    dagen = Decimal((start - item.aanschafdatum).days)
+                    waarde *= (Decimal('1') + item.groei_pct / Decimal('100')) ** (dagen / Decimal('365.25'))
+                self.saldis[n] = _rond_af(waarde)
+
+    @property
+    def saldo(self) -> Decimal:
+        return self.kas + sum(self.saldis, Decimal('0'))
+
+    def _verdeel(self, bedrag: Decimal, indices: list[int]) -> None:
+        """Centennauwkeurig, naar positieve saldi; sluitrest op laatste post."""
+        if not indices:
+            self.kas += bedrag
+            return
+        totaal = sum((self.saldis[n] for n in indices), Decimal('0'))
+        rest = bedrag
+        for n in indices[:-1]:
+            deel = _rond_af(bedrag * self.saldis[n] / totaal) if totaal else _rond_af(bedrag / len(indices))
+            # Een onttrekking mag geen afzonderlijke post negatief maken.
+            deel = max(-self.saldis[n], deel)
+            self.saldis[n] += deel
+            rest -= deel
+        laatste = indices[-1]
+        deel = max(-self.saldis[laatste], rest)
+        self.saldis[laatste] += deel
+        self.kas += rest - deel
+
+    def _stort(self, n: int, bedrag: Decimal) -> None:
+        # Nieuwe inleg vult eerst een eerder ongedekt tekort aan.
+        herstel = min(bedrag, max(Decimal('0'), -self.kas))
+        self.kas += herstel
+        self.saldis[n] += bedrag - herstel
+
+    def begin_maand(self, jaar: int, maand: int) -> tuple[Decimal, Decimal, Decimal]:
+        """Verwerk actieve dagen; geef rendement, inleg en externe openingen."""
+        import calendar
+        eerste = date(jaar, maand, 1)
+        laatste = date(jaar, maand, calendar.monthrange(jaar, maand)[1])
+        self.peildatum = laatste
+        opening = Decimal('0')
+        self.rentes = [Decimal('0') for _ in self.items]
+        self.inleggen = [Decimal('0') for _ in self.items]
+        for n, item in enumerate(self.items):
+            if self.gesloten[n] or (item.aanschafdatum and item.aanschafdatum > laatste):
+                continue
+            if not self.geopend[n]:
+                self.geopend[n] = True
+                opening += item.aanschafwaarde
+                self._stort(n, item.aanschafwaarde)
+            vanaf = max(eerste, item.aanschafdatum or eerste)
+            tot = min(laatste, item.verkoopdatum or laatste)
+            if tot < vanaf:
+                continue
+            aandeel = Decimal((tot - vanaf).days + 1) / Decimal(laatste.day)
+            factor = (Decimal('1') + maandrendement(item.groei_pct)) ** aandeel - Decimal('1')
+            self.rentes[n] = _rond_af(self.saldis[n] * factor)
+            self.saldis[n] += self.rentes[n]
+            self.inleggen[n] = _rond_af((item.jaarlijkse_inleg or Decimal('0')) / Decimal('12') * aandeel)
+            self._stort(n, self.inleggen[n])
+
+        # Oude clients hebben alleen scenario-inleg; expliciete post-inleg is
+        # per type leidend, ook als die nul is. Zo wordt niets dubbel ingelegd.
+        legacy_totaal = Decimal('0')
+        for soort, jaarbedrag in self.inleg_legacy.items():
+            if any(i.type == soort and i.jaarlijkse_inleg is not None for i in self.items):
+                continue
+            bedrag = _rond_af(jaarbedrag / Decimal('12'))
+            indices = [n for n, i in enumerate(self.items)
+                       if i.type == soort and self.geopend[n] and not self.gesloten[n]
+                       and i.is_actief_op(laatste)]
+            herstel = min(bedrag, max(Decimal('0'), -self.kas))
+            self.kas += herstel
+            self._verdeel(bedrag - herstel, indices)
+            legacy_totaal += bedrag
+        return sum(self.rentes, Decimal('0')), sum(self.inleggen, Decimal('0')) + legacy_totaal, opening
+
+    def sluit_maand(self, cashflow: Decimal) -> None:
+        """Verwerk vrij besteedbare cashflow en sluit aflopende posten."""
+        indices = [n for n in range(len(self.items)) if self.geopend[n] and not self.gesloten[n]]
+        bedrag = _rond_af(cashflow)
+        if bedrag < 0:
+            uit_kas = min(max(self.kas, Decimal('0')), -bedrag)
+            self.kas -= uit_kas
+            bedrag += uit_kas
+            te_onttrekken = min(-bedrag, sum((self.saldis[n] for n in indices), Decimal('0')))
+            self._verdeel(-te_onttrekken, indices)
+            self.kas += bedrag + te_onttrekken
+        else:
+            herstel = min(bedrag, max(-self.kas, Decimal('0')))
+            self.kas += herstel
+            self._verdeel(bedrag - herstel, [n for n in indices if self.items[n].is_actief_op(self.peildatum)])
+        for n in indices:
+            item = self.items[n]
+            if item.verkoopdatum and item.verkoopdatum <= self.peildatum:
+                self.kas += self.saldis[n]
+                self.saldis[n] = Decimal('0')
+                self.gesloten[n] = True
+
+    def box3_saldi(self, peildatum: date) -> tuple[Decimal, Decimal]:
+        """Projecteer actuele belaste saldi: sparen en beleggingen, geen formule."""
+        sparen, beleggen = max(self.kas, Decimal('0')), Decimal('0')
+        for n, item in enumerate(self.items):
+            if not item.box3_belast or self.gesloten[n]:
+                continue
+            waarde = self.saldis[n]
+            if not self.geopend[n] and item.aanschafdatum == peildatum:
+                waarde = item.aanschafwaarde
+            if item.type == VermogensType.SPAARGELD:
+                sparen += waarde
+            else:
+                beleggen += waarde
+        return sparen, beleggen
+
+    def detail(self) -> dict:
+        """Alleen bestaande rekenstaat voor API en accountantoutput."""
+        return {'bron': 'vermogensitems', 'kas': self.kas, 'posten': [
+            {'omschrijving': i.omschrijving, 'type': i.type.value,
+             'saldo': self.saldis[n], 'rendement_pct': i.groei_pct,
+             'rente': self.rentes[n], 'inleg': self.inleggen[n]}
+            for n, i in enumerate(self.items)]}
