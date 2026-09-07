@@ -163,6 +163,9 @@ def test_export_uses_external_amount_and_loads_in_existing_contract(case: Case) 
     assert parsed.verwachte_belasting.totaal_verschuldigd == Decimal('1234')
     assert parsed.jaar == 2025
     assert 'box3_heffing' not in candidate['verwachte_belasting']
+    from tools.normalize_testcases import normalize_vermogen, NormalizationReport
+    normalized = normalize_vermogen(candidate, NormalizationReport(), case.case_id)
+    assert Decimal(normalized['spaargeld_fractie']) == Decimal('0')
 
 
 def test_export_refuses_input_source_conflict() -> None:
@@ -170,3 +173,12 @@ def test_export_refuses_input_source_conflict() -> None:
     case = laad_case(Path('config/ola/cases/alleen_pensioen.json'))
     with pytest.raises(ValueError, match='bronverschil'):
         raw_kandidaat(case, bron(case), engine_resultaat(case))
+
+
+def test_export_preserves_single_elderly_credit() -> None:
+    from tools.ola.vergelijking import raw_kandidaat
+    case = laad_case(Path('config/ola/verified/alleen_pensioen.json'))
+    source = bron(case, '4447')
+    source['waarnemingen']['alleenstaandeouderenkorting_p1'] = {'tekst': '531', 'bedrag': '531'}
+    candidate = raw_kandidaat(case, source, engine_resultaat(case))
+    assert candidate['verwachte_belasting']['alleenstaandeouderenkorting_p1'] == '531'

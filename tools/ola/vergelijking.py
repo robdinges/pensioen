@@ -131,6 +131,7 @@ def raw_kandidaat(case: Case, bron: dict[str, Any], engine: dict[str, Any]) -> d
     verwacht = {'totaal_verschuldigd': next(r['ola'] for r in resultaat['verschillen'] if r['veld'] == 'totaal_verschuldigd')}
     mapping = {'box1_ib_voor_kortingen':'box1_ib', 'algemene_heffingskorting':'ahk',
                'arbeidskorting':'arbeidskorting', 'ouderenkorting':'ouderenkorting',
+               'alleenstaandeouderenkorting':'alleenstaandeouderenkorting',
                'premie_aow':'premie_aow', 'premie_anw':'premie_anw', 'premie_wlz':'premie_wlz'}
     for veld, obs in bron['waarnemingen'].items():
         if veld == 'box3_heffing':
@@ -145,6 +146,8 @@ def raw_kandidaat(case: Case, bron: dict[str, Any], engine: dict[str, Any]) -> d
                           'aantal_personen': len(case.personen), 'eigen_huis': case.woning is not None},
             'personen': [p.model_dump(mode='json') for p in case.personen],
             'vermogen': {'totaal': str(vermogen.spaargeld + vermogen.beleggingen),
+                         'spaargeld_fractie': str(vermogen.spaargeld / (vermogen.spaargeld + vermogen.beleggingen))
+                         if vermogen.spaargeld + vermogen.beleggingen else '0',
                          'spaargeld': str(vermogen.spaargeld), 'beleggingen': str(vermogen.beleggingen)},
             'eigen_woning': {'woz_waarde': str(case.woning.woz_waarde),
                              'betaalde_hypotheekrente': str(case.woning.betaalde_hypotheekrente),

@@ -1,0 +1,46 @@
+{
+  "testcase_id": "tc_2025_016",
+  "naam": "Alleenstaand met AOW en pensioen",
+  "jaar": 2025,
+  "bron_formaat": "OLA IH2025 + schermafbeeldingen",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1955-03-15",
+      "bruto_arbeid": "0",
+      "bruto_pensioen": "25000",
+      "bruto_aow": "16752",
+      "bruto_overig": 0
+    }
+  ],
+  "vermogen": {
+    "totaal": "0",
+    "spaargeld_fractie": "0",
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "verwachte_belasting": {
+    "totaal_verschuldigd": "4447",
+    "box1_ib_p1": "4380",
+    "ahk_p1": "1114",
+    "ouderenkorting_p1": "2035",
+    "alleenstaandeouderenkorting_p1": "531"
+  },
+  "metadata": {
+    "uitgangspunten": [
+      "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+      "Geen arbeid, kinderen, onderneming, buitenland, woning, vermogen of aftrekposten.",
+      "AOW-invoer gelijk aan huidige engine-output om fiscale behandeling afzonderlijk te toetsen; dit valideert niet de hoogte van de SVB-uitkering.",
+      "Loonheffing, ingehouden Zvw en voorlopige aanslagen nul. Vergelijk IB/PVV exclusief afzonderlijke Zvw-aanslag."
+    ],
+    "opmerkingen": "Live OLA 2025, 7 september 2026; opname 20260907T020716Z-ac166246. Gelijke bruto invoer; AOW-hoogte niet SVB-gevalideerd. AHK OLA 1114, tabelberekening 1113: expliciet tolerantieverschil van 1 euro. OLA-bronbedragen en gelijke bruto invoer gecontroleerd vóór opname in raw/. Casehash: 2f62731de2a41a995c8f7e12e7331e76edcdadba6756c58d9c30f9a96f1d8bb1. Controleur: Codex",
+    "data_kwaliteit": "gedeeltelijk",
+    "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
+    "_incomplete": false
+  }
+}

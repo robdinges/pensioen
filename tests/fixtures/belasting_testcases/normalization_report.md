@@ -1,11 +1,11 @@
 # Normalization Report
 
-**Datum**: 2026-09-06 16:44
+**Datum**: 2026-09-07 04:19
 
 ## Samenvatting
 
-- **Totaal testcases verwerkt**: 9
-- **✅ Succesvol genormaliseerd**: 9
+- **Totaal testcases verwerkt**: 12
+- **✅ Succesvol genormaliseerd**: 12
 - **❌ Errors**: 0
 - **⚠️  Warnings**: 5
 
@@ -19,6 +19,9 @@
 - ✅ tc_2025_011
 - ✅ tc_2025_013
 - ✅ tc_2025_014
+- ✅ tc_2025_015
+- ✅ tc_2025_016
+- ✅ tc_2025_017
 - ✅ tc_2026_012
 
 ## Warnings

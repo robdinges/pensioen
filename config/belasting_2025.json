@@ -2,6 +2,8 @@
   "_toelichting": "Box 1 tarieven en heffingskortingen 2025. Controleer jaarlijks op https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/",
   "_bron": "Belastingdienst 2025",
   "jaar": 2025,
+  "afronding_aanslag": true,
+  "_afronding_bron": "OLA IH2025 live gevalideerd: IB en premietotaal naar beneden, heffingskortingen naar boven op hele euro's; premietotaal uit ongeronde premies. Zie docs/OLA_VALIDATIE_2025.md.",
 
   "box1_niet_aow": {
     "_toelichting": "Schijven voor personen onder de AOW-leeftijd. PURE INKOMSTENBELASTING (zonder premies).",
@@ -56,6 +58,7 @@
     "afbouw_inkomen_van": 28406,
     "afbouw_pct": 0.06337,
     "aow_factor": 0.5006518905,
+    "aow_max": 1536,
     "aow_afbouw_pct": 0.03170,
     "minimum": 0
   },
@@ -76,8 +79,9 @@
 
   "ouderenkorting": {
     "_toelichting": "Alleen voor AOW-gerechtigden. Afbouw boven drempel.",
+    "_bron": "https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/heffingskortingen (21.4.1); live OLA bevestigd, zie docs/OLA_VALIDATIE_2025.md",
     "max": 2035,
-    "afbouw_inkomen_van": 40888,
+    "afbouw_inkomen_van": 45308,
     "afbouw_pct": 0.15,
     "minimum": 0
   },

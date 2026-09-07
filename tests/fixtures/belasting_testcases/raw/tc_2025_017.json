@@ -1,0 +1,55 @@
+{
+  "testcase_id": "tc_2025_017",
+  "naam": "Partners met AOW en pensioen zonder vermogen",
+  "jaar": 2025,
+  "bron_formaat": "OLA IH2025 + schermafbeeldingen",
+  "huishouden": {
+    "type": "PAAR",
+    "aantal_personen": 2,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1955-03-15",
+      "bruto_arbeid": "0",
+      "bruto_pensioen": "25000",
+      "bruto_aow": "11568"
+    },
+    {
+      "naam": "Testpersoon Twee",
+      "geboortedatum": "1957-05-15",
+      "bruto_arbeid": "0",
+      "bruto_pensioen": "15000",
+      "bruto_aow": "11568"
+    }
+  ],
+  "vermogen": {
+    "totaal": "0",
+    "spaargeld_fractie": "0",
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "eigen_woning": null,
+  "verwachte_belasting": {
+    "totaal_verschuldigd": "4429",
+    "box1_ib_p1": "2987",
+    "ahk_p1": "1277",
+    "ouderenkorting_p1": "2035",
+    "box1_ib_p2": "2170",
+    "ahk_p2": "1536",
+    "ouderenkorting_p2": "2035"
+  },
+  "metadata": {
+    "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
+    "uitgangspunten": [
+      "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+      "Geen arbeid, kinderen, onderneming, buitenland, woning, vermogen of aftrekposten.",
+      "AOW-invoer gelijk aan huidige engine-output om fiscale behandeling afzonderlijk te toetsen; dit valideert niet de hoogte van de SVB-uitkering.",
+      "Loonheffing, ingehouden Zvw en voorlopige aanslagen nul. Vergelijk IB/PVV exclusief afzonderlijke Zvw-aanslag."
+    ],
+    "data_kwaliteit": "gedeeltelijk",
+    "opmerkingen": "Live OLA 2025, 7 september 2026; opname 20260907T021049Z-11c421fc. Gelijke bruto invoer; AOW-hoogte niet SVB-gevalideerd. AHK P1 OLA 1277, tabelberekening 1278: expliciet tolerantieverschil van 1 euro. OLA-bronbedragen en gelijke bruto invoer gecontroleerd vóór opname in raw/. Casehash: 7b330fb383726a8274e7b4d3259e5a8d813277c41dbb7bc359a8294942467931. Controleur: Codex",
+    "_incomplete": false
+  }
+}

@@ -31,6 +31,12 @@ De voorbeelden onder `config/ola/cases/` zijn invoersjablonen, geen complete
 browserrecepten. `config/ola/verified/` bevat live opgenomen recepten.
 Een opgenomen recept bewijst niet dat de pensioenengine dezelfde uitkomst geeft.
 
+De vijf opgenomen recepten omvatten drie looncases en twee AOW/pensioencases
+zonder woning of vermogen. De pensioencases gebruiken bewust de huidige
+engine-AOW als gelijke fiscale invoer; de SVB-uitkeringshoogte is daarmee niet
+gevalideerd. Hun resterende AHK-verschillen van €1 staan expliciet in
+`docs/OLA_VALIDATIE_2025.md`. PASS betekent binnen tolerantie, niet altijd exact.
+
 ```bash
 python3 -m tools.ola opnemen config/ola/cases/paar_werkend.json
 # Alternatief: JSON-stappen in de terminal, met zichtbare DOM-inspectie

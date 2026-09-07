@@ -117,6 +117,8 @@ class BelastingConfig:
     eigen_woning: EigenWoningConfig | None = None  # Eigen woning forfait en aftrek
     box1_geboortejaar_grens: int | None = None
     box1_ouder_cohort: list[SchijfConfig] = field(default_factory=list)
+    afronding_aanslag: bool = False
+    ahk_aow_max: Decimal | None = None
 
 
 @dataclass
@@ -206,6 +208,9 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
 
     config = BelastingConfig(
         jaar=data["jaar"],
+        afronding_aanslag=data.get("afronding_aanslag", False),
+        ahk_aow_max=(_d(data['algemene_heffingskorting']['aow_max'])
+                     if 'aow_max' in data['algemene_heffingskorting'] else None),
         box1_niet_aow=_laad_schijven(data["box1_niet_aow"]["schijven"]),
         box1_aow=_laad_schijven(data["box1_aow"]["schijven"]),
         box1_geboortejaar_grens=data.get("box1_ouder_cohort", {}).get("geboortejaar_grens"),
@@ -347,6 +352,8 @@ def config_naar_tariefwaarden(config: BelastingConfig) -> dict[str, Decimal]:
     waarden["ahk_afbouw_pct"] = config.ahk.afbouw_pct
     waarden["ahk_minimum"] = config.ahk.minimum
     waarden["ahk_aow_factor"] = config.ahk_aow_factor
+    if config.ahk_aow_max is not None:
+        waarden['ahk_aow_max'] = config.ahk_aow_max
     if config.ahk_aow_afbouw_pct is not None:
         waarden["ahk_aow_afbouw_pct"] = config.ahk_aow_afbouw_pct
 
@@ -397,6 +404,8 @@ def pas_tariefwaarden_toe_op_config(
 
     return BelastingConfig(
         jaar=config.jaar,
+        afronding_aanslag=config.afronding_aanslag,
+        ahk_aow_max=waarden.get('ahk_aow_max', config.ahk_aow_max),
         box1_niet_aow=box1_niet_aow,
         box1_aow=box1_aow,
         box1_geboortejaar_grens=config.box1_geboortejaar_grens,

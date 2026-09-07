@@ -38,6 +38,15 @@ BELASTINGSCHIJF_1 = 0.3693
 - Rond nooit af op inkomens- of grondslagniveau
 - Box 3: bereken grondslag en fictief rendement volledig door; rond alleen de eindheffing af
 
+## Uitzondering voor fiscale aanslagafronding 2025
+
+Bij `afronding_aanslag=true` in de jaarconfig geldt de live OLA-bevestigde
+afronding: IB per schijf omlaag, premietotaal uit ongeronde premies omlaag,
+volledig berekende heffingskortingen omhoog op hele euro's. Geen afronding van
+percentages of tussenstappen binnen een schijf/korting. De afgeronde bedragen
+blijven Decimal. Centenafronding blijft gelden voor cashflow en maandverdeling.
+De fiscale modules bezitten deze regels; zie `docs/OLA_VALIDATIE_2025.md`.
+
 ## pandas / numpy
 - Geef kolommen Nederlandse namen: `df["bruto_salaris"]`, `df["opbouwjaren"]`
 - Gebruik `dtype=float` expliciet voor numerieke kolommen

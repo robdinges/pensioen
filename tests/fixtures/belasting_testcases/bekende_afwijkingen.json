@@ -1,60 +1,76 @@
 {
-  "laatste_validatie": "2026-09-06",
+  "laatste_validatie": "2026-09-07",
   "tolerantie_verschil": "0.01",
   "afwijkingen": {
     "tc_2025_006": {
       "status": "PASS",
-      "verschil": "2.93",
+      "verschil": "0.37",
       "classificatie": "tolerantieverschil",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "bevestig externe componentbron en afrondingsniveau",
       "vorig_verschil": "-31.29",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "reviewreden": "2025-grenzen en OLA-afronding gecorrigeerd; externe bron ongewijzigd. Vorig verschil betreft de oorspronkelijke code. Zie docs/OLA_VALIDATIE_2025.md."
     },
     "tc_2025_007": {
       "status": "PASS",
-      "verschil": "2.73",
+      "verschil": "0.53",
       "classificatie": "tolerantieverschil",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "bevestig externe componentbron en afrondingsniveau",
       "vorig_verschil": "-31.49",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "reviewreden": "2025-grenzen en OLA-afronding gecorrigeerd; externe bron ongewijzigd. Vorig verschil betreft de oorspronkelijke code. Zie docs/OLA_VALIDATIE_2025.md."
     },
     "tc_2025_008": {
       "status": "FAIL",
-      "verschil": "-374.32",
+      "verschil": "-376.13",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "valideer AOW-heffingskortingen tegen de primaire bron",
       "vorig_verschil": "-300.32",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "reviewreden": "2025-grenzen en OLA-afronding gecorrigeerd; externe bron ongewijzigd. Vorig verschil betreft de oorspronkelijke code. Zie docs/OLA_VALIDATIE_2025.md."
     },
     "tc_2025_009": {
-      "status": "WARN",
-      "verschil": "7.86",
+      "status": "PASS",
+      "verschil": "3.70",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "valideer premie- en box-1-componenten per partner",
       "vorig_verschil": "-60.58",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "reviewreden": "2025-grenzen en OLA-afronding gecorrigeerd; externe bron ongewijzigd. Vorig verschil betreft de oorspronkelijke code. Zie docs/OLA_VALIDATIE_2025.md."
     },
     "tc_2025_010": {
       "status": "FAIL",
-      "verschil": "-954.92",
+      "verschil": "-1622.89",
       "classificatie": "bronconflict",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "kies leidende AOW-bron voor fiscaal partnerschap",
-      "vorig_verschil": "-788.20",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "vorig_verschil": "-959.89",
+      "reviewreden": "Ouderenkorting 2025: afbouwgrens gecorrigeerd van 40888 naar 45308 op basis van primaire fiscale informatie en live OLA. Dit geeft 663 euro extra korting in TC010. Oude bronverwachting en API-baseline ongewijzigd; AOW-bronconflict blijft open."
     },
     "tc_2025_011": {
       "status": "FAIL",
-      "verschil": "-2227.94",
+      "verschil": "-2231.92",
       "classificatie": "referentieschuld",
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "valideer AOW-kortingen en premies voor twee gepensioneerden",
       "vorig_verschil": "-1826.06",
-      "reviewreden": "Gevolg van bronbevestigde schijf-/premiegrenzen 2025. Externe verwachting ongewijzigd. Zie OLA_VALIDATIE_2025.md."
+      "reviewreden": "2025-grenzen en OLA-afronding gecorrigeerd; externe bron ongewijzigd. Vorig verschil betreft de oorspronkelijke code. Zie docs/OLA_VALIDATIE_2025.md."
+    },
+    "tc_2025_016": {
+      "status": "PASS",
+      "verschil": "1.00",
+      "classificatie": "tolerantieverschil",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "verklaar interne OLA-afronding AHK; bewaak bestaande tolerantie van 1 euro",
+      "reviewreden": "Live OLA IH2025 op 7 september 2026 met exact gelijke bruto invoer. IB/PVV voor kortingen en ouderenkorting exact; AHK 1 euro verschil tegenover gepubliceerde tabelformule. Zie docs/OLA_VALIDATIE_2025.md."
+    },
+    "tc_2025_017": {
+      "status": "PASS",
+      "verschil": "-1.00",
+      "classificatie": "tolerantieverschil",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "verklaar interne OLA-afronding AHK; bewaak bestaande tolerantie van 1 euro",
+      "reviewreden": "Live OLA IH2025 op 7 september 2026 met exact gelijke bruto invoer. IB/PVV voor kortingen en ouderenkorting exact; AHK 1 euro verschil tegenover gepubliceerde tabelformule. Zie docs/OLA_VALIDATIE_2025.md."
     }
   }
 }

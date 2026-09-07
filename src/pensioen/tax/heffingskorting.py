@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, ROUND_CEILING, Decimal
 
 from pensioen.tax.belasting_loader import ArbeidskortingConfig, BelastingConfig, HeffingskortingConfig
 
@@ -12,6 +12,13 @@ CENT = Decimal("0.01")
 def _rond_af_cent(bedrag: Decimal) -> Decimal:
     """Rond af op eurocenten met de standaard Decimal quantize-regel."""
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def _rond_korting_af(bedrag: Decimal, config: BelastingConfig) -> Decimal:
+    """Rond de volledig berekende korting in het voordeel van belastingplichtige."""
+    if config.afronding_aanslag:
+        return bedrag.quantize(Decimal('1'), rounding=ROUND_CEILING).quantize(CENT)
+    return bedrag
 
 
 def _afbouw_korting(
@@ -50,10 +57,9 @@ def bereken_ahk(inkomen: Decimal, config: BelastingConfig) -> Decimal:
         - Logica: lineaire afbouw vanaf afbouw_inkomen_van tot minimaal minimum.
         - AOW-factor: niet van toepassing in deze functie; gebruik daarvoor
             bereken_ahk_met_aow.
-        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt in de
-            aanroepende compositiefunctie.
+        - Afronding: na de volledige formule volgens de aanslaginstelling van de jaarconfig.
     """
-    return _afbouw_korting(inkomen, config.ahk)
+    return _rond_korting_af(_afbouw_korting(inkomen, config.ahk), config)
 
 
 def bereken_ahk_met_aow(
@@ -70,8 +76,7 @@ def bereken_ahk_met_aow(
             die beschikbaar is; anders geldt backward-compatible schaling met factor.
     - Bij deeljaar AOW werkt de breuk op het maximum via een gewogen factor.
             Voor de afbouwsnelheid wordt lineair gewogen tussen niet-AOW en AOW.
-    - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
-      compositieniveau.
+    - Afronding: na de volledige formule volgens de aanslaginstelling van de jaarconfig.
 
     Bij een gedeeltelijk AOW-jaar wordt het maximum tijdsevenredig gewogen.
     """
@@ -79,31 +84,33 @@ def bereken_ahk_met_aow(
     ahk_config = config.ahk
 
     if aow_breuk == Decimal("0"):
-        return _afbouw_korting(inkomen, ahk_config)
+        return _rond_korting_af(_afbouw_korting(inkomen, ahk_config), config)
 
     factor = config.ahk_aow_factor
+    maximum_aow = (config.ahk_aow_max if config.ahk_aow_max is not None
+                   else ahk_config.max_bedrag * factor)
     aow_afbouw_pct = config.ahk_aow_afbouw_pct
     if aow_afbouw_pct is None:
         aow_afbouw_pct = ahk_config.afbouw_pct * factor
 
     if aow_breuk == Decimal("1"):
-        aangepast_maximum = ahk_config.max_bedrag * factor
+        aangepast_maximum = maximum_aow
         aangepast_afbouw_pct = aow_afbouw_pct
     else:
-        gewogen_factor = ((Decimal("1") - aow_breuk) * Decimal("1")) + (aow_breuk * factor)
-        aangepast_maximum = ahk_config.max_bedrag * gewogen_factor
+        aangepast_maximum = (Decimal('1') - aow_breuk) * ahk_config.max_bedrag + aow_breuk * maximum_aow
         aangepast_afbouw_pct = (
             ((Decimal("1") - aow_breuk) * ahk_config.afbouw_pct)
             + (aow_breuk * aow_afbouw_pct)
         )
 
-    return _afbouw_korting_met_maximum(
+    korting = _afbouw_korting_met_maximum(
         inkomen=inkomen,
         minimum=ahk_config.minimum,
         maximum=aangepast_maximum,
         afbouw_inkomen_van=ahk_config.afbouw_inkomen_van,
         afbouw_pct=aangepast_afbouw_pct,
     )
+    return _rond_korting_af(korting, config)
 
 
 def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> Decimal:
@@ -115,8 +122,7 @@ def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> 
         - Geen arbeidsinkomen: korting = 0.
         - Positief arbeidsinkomen: opbouwsegment uit de jaarconfig, indien aanwezig.
         - Afbouw boven afbouw_drempel met afbouw_pct, met ondergrens minimum.
-        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
-            compositieniveau.
+        - Afronding: na de volledige formule volgens de aanslaginstelling van de jaarconfig.
 
         Configuraties zonder opbouwsegmenten behouden het legacy rekenpad.
         De tabel in belasting_2025.json geldt onder de AOW-leeftijd; reductie
@@ -129,7 +135,7 @@ def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> 
     for segment in ak.opbouw:
         if arbeidsinkomen <= segment['tot']:
             korting = segment['basis'] + (arbeidsinkomen - segment['vanaf']) * segment['percentage']
-            return max(ak.minimum, min(ak.max_bedrag, korting))
+            return _rond_korting_af(max(ak.minimum, min(ak.max_bedrag, korting)), config)
     # Benadering: maximale korting bij inkomen ≥ max (opbouw vereenvoudigd)
     korting_voor_afbouw = min(ak.max_bedrag, arbeidsinkomen)
 
@@ -139,7 +145,7 @@ def bereken_arbeidskorting(arbeidsinkomen: Decimal, config: BelastingConfig) -> 
         (arbeidsinkomen - ak.afbouw_drempel) * ak.afbouw_pct,
     )
     korting = korting_voor_afbouw - afbouw
-    return max(ak.minimum, korting)
+    return _rond_korting_af(max(ak.minimum, korting), config)
 
 
 def bereken_ouderenkorting(inkomen: Decimal, config: BelastingConfig, is_aow: bool) -> Decimal:
@@ -151,12 +157,11 @@ def bereken_ouderenkorting(inkomen: Decimal, config: BelastingConfig, is_aow: bo
         - Grondslag: bruto_inkomen.
         - Bij is_aow=False is de korting 0.
         - Bij is_aow=True geldt lineaire afbouw met minimumvloer.
-        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
-            compositieniveau.
+        - Afronding: na de volledige formule volgens de aanslaginstelling van de jaarconfig.
     """
     if not is_aow:
         return Decimal("0")
-    return _afbouw_korting(inkomen, config.ouderenkorting)
+    return _rond_korting_af(_afbouw_korting(inkomen, config.ouderenkorting), config)
 
 
 def bereken_alleenstaandeouderenkorting(
@@ -172,8 +177,7 @@ def bereken_alleenstaandeouderenkorting(
         - Alleen van toepassing bij combinatie is_aow=True en is_alleenstaand=True.
         - Als jaarconfig geen AOK bevat: korting = 0.
         - Grondslag: bruto_inkomen; verdere afbouw volgt de jaarconfig.
-        - Afronding: geen afronding in deze bouwsteen; afronding gebeurt op
-            compositieniveau.
+        - Afronding: na de volledige formule volgens de aanslaginstelling van de jaarconfig.
     """
     if not (is_aow and is_alleenstaand):
         return Decimal("0")
@@ -181,7 +185,7 @@ def bereken_alleenstaandeouderenkorting(
     if config.alleenstaandeouderenkorting is None:
         return Decimal("0")
     
-    return _afbouw_korting(inkomen, config.alleenstaandeouderenkorting)
+    return _rond_korting_af(_afbouw_korting(inkomen, config.alleenstaandeouderenkorting), config)
 
 
 def bereken_totale_heffingskortingen(
@@ -199,8 +203,8 @@ def bereken_totale_heffingskortingen(
         - Totale korting is exact de som van vier componenten:
             AHK-met-AOW, arbeidskorting, ouderenkorting en alleenstaandeouderenkorting.
         - Grondslagen per component blijven eigendom van de losse bouwstenen.
-        - Afrondingsvolgorde: eerst component volledig berekenen, dan afronden op
-            centen, daarna sommeren.
+        - Afrondingsvolgorde: voltooide componenten volgens de jaarconfig afronden,
+            daarna sommeren; Decimal-opslag blijft op centen.
 
     Args:
         bruto_inkomen: Totaal bruto inkomen voor AHK-afbouw (arbeid + pensioen + AOW).

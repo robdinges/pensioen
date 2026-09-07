@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, ROUND_FLOOR, Decimal
 
 from pensioen.tax import aow_engine, heffingskorting
 from pensioen.tax.belasting_loader import BelastingConfig, SchijfConfig
@@ -31,6 +31,13 @@ def _serializeer_schijven(schijven: list[SchijfConfig]) -> list[dict[str, float 
 def rond_af(bedrag: Decimal) -> Decimal:
     """Rond een geldbedrag af op centen (ROUND_HALF_UP)."""
     return bedrag.quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def rond_heffing_af(bedrag: Decimal, config: BelastingConfig) -> Decimal:
+    """Aanslagafronding pas na de volledige heffing; opslag blijft Decimal."""
+    if config.afronding_aanslag:
+        return bedrag.quantize(Decimal('1'), rounding=ROUND_FLOOR).quantize(CENT)
+    return rond_af(bedrag)
 
 
 def begrens_verrekenbare_heffingskorting(
@@ -67,7 +74,7 @@ class BelastingResultaat:
     premie_aow: Decimal  # AOW-premie
     premie_anw: Decimal  # Nabestaandenwet premie
     premie_wlz: Decimal  # Wet langdurige zorg premie
-    totaal_premies: Decimal  # Som van alle premies
+    totaal_premies: Decimal  # Afgeronde ongeronde som bij aanslagafronding; kan van getoonde delen afwijken
     
     # Legacy veld voor backward compatibility
     belasting: Decimal  # Totaal IB + premies (voor oude code)
@@ -82,9 +89,9 @@ class BelastingResultaat:
     aannames: list[str] = field(default_factory=list)
 
 
-def _bereken_schijven(inkomen: Decimal, schijven: list[SchijfConfig]) -> Decimal:
+def _bereken_schijven(inkomen: Decimal, schijven: list[SchijfConfig], afronding_aanslag: bool = False) -> Decimal:
     """
-    Bereken de ruwe belasting op basis van schijven (voor heffingskortingen).
+    Bereken belasting per schijf, bij aanslagafronding elke voltooide schijf omlaag.
 
     Args:
         inkomen: Belastbaar inkomen in euro's.
@@ -99,12 +106,16 @@ def _bereken_schijven(inkomen: Decimal, schijven: list[SchijfConfig]) -> Decimal
     for schijf in schijven:
         if schijf.tot is None:
             # Laatste (open) schijf
-            belasting += max(inkomen - vorig_tot, Decimal("0")) * schijf.tarief
+            schijfbelasting = max(inkomen - vorig_tot, Decimal("0")) * schijf.tarief
+            belasting += (schijfbelasting.quantize(Decimal('1'), rounding=ROUND_FLOOR)
+                          if afronding_aanslag else schijfbelasting)
         else:
             schijf_inkomen = max(
                 Decimal("0"), min(inkomen, schijf.tot) - vorig_tot
             )
-            belasting += schijf_inkomen * schijf.tarief
+            schijfbelasting = schijf_inkomen * schijf.tarief
+            belasting += (schijfbelasting.quantize(Decimal('1'), rounding=ROUND_FLOOR)
+                          if afronding_aanslag else schijfbelasting)
             vorig_tot = schijf.tot
             if inkomen <= schijf.tot:
                 break
@@ -138,15 +149,15 @@ def bereken_box1_belasting(
 
     if (geboortedatum is not None and config.box1_geboortejaar_grens is not None
             and geboortedatum.year < config.box1_geboortejaar_grens and config.box1_ouder_cohort):
-        return rond_af(_bereken_schijven(bruto, config.box1_ouder_cohort))
-    belasting_niet_aow = _bereken_schijven(bruto, config.box1_niet_aow)
-    belasting_aow = _bereken_schijven(bruto, config.box1_aow)
+        return rond_heffing_af(_bereken_schijven(bruto, config.box1_ouder_cohort, config.afronding_aanslag), config)
+    belasting_niet_aow = _bereken_schijven(bruto, config.box1_niet_aow, config.afronding_aanslag)
+    belasting_aow = _bereken_schijven(bruto, config.box1_aow, config.afronding_aanslag)
 
     gewogen = (
         niet_aow_breuk * belasting_niet_aow
         + aow_breuk * belasting_aow
     )
-    return rond_af(gewogen)
+    return rond_heffing_af(gewogen, config)
 
 
 def bereken_premies_volksverzekeringen(
@@ -164,8 +175,9 @@ def bereken_premies_volksverzekeringen(
         - Tarieven:
             - AOW-premie: tarief_niet_aow of tarief_aow (meestal 0 bij volledig AOW).
             - Anw- en Wlz-premie: altijd van toepassing op dezelfde grondslag.
-        - Afrondingsmoment: per premiecomponent op eurocenten (ROUND_HALF_UP).
-            Het totaal is de som van de afgeronde componenten.
+        - Aanslagafronding: componenten omlaag op hele euro's; totaal uit de
+            ongeronde componenten, daarna omlaag. Het totaal is leidend.
+        - Zonder aanslagafronding: legacy centenafronding per component.
         - Randgeval: ontbrekende premiesconfig geeft (0, 0, 0, 0) voor
             backward compatibility.
 
@@ -187,13 +199,18 @@ def bereken_premies_volksverzekeringen(
     
     # AOW-premie: 0 als al AOW-gerechtigd, anders tarief_niet_aow
     tarief_aow = config.premies.aow_tarief_aow if is_aow else config.premies.aow_tarief_niet_aow
-    premie_aow = rond_af(grondslag * tarief_aow)
+    premie_aow_raw = grondslag * tarief_aow
     
     # Anw en Wlz: voor iedereen
-    premie_anw = rond_af(grondslag * config.premies.anw_tarief)
-    premie_wlz = rond_af(grondslag * config.premies.wlz_tarief)
+    premie_anw_raw = grondslag * config.premies.anw_tarief
+    premie_wlz_raw = grondslag * config.premies.wlz_tarief
+    premie_aow = rond_heffing_af(premie_aow_raw, config)
+    premie_anw = rond_heffing_af(premie_anw_raw, config)
+    premie_wlz = rond_heffing_af(premie_wlz_raw, config)
     
     totaal = premie_aow + premie_anw + premie_wlz
+    if config.afronding_aanslag:
+        totaal = rond_heffing_af(premie_aow_raw + premie_anw_raw + premie_wlz_raw, config)
     return premie_aow, premie_anw, premie_wlz, totaal
 
 

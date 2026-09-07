@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
 
 import pytest
@@ -263,7 +263,7 @@ class TestHeffingskortingen:
         verwacht = max(ahk_config.minimum, (ahk_config.max_bedrag * config.ahk_aow_factor) - afbouw)
 
         berekend = bereken_ahk_met_aow(inkomen, config, Decimal("1"))
-        assert float(berekend) == pytest.approx(float(verwacht), rel=1e-9)
+        assert berekend == verwacht.quantize(Decimal('1'), rounding=ROUND_CEILING)
 
     def test_ahk_aow_deeljaar_gebruikt_gewogen_maximum_en_afbouw(self) -> None:
         """Deeljaar AOW gebruikt gewogen maximum en gewogen afbouwsnelheid."""
@@ -282,7 +282,7 @@ class TestHeffingskortingen:
         verwacht = max(ahk_config.minimum, (ahk_config.max_bedrag * gewogen_factor) - afbouw)
 
         berekend = bereken_ahk_met_aow(inkomen, config, aow_breuk)
-        assert float(berekend) == pytest.approx(float(verwacht), rel=1e-9)
+        assert berekend == verwacht.quantize(Decimal('1'), rounding=ROUND_CEILING)
 
 
 class TestBox3:

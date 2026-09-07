@@ -169,7 +169,7 @@ class TestLosseHeffingskortingen:
     def test_bereken_ahk_boven_afbouwgrens(self) -> None:
         config, _ = laad_tarieven(2025)
         inkomen = config.ahk.afbouw_inkomen_van + Decimal("1000")
-        verwacht = config.ahk.max_bedrag - (Decimal("1000") * config.ahk.afbouw_pct)
+        verwacht = Decimal('3005')  # 3004,63 wordt bij de aanslag naar boven afgerond.
 
         assert bereken_ahk(inkomen, config) == verwacht
 

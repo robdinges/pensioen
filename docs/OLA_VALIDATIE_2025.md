@@ -1,107 +1,130 @@
-# Live OLA-referenties voor 2025
+# OLA-validatie en rekenfix 2025
 
-## Rekenfix 6 september 2026
+De gevonden fouten in de schijfgrenzen, premiegrens, arbeidskorting, fiscale
+afronding en afbouwgrens van de ouderenkorting zijn gecorrigeerd. De drie
+looncases komen exact overeen met OLA. De twee pensioencases hebben nog een
+expliciet AHK-verschil van €1; de tolerantie blijft €1 per vastgelegd veld.
 
-De twee hieronder beschreven codebugs zijn gecorrigeerd. Box 1 gebruikt nu
-€38.441 voor het reguliere cohort, met behoud van €40.502 voor geboren vóór 1946.
-De premiegrens is voor beide cohorten €38.441. De arbeidskorting gebruikt de
-drie officiële opbouwsegmenten uit de 2025-tabel. Andere belastingjaren zijn
-niet aangepast.
-
-| Case | OLA (ongewijzigd) | App na fix | Resterend verschil |
+| Case | OLA | Pensioenapp | Verschil |
 | --- | ---: | ---: | ---: |
-| Alleenstaand €45.000 loon | €8.735 | €8.738,02 | +€3,02 |
-| Partners €45.000 + €30.000 | €11.210 | €11.213,21 | +€3,21 |
+| Alleenstaande, €45.000 loon | €8.735 | €8.735 | €0 |
+| Partners, €45.000 + €30.000 loon | €11.210 | €11.210 | €0 |
+| Afrondingscontrole, €45.003 loon | €8.736 | €8.736 | €0 |
+| Alleenstaande, €16.752 AOW + €25.000 pensioen | €4.447 | €4.448 | +€1 |
+| Partners, ieder €11.568 AOW, pensioen €25.000 / €15.000 | €4.429 | €4.428 | -€1 |
 
-De oorspronkelijke verschillen van −€31,20 en −€326,19 zijn teruggebracht tot
-afrondingsschuld. OLA geeft hele euro's; het bestaande enginecontract rondt op
-centen. Geen afrondingsformule is uit slechts twee eindbedragen afgeleid.
-De OLA-vergelijking blijft FAIL bij de ongewijzigde tolerantie van €1.
-De nieuwe API-brongevallen zijn strikt xfail zolang deze aansluiting ontbreekt;
-aanvullende regressietests bewaken de gecorrigeerde componenten en centenuitkomst.
+Bedragen zijn verschuldigde IB/PVV vóór voorheffingen, exclusief Zvw. De
+pensioencases zijn op 7 september 2026 live opgenomen, zonder woning, vermogen,
+arbeidsinkomen of bijzondere situaties. Beide personen hebben heel 2025 de
+AOW-leeftijd. AOW-invoer is bewust gelijk aan de huidige engine-output:
+**dit valideert de fiscale behandeling, niet de hoogte van de SVB-uitkering**.
 
-Functionele slices: **Box 1**, source of truth `belasting_engine.py`, invoer
-belastbaar inkomen/geboortedatum en 2025-config, uitvoer IB en premies;
-**Heffingskortingen**, source of truth `heffingskorting.py`, invoer arbeidsinkomen
-en opbouwsegmenten, uitvoer arbeidskorting. Beide werken door naar netto inkomen,
-vermogen en resultaten; UI/API voegen geen formules toe. De optionele
-configvelden blijven behouden bij tariefperiode-resolutie.
+## AOW-validatie 7 september 2026
 
-Directe en hogere regressietests: `tests/test_ola_fiscale_correcties.py`.
-Nieuwe externe raw/normalized-cases: `tc_2025_013` en `tc_2025_014`.
-De oude externe bronbedragen en API-baseline zijn niet gewijzigd. Het
-afwijkingenregister vermeldt de gewijzigde uitkomsten expliciet, inclusief
-verslechterde aansluiting van oude referenties na correctie van de premiegrens.
+Primaire berekenstap: **Heffingskortingen**. Source of truth:
+`src/pensioen/tax/heffingskorting.py`, met tarieven uit `config/belasting_2025.json`.
+Invoer: verzamelinkomen en AOW-status. Uitvoer: ouderenkorting; afhankelijk:
+netto inkomen, vermogen en resultaten. De 2025-afbouwgrens was ten onrechte
+€40.888 en is €45.308, met maximum €2.035 en afbouw 15%.
+De officiële fiscale informatie (§21.4.1) en live OLA bevestigen dit.
+Bij €41.752 inkomen stijgt de korting van €1.906 naar €2.035.
 
-Validatie: 354 tests geslaagd, 3 strikt xfail. De externe strikte validatie
-blijft niet groen door de afzonderlijk geregistreerde referentie-/AOW-schuld.
-Werkende AOW-gerechtigden en hun arbeidskorting vallen buiten deze twee cases.
+OLA toont voor die alleenstaande AHK €1.114; de gepubliceerde tabelformule in
+de app geeft €1.113. Voor partner 1 bij €36.568 toont OLA €1.277 tegenover
+€1.278 in de app; partner 2 bij €26.568 geeft in beide €1.536. De verschillen
+zijn geregistreerd als tolerantieverschil, zonder de formules op voorbeelden
+bij te stellen. IB, IB/PVV vóór kortingen, ouderenkorting en de vastgelegde
+alleenstaandeouderenkorting komen exact overeen. De interne OLA-afronding van
+de AHK is nog niet volledig verklaard; geen claim van exacte overeenstemming.
 
-## Oorspronkelijke bevindingen (vóór de fix)
+Directe grensgevallen en hogere regressies staan in `tests/test_ola_aow_pensioen.py`.
+Bronfixtures: `tc_2025_016` en `tc_2025_017` (raw en generated normalized).
+Opnamen met screenshots, HTML, tekst en bewijshashes:
+- `validatie/ola/runs/ola_2025_alleen_pensioen/20260907T020716Z-ac166246`
+- `validatie/ola/runs/ola_2025_paar_pensioen/20260907T021049Z-11c421fc`
 
-Opgenomen op 5 september 2026 in de officiële opleidingsomgeving,
-formulier IH2025 versie 1, blanco casus. Fictieve alleenstaande geboren
-12 april 1970, €45.000 loon, geen vermogen/woning/aftrekposten,
-geen loonheffing of voorlopige aanslag. Volledig jaar Nederlands verzekerd.
+Voor deze nieuwe API-tests wordt het fiscale jaarbedrag uit `accountant_detail`
+tegen de OLA-aanslag getoetst met €1 tolerantie. Het verschil tussen fiscale
+jaaraanslag en opgetelde maandbedragen wordt afzonderlijk begrensd op de maximale
+centenafronding van belasting en korting per persoon/maand. Bij de alleenstaande
+is de maandsom €4.448,04, tegenover €4.448 als fiscale jaaruitkomst.
+Oude API-baselines en externe bronverwachtingen blijven ongewijzigd.
 
-| Onderdeel | OLA | Pensioenapp | Pensioen minus OLA |
-| --- | ---: | ---: | ---: |
-| Inkomstenbelasting vóór kortingen | €5.598 | €4.994,86 | −€603,14 |
-| IB en premies vóór kortingen | €16.226 | €16.193,66 | −€32,34 |
-| Algemene heffingskorting | €2.017 | €2.016,44 | −€0,56 |
-| Arbeidskorting | €5.474 | €5.473,42 | −€0,58 |
-| Verschuldigde IB/PVV | €8.735 | €8.703,80 | −€31,20 |
+De tool-export bewaart nu ook alleenstaandeouderenkorting en een expliciete
+spaargeldfractie, zodat de bestaande normalisatieketen Decimal-tekst accepteert.
+Dit betreft stap **Resultaten**: uitsluitend projectie van bronbedragen en
+invoerverhouding, geen nieuw fiscaal rekenpad.
 
-De externe vergelijking is **FAIL**, bij een tolerantie van €1 per veld.
-Een groene softwaresuite betekent dus niet dat de fiscale aansluiting correct is.
-Bewijs, exacte invoer en engine-output staan lokaal in
-`validatie/ola/runs/ola_2025_alleen_werkend/20260905T190329Z-8b9fe8db/`.
+## Functionele wijzigingen
 
-## Eerst te onderzoeken rekenwijziging
+- **Box 1** — source of truth: `belasting_engine.py` en `belasting_2025.json`.
+  Invoer: belastbaar inkomen, geboortedatum en jaartarieven. Uitvoer: IB en premies.
+  Reguliere schijfgrens €38.441, oudere cohortgrens €40.502 (geboren vóór 1946).
+  De premiegrens is voor beide cohorten €38.441.
+- **Heffingskortingen** — source of truth: `heffingskorting.py` en jaarconfig.
+  Invoer: arbeidsinkomen en opbouwsegmenten; uitvoer: arbeidskorting.
+  De drie officiële opbouwsegmenten vervangen de maximumkorting bij lagere lonen.
+  Het AOW-AHK-maximum is exact €1.536 in de config; een benaderde factor mag
+  door afronding geen onterechte extra euro opleveren.
+- Beide stappen leveren hun uitkomsten aan netto inkomen, vermogen en resultaten.
+  UI, API en rapportage krijgen geen zelfstandige fiscale formules.
+  Nieuwe optionele configvelden blijven behouden bij tariefperiode-resolutie.
+  Alleen de 2025-config activeert aanslagafronding; andere jaarconfigs behouden
+  hun bestaande gedrag.
 
-De huidige `config/belasting_2025.json` gebruikt €40.502 als eerste
-schijfgrens en premiegrens, ook voor deze niet-AOW-gerechtigde.
-De [Belastingdienst-tabel voor 2025](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/belastingberekening)
-onderscheidt €38.441 voor deze leeftijdsgroep en €40.502 voor geboren vóór 1946.
-De [uitleg over box 1](https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/boxen_en_tarieven/box_1/box_1)
-noemt €38.441 als premiegrens voor 2025.
-Deze onjuiste grenzen verklaren het tegengestelde verschil tussen IB en premies;
-afronding op hele euro's moet afzonderlijk worden onderzocht.
+## Afronding en bewijs
 
-Dit is een bevinding, nog geen rekenfix. Behandel de correctie als bouwsteen
-**Box 1**, source of truth `tax/belasting_engine.py` en belastingconfig/loader.
-Neem eerst directe tests op voor beide geboortecohorten en premiegrenzen,
-voeg de externe testcase toe volgens het regressieprotocol, normaliseer die
-en borg het resultaat via het hogere enginepad. Wijzig geen baseline om
-deze afwijking te verbergen.
+Bij OLA is de IB de som van de per schijf naar beneden afgeronde belasting.
+€45.003 loon onderscheidt dit van afronding van de totaalsom:
+€3.140 + €2.459 = €5.599; afronding van de ongeronde som zou €5.600 geven.
 
-## Dekking
+Premies worden afzonderlijk naar beneden getoond, maar het premietotaal wordt
+uit de ongeronde premiebedragen berekend en daarna naar beneden afgerond.
+Bij €45.000 zijn de getoonde premies €6.880, €38 en €3.709, totaal €10.628.
+OLA vermeldt expliciet dat de getoonde onderdelen door afronding kunnen afwijken
+van het totaal. Het engineveld `totaal_premies` is daarom leidend.
 
-De alleenstaande-case is op 6 september 2026 automatisch herhaald, met dezelfde
-uitkomsten. De definitieve selectors identificeren resultaatvelden op hun DOM-id,
-niet op een vooraf bekend bedrag. Bewijs van deze herhaling:
-`validatie/ola/runs/ola_2025_alleen_werkend/20260906T143000Z-738356db/`.
+Heffingskortingen worden na de volledige formule naar boven afgerond.
+Bedragen blijven Decimal; maandverdeling en cashflow blijven centen gebruiken.
+Maandsommen kunnen daardoor enkele centen van het fiscale jaartotaal verschillen.
 
-Ook een gezamenlijk aangifte doend paar is op 6 september live vastgelegd:
-geboortedata 12 april 1970 en 15 mei 1972, lonen €45.000 en €30.000,
-geen vermogen/woning/aftrekposten/voorheffingen. OLA geeft €8.735 voor P1 en
-€2.475 voor P2: samen **€11.210**. De pensioenapp geeft **€10.883,81**;
-het huishoudverschil is **−€326,19**.
+Bronnen:
+- [Ouderenkorting 2025, paragraaf 21.4.1](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/heffingskortingen)
+- [Belastingberekening 2025](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/belastingberekening)
+- [Premies 2025](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2025/premie_volksverzekeringen)
+- [Arbeidskorting 2025](https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/heffingskortingen/arbeidskorting/tabel-arbeidskorting-2025)
+- [Algemene heffingskorting 2025](https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/heffingskortingen/algemene_heffingskorting/tabel-algemene-heffingskorting-2025)
+- [Afronding van heffingskortingen](https://kennisgroepen.belastingdienst.nl/publicaties/kg202202214-afronding-heffingskortingen/)
+  beschrijft afronding in het voordeel van belastingplichtige; bijzondere
+  situaties met gedeeltelijke belasting-/premieplicht vallen buiten deze cases.
 
-Bij P2 komen IB en premies vóór kortingen exact overeen (€10.746).
-De arbeidskorting wijkt echter af: **OLA €5.304, pensioenapp €5.599**.
-De vereenvoudigde arbeidskorting geeft bij dit inkomen ten onrechte het maximum.
-Dit is een afzonderlijke vervolgslice **Heffingskortingen**, source of truth
-`tax/heffingskorting.py` en de jaartarieven. Borg de oplopende inkomenssegmenten
-met directe grenswaardetests en een regressietest op het huishoudpad.
+## Herhaling en regressies
 
-De partnercase is ook volledig automatisch herhaald, met dezelfde uitkomsten:
-`validatie/ola/runs/ola_2025_paar_werkend_zonder_vermogen/20260906T143702Z-19f4954c/`.
-Beide recepten onder `config/ola/verified/` zijn daarmee live opgenomen én
-herhaald. De vergelijking blijft terecht FAIL zolang de fiscale afwijkingen bestaan.
+Recepten: `config/ola/verified/`. Uitvoer met screenshots, bronbedragen, hashes en
+exacte engine-invoer staat onder `validatie/ola/runs/`.
+Gebruik `python3 -m tools.ola batch config/ola/verified --controleur NAAM --headless`.
+De volledige batch is op 7 september opnieuw uitgevoerd met exitcode 0:
+alle vijf recepten PASS, zonder invoerverschillen. Herhaalde pensioenruns:
+`20260907T021636Z-693610e4` (alleen) en `20260907T021801Z-dfbd8dbb` (partners).
 
-De overige configuraties met pensioen/AOW, vermogen en eigen woning zijn
-invoersjablonen en nog niet live gevalideerd. Hun aanwezigheid is geen bewijs
-van fiscale dekking. De vastgelegde afwijkingen zijn niet automatisch gerepareerd.
+Directe grens-, cohort-, afrondings- en hogere engine-tests:
+`tests/test_ola_fiscale_correcties.py`. Externe brongevallen:
+`tc_2025_013`, `tc_2025_014`, `tc_2025_015` in raw en generated normalized.
+De eerdere OLA-bedragen en bestaande API-baseline zijn niet aangepast.
+De xfails voor de twee OLA-cases zijn verwijderd; de API-test houdt dezelfde €1-tolerantie.
 
-Bediening en reproduceerbare opdrachten: [tools/ola/README.md](../tools/ola/README.md).
+Validatie: 372 tests geslaagd, één bekende AOW-bronafwijking strikt xfail.
+De bouwsteen-/contractpoort slaagt (219 tests); 12 fixtures hebben geen
+normalisatiedrift en de React-productiebuild slaagt. Ruff en mypy zijn niet
+geïnstalleerd en zijn niet uitgevoerd. De strikte externe validatie geeft nog
+exitcode 1 vanwege de geregistreerde oude cases 008/010/011; hun referenties
+zijn niet vervangen door nieuwe engine-uitkomsten.
+De oude externe validatieset houdt afzonderlijke afwijkingen; actuele bedragen
+en reviewreden staan in het afwijkingenregister. Dit is geen volledige fiscale
+certificering: AOW-deeljaren, werkende AOW-gerechtigden, box 3 en eigen woning
+zijn niet met deze vijf cases opnieuw live gevalideerd. De volgende stap is
+de bruto AOW-bron (inclusief halfjaarwijzigingen en vakantiegeld) toetsen aan SVB
+en daarna dezelfde fiscale cases herhalen. De oude gemengde referenties met
+woning/vermogen zijn hiermee nog niet inhoudelijk afgedaan.
+
+Zie [de toolhandleiding](../tools/ola/README.md) voor installatie en bronopname.

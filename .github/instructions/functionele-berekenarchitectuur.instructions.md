@@ -52,10 +52,19 @@ steps explicitly before editing.
 For 2025 box-1 work, preserve the separate birth-cohort IB boundary and the
 common premium boundary; do not derive the premium boundary from an IB bracket.
 Preserve the configured employment-credit build-up segments through tariff
-period resolution. Regression cases: `tc_2025_013`, `tc_2025_014` and
-`tests/test_ola_fiscale_correcties.py`. Their whole-euro OLA comparison remains
-separate from the engine's cent-rounding contract; do not change source values
-or increase OLA tolerance to hide rounding debt.
+period resolution. Regression cases: `tc_2025_013` through `tc_2025_015` and
+`tests/test_ola_fiscale_correcties.py`. The 2025 assessment rounds IB per bracket
+down, total premiums from the unrounded sum down, and completed tax credits up.
+Displayed premium parts need not sum to the rounded premium total. Keep the
+explicit AOW-AHK maximum to avoid rounding an approximate factor above its cap.
+Do not change source values or increase OLA tolerance to hide regressions.
+
+For 2025 elderly-credit work, preserve the €45,308 phase-out threshold, €2,035
+maximum and 15% phase-out. Direct and engine regressions live in
+`tests/test_ola_aow_pensioen.py`, with OLA sources `tc_2025_016/017`.
+Their €1 AHK differences remain explicit; fiscal annual output and rounded
+monthly allocations must be checked separately. Matching AOW inputs for tax
+validation does not validate the statutory SVB benefit amount.
 
 For any calculation-affecting change, verify all of the following:
 
