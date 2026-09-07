@@ -98,3 +98,11 @@ end-of-month cashflow, cash deficits and closing transfers. Item contributions
 (including explicit zero) override legacy contributions per asset type. Keep
 accountant rows reconciled to actual monthly contributions. See
 `docs/VERMOGEN_REKENCONTRACT.md` and `tests/test_vermogen_rendement_regressie.py`.
+
+For net-income presentation, the primary step is Resultaten. Preserve the
+monthly engine's person ownership in `netto_componenten`. The detail assembler
+owns `netto_aansluiting`; UI must render its rows without fiscal recomputation.
+Each row and the total reconcile P1 + P2 + gezamenlijk to huishouden. Returns
+and unallocated deductions stay explicit; legacy annual tax `netto_p1/p2` fields
+are not interchangeable with household cashflow totals. Regression:
+`tests/test_netto_aansluiting.py`, internal acceptance metadata in testcase 018.
