@@ -13,7 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from tools.ola.catalogus import ontdek_casussen
-from tools.ola.modellen import Case, case_hash, controleer_url, laad_case
+from tools.ola.modellen import Case, case_hash, controleer_url, laad_case, formulierafrondingen
 from tools.ola.vergelijking import engine_resultaat, raw_kandidaat, vergelijk
 
 
@@ -41,6 +41,8 @@ def invulblad(case: Case) -> str:
     if case.woning:
         regels += [f'| woning.{k} | {v} |' for k, v in data['woning'].items()]
     regels += [f'| ola.keuzes.{k} | {v} |' for k, v in case.ola.keuzes.items()]
+    for rij in formulierafrondingen(case):
+        regels.append(f'| Formulier: {rij["pad"]} ({rij["regel"]}) | {rij["formulier"]} |')
     regels += ['', '## Uitgangspunten', ''] + [f'- {s}' for s in case.uitgangspunten]
     regels += ['', '## Resultaatbetekenis', '',
                '`verschuldigd_ib_pvv_p1` (en P2): inkomstenbelasting box 1 + box 3 en',
@@ -84,6 +86,11 @@ def schrijf_vergelijking(directory: Path, case: Case, bron: dict[str, Any], engi
               '', '| Veld | OLA | Pensioen | Verschil | Status |', '| --- | ---: | ---: | ---: | --- |']
     regels += ['| ' + ' | '.join(str(r[k]) for k in ['veld', 'ola', 'pensioen', 'verschil', 'status']) + ' |'
                for r in resultaat['verschillen']]
+    if resultaat['formulierafrondingen']:
+        regels += ['', '## Expliciete formulierafronding', '',
+                   'Engine en case behouden centen; OLA ontvangt de hieronder vermelde hele euro’s.',
+                   '| Invoerpad | Case/engine | Formulier |', '| --- | ---: | ---: |']
+        regels += [f'| {r["pad"]} | {r["case"]} | {r["formulier"]} |' for r in resultaat['formulierafrondingen']]
     if resultaat['invoerverschillen']:
         regels += ['', '## Invoer niet gelijk', '',
                    'Eerst de bronkeuze onderzoeken; fiscale verschillen zijn nog niet vergelijkbaar.',

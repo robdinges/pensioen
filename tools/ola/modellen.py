@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR
 from pathlib import Path
 from typing import Annotated, Any, Literal
 from urllib.parse import urlparse
@@ -58,7 +58,7 @@ class Stap(Model):
     waarde_pad: str | None = None
     waarde: str | None = None
     veld: str | None = None
-    formaat: Literal['tekst', 'datum_nl', 'dag', 'maand', 'jaar', 'euro_nl'] = 'tekst'
+    formaat: Literal['tekst', 'datum_nl', 'dag', 'maand', 'jaar', 'euro_nl', 'euro_heel_omlaag'] = 'tekst'
 
     @model_validator(mode='after')
     def controleer(self) -> Stap:
@@ -180,3 +180,16 @@ def controleer_url(url: str) -> None:
         raise ValueError('Alleen de openbare OLA-opleidingsomgeving is toegestaan.')
     if parsed.username or parsed.password:
         raise ValueError('Credentials in URL zijn niet toegestaan.')
+
+
+def hele_euro_omlaag(waarde: str) -> str:
+    """Expliciete formulierconversie; verandert geen enginegrondslag."""
+    return str(Decimal(waarde).quantize(Decimal('1'), rounding=ROUND_FLOOR))
+
+
+def formulierafrondingen(case: Case) -> list[dict[str, str]]:
+    data = case.model_dump(mode='json')
+    return [{'pad': s.waarde_pad, 'case': waarde_op_pad(data, s.waarde_pad),
+             'formulier': hele_euro_omlaag(waarde_op_pad(data, s.waarde_pad)),
+             'regel': s.formaat}
+            for s in case.ola.stappen if s.formaat == 'euro_heel_omlaag' and s.waarde_pad]

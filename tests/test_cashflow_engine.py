@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -124,6 +125,12 @@ class TestCashflowHuishouden:
             ],
         )
         configs = _maak_configs(2025, 2025)
+        # Historische fiscale proef: behoud de oorspronkelijke bruto AOW-invoer.
+        # De wettelijke SVB-cashflow wordt apart getest in test_aow_bedragen_2025.
+        config, aanname = configs[2025]
+        configs[2025] = (replace(config, aow_bedrag=replace(
+            config.aow_bedrag, alleenstaande_per_maand=Decimal("1396"), periodes=[]
+        )), aanname)
 
         cashflow = bereken_huishouden(
             scenario=scenario,

@@ -1,0 +1,47 @@
+{
+  "testcase_id": "tc_2025_018",
+  "naam": "Alleenstaand met AOW en pensioen (SVB-bronbedragen)",
+  "jaar": 2025,
+  "bron_formaat": "OLA IH2025 + schermafbeeldingen",
+  "huishouden": {
+    "type": "ALLEENSTAAND",
+    "aantal_personen": 1,
+    "eigen_huis": false
+  },
+  "personen": [
+    {
+      "naam": "Testpersoon Een",
+      "geboortedatum": "1955-03-15",
+      "bruto_arbeid": "0",
+      "bruto_pensioen": "25000",
+      "bruto_aow": "20192.44"
+    }
+  ],
+  "vermogen": {
+    "totaal": "0",
+    "spaargeld_fractie": "0",
+    "spaargeld": "0",
+    "beleggingen": "0"
+  },
+  "eigen_woning": null,
+  "verwachte_belasting": {
+    "totaal_verschuldigd": "5847",
+    "box1_ib_p1": "5670",
+    "ahk_p1": "1004",
+    "ouderenkorting_p1": "2035",
+    "alleenstaandeouderenkorting_p1": "531"
+  },
+  "metadata": {
+    "bron": "https://opleiding-ola.belastingdienst.nl:443/onlineaangifte/ib/aangifte/2025/?casusid=260",
+    "uitgangspunten": [
+      "Heel 2025 in Nederland gewoond en verzekerd; geen bijzondere situaties.",
+      "Geen arbeid, kinderen, onderneming, buitenland, woning, vermogen of aftrekposten.",
+      "Loonheffing, ingehouden Zvw en voorlopige aanslagen nul. Vergelijk IB/PVV exclusief afzonderlijke Zvw-aanslag.",
+      "Volledige AOW sinds vóór mei 2024, ongewijzigde leefvorm; bruto SVB/SZW-bedragen per januari/juli 2025 plus in mei ontvangen vakantiegeld over mei 2024 tot en met april 2025.",
+      "OLA vraagt hele getallen en staat afronden in eigen voordeel toe. AOW wordt uitsluitend bij formulierinvoer naar beneden afgerond; enginecashflow en bronjaarbedrag blijven op centen. Verschil in invoer wordt afzonderlijk gerapporteerd."
+    ],
+    "data_kwaliteit": "gedeeltelijk",
+    "opmerkingen": "Live OLA IH2025, 7 september 2026; opname 20260907T071730Z-f00dd7ba. SVB-bronjaarbedrag inclusief vakantiegeld op centen; OLA-invoer expliciet hele euro omlaag. Geen wijziging van historische referenties. OLA-schermbedragen, SVB-invoer en formulierafronding gecontroleerd vóór opname in raw/. Casehash: 75c4b38048abeb2cb705d34e97a66bb24ad24c17733187d28f305bcfd62a8fc7. Controleur: Codex",
+    "_incomplete": false
+  }
+}

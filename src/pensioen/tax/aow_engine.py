@@ -7,13 +7,62 @@ import json
 import logging
 import os
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+
+from pensioen.tax.belasting_loader import AOWBedragPeriode, BelastingConfig
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_CONFIG_DIR = Path(__file__).parents[3] / "config"
 CONFIG_DIR = Path(os.environ.get("PENSIOEN_CONFIG_DIR", _DEFAULT_CONFIG_DIR))
+
+
+def _bedrag_naar_aow_dagen(bedrag: Decimal, aow_datum: date, jaar: int, maand: int) -> Decimal:
+    """Dag-pro-rata voor de ingangsmaand; één afronding op centen."""
+    dagen = calendar.monthrange(jaar, maand)[1]
+    if aow_datum > date(jaar, maand, dagen):
+        return Decimal('0')
+    aandeel = (Decimal(dagen - aow_datum.day + 1) / Decimal(dagen)
+               if aow_datum > date(jaar, maand, 1) else Decimal('1'))
+    return (bedrag * aandeel).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def _aow_periode(config: BelastingConfig, peildatum: date) -> AOWBedragPeriode:
+    periodes = [p for p in config.aow_bedrag.periodes if p.vanaf <= peildatum <= p.tot]
+    if len(periodes) != 1:
+        raise ValueError(f'AOW-bronperiode ontbreekt of overlapt op {peildatum}.')
+    return periodes[0]
+
+
+def bereken_aow_uitkering_maand(
+    aow_datum: date, config: BelastingConfig, jaar: int, maand: int, heeft_partner: bool,
+) -> Decimal:
+    """Bruto AOW-cashflow: maanduitkering plus in mei uitbetaalde opbouw.
+
+    Alleen configs met bronperiodes activeren vakantiegeld. De opgebouwde vaste
+    maandbedragen van mei vorig jaar t/m april worden in mei uitgekeerd.
+    Uitgangspunt: volledige AOW en ongewijzigde leefvorm; geen partnertoeslag.
+    Andere jaarconfigs behouden hun bestaande maandbedrag zonder vakantiegeld.
+    """
+    veld = 'gehuwd_of_samenwonend_per_maand' if heeft_partner else 'alleenstaande_per_maand'
+    peildatum = date(jaar, maand, 1)
+    if aow_datum > date(jaar, maand, calendar.monthrange(jaar, maand)[1]):
+        return Decimal('0')
+    if not config.aow_bedrag.periodes or jaar != config.jaar:
+        return _bedrag_naar_aow_dagen(getattr(config.aow_bedrag, veld), aow_datum, jaar, maand)
+    periode = _aow_periode(config, peildatum)
+    uitkering = _bedrag_naar_aow_dagen(getattr(periode, veld), aow_datum, jaar, maand)
+    if maand != 5:
+        return uitkering
+    vakantieveld = ('vakantiegeld_samenwonend_per_maand' if heeft_partner
+                   else 'vakantiegeld_alleenstaande_per_maand')
+    for opbouwjaar, opbouwmaand in [(jaar - 1, m) for m in range(5, 13)] + [(jaar, m) for m in range(1, 5)]:
+        if aow_datum > date(opbouwjaar, opbouwmaand, calendar.monthrange(opbouwjaar, opbouwmaand)[1]):
+            continue
+        bron = _aow_periode(config, date(opbouwjaar, opbouwmaand, 1))
+        uitkering += _bedrag_naar_aow_dagen(getattr(bron, vakantieveld), aow_datum, opbouwjaar, opbouwmaand)
+    return uitkering
 
 
 def _laad_aow_tabel() -> list[dict]:

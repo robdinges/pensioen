@@ -90,6 +90,10 @@ def _pas_aow_bedrag_aan_voor_testcase(testcase: TestCase, config):
         if Decimal(p.bruto_aow) > Decimal("0")
     ]
 
+    # Nieuwe SVB-referenties toetsen de echte maandcashflow, zonder invoeroverride.
+    if testcase.testcase_id in {"tc_2025_018", "tc_2025_019"}:
+        return config
+
     if not aow_bedragen:
         return config
 
@@ -101,6 +105,7 @@ def _pas_aow_bedrag_aan_voor_testcase(testcase: TestCase, config):
         nieuwe_aow_bedragen = replace(
             config.aow_bedrag,
             gehuwd_of_samenwonend_per_maand=maandbedrag,
+            periodes=[],  # Historische fiscale proef met expliciete bruto broninvoer.
         )
     else:
         jaarbedrag = aow_bedragen[0]
@@ -108,6 +113,7 @@ def _pas_aow_bedrag_aan_voor_testcase(testcase: TestCase, config):
         nieuwe_aow_bedragen = replace(
             config.aow_bedrag,
             alleenstaande_per_maand=maandbedrag,
+            periodes=[],  # Geen vakantiegeld bovenop het opgegeven jaarbedrag.
         )
 
     return replace(config, aow_bedrag=nieuwe_aow_bedragen)

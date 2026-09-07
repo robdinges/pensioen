@@ -104,9 +104,47 @@
   },
 
   "aow_bedrag": {
-    "_toelichting": "Bruto AOW per maand (per 1 januari 2025). Wordt halfjaarlijks aangepast. Controleer op https://www.svb.nl/nl/aow/hoogte-aow/",
-    "alleenstaande_per_maand": 1396,
-    "gehuwd_of_samenwonend_per_maand": 964
+    "_toelichting": "Bruto AOW exclusief vakantiegeld. Basisvelden: januari 2025. Halfjaarbedragen en opbouw voor uitbetaling vakantiegeld in mei staan in periodes; volledige AOW, ongewijzigde leefvorm. 2024 uitsluitend nodig voor vakantiegeldopbouw.",
+    "alleenstaande_per_maand": "1580.92",
+    "gehuwd_of_samenwonend_per_maand": "1081.50",
+    "periodes": [
+      {
+        "vanaf": "2024-01-01",
+        "tot": "2024-06-30",
+        "alleenstaande_per_maand": "1536.03",
+        "gehuwd_of_samenwonend_per_maand": "1042.10",
+        "vakantiegeld_alleenstaande_per_maand": "76.20",
+        "vakantiegeld_samenwonend_per_maand": "54.44",
+        "bron": "https://www.rijksoverheid.nl/documenten/2023/12/14/uitkeringsbedragen-per-1-januari-2024"
+      },
+      {
+        "vanaf": "2024-07-01",
+        "tot": "2024-12-31",
+        "alleenstaande_per_maand": "1564.25",
+        "gehuwd_of_samenwonend_per_maand": "1061.97",
+        "vakantiegeld_alleenstaande_per_maand": "78.34",
+        "vakantiegeld_samenwonend_per_maand": "55.96",
+        "bron": "https://open.overheid.nl/documenten/8302c040-99b9-45fb-b5db-2df56db39336/file"
+      },
+      {
+        "vanaf": "2025-01-01",
+        "tot": "2025-06-30",
+        "alleenstaande_per_maand": "1580.92",
+        "gehuwd_of_samenwonend_per_maand": "1081.50",
+        "vakantiegeld_alleenstaande_per_maand": "102.46",
+        "vakantiegeld_samenwonend_per_maand": "73.18",
+        "bron": "https://open.overheid.nl/documenten/55075c82-1c75-4d4e-9768-ac45a943c5ff/file"
+      },
+      {
+        "vanaf": "2025-07-01",
+        "tot": "2025-12-31",
+        "alleenstaande_per_maand": "1612.44",
+        "gehuwd_of_samenwonend_per_maand": "1103.97",
+        "vakantiegeld_alleenstaande_per_maand": "100.39",
+        "vakantiegeld_samenwonend_per_maand": "71.71",
+        "bron": "https://www.rijksoverheid.nl/documenten/2025/06/17/uitkeringsbedragen-per-1-juli-2025"
+      }
+    ]
   },
 
   "eigen_woning": {

@@ -13,7 +13,7 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
-from tools.ola.modellen import Case, Locator, RESULTAATVELDEN, Stap, case_hash, controleer_url, waarde_op_pad
+from tools.ola.modellen import Case, Locator, RESULTAATVELDEN, Stap, case_hash, controleer_url, waarde_op_pad, hele_euro_omlaag
 from tools.ola.vergelijking import lees_euro
 
 PICKER_SCRIPT = r"""
@@ -77,6 +77,8 @@ def stap_waarde(case: Case, stap: Stap) -> str:
     waarde = waarde_op_pad(case.model_dump(mode='json'), stap.waarde_pad) if stap.waarde_pad else stap.waarde
     if waarde is None:
         raise ValueError('Ontbrekende stapwaarde.')
+    if stap.formaat == 'euro_heel_omlaag':
+        return hele_euro_omlaag(waarde)
     if stap.formaat == 'euro_nl':
         return waarde.replace('.', ',')
     if stap.formaat in {'datum_nl', 'dag', 'maand', 'jaar'}:

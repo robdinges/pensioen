@@ -15,6 +15,7 @@ hieronder zijn applicatie minus externe verwachting.
 | `tc_2025_011` | FAIL | -€2.231,92 | referentieschuld | AOW-kortingen en premies voor twee gepensioneerden valideren |
 | `tc_2025_016` | PASS | +€1,00 | tolerantieverschil | interne OLA-afronding AHK verklaren |
 | `tc_2025_017` | PASS | -€1,00 | tolerantieverschil | interne OLA-afronding AHK verklaren |
+| `tc_2025_019` | PASS | +€1,00 | tolerantieverschil | AHK P1: OLA €1.206, app €1.205 |
 
 Review 7 september: afbouwgrens ouderenkorting gecorrigeerd naar €45.308.
 TC010 krijgt daardoor €663 extra korting; de oude bronverwachting is niet
@@ -34,9 +35,14 @@ De vorige bedragen staan in het JSON-register. Zie `docs/OLA_VALIDATIE_2025.md`.
 en met `tc_2025_015` zijn PASS, ook bij de ongewijzigde OLA-tolerantie van €1.
 Hun fiscale jaaruitkomsten wijken €0 af. Maandverdeling blijft op centen;
 de API-test borgt dat ook de opgetelde maanden binnen deze tolerantie blijven.
-De tijdelijke xfails voor 013/014 zijn verwijderd. Voor 016/017 wordt de fiscale
-jaaruitkomst tegen OLA getoetst (tolerantie €1); centenverschillen door maandverdeling
-worden afzonderlijk begrensd. De AHK-verschillen van +€1/-€1 blijven zichtbaar.
+De tijdelijke xfails voor 013/014 zijn verwijderd. Na de SVB-broncorrectie zijn
+016/017 in het API-pad strikt xfail: hun oude bruto AOW-invoer komt niet meer
+overeen met de productieflow. De tabel hierboven betreft het historische fiscale
+pad met expliciet bevroren bruto broninvoer, niet deze API-bronconflicten.
+Nieuwe SVB-cases 018/019 toetsen het fiscale API-jaarbedrag met de oorspronkelijke
+€1-tolerantie. Maandafronding wordt afzonderlijk begrensd. 018 is exact, 019 +€1.
+OLA-invoer is expliciet naar hele euro omlaag afgerond; enginecashflow behoudt centen.
+Oude bronverwachtingen en API-baselines zijn niet gewijzigd.
 
 - de suite blijft bruikbaar als blokkerende poort
 - de afwijkingen blijven zichtbaar
@@ -47,4 +53,5 @@ worden afzonderlijk begrensd. De AHK-verschillen van +€1/-€1 blijven zichtba
 1. Welke externe fiscale bron is leidend: simulatortranscript, officiële
    rekentooluitvoer of handmatig samengestelde componentwaarden?
 2. Geldt tolerantie op huishoudtotaal, persoonsniveau of elk component?
-3. Welk AOW-brutobedrag is leidend bij fiscaal partnerschap?
+3. Oude gemengde AOW-bronconflicten heropnemen met de SVB-bronperioden;
+   de gewone gevallen zijn nu gedekt door 018/019.

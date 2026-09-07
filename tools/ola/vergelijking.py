@@ -12,7 +12,7 @@ from pensioen.models.persoon import Persoon
 from pensioen.models.scenario import EigenWoningData, Scenario
 from pensioen.models.vermogensitem import VermogensItem
 from pensioen.tax.belasting_loader import laad_tarieven
-from tools.ola.modellen import Case, DETAIL_MAPPING, RESULTAATVELDEN, case_hash, hash_json
+from tools.ola.modellen import Case, DETAIL_MAPPING, RESULTAATVELDEN, case_hash, hash_json, formulierafrondingen
 
 
 def lees_euro(tekst: str) -> Decimal:
@@ -118,6 +118,7 @@ def vergelijk(case: Case, bron: dict[str, Any], engine: dict[str, Any]) -> dict[
               'FAIL' if any(v['status'] == 'FAIL' for v in verschillen) else 'PASS')
     return {'case_id': case.case_id, 'jaar': 2025, 'status': status,
             'tolerantie': str(case.tolerantie), 'invoerverschillen': invoerverschillen,
+            'formulierafrondingen': formulierafrondingen(case),
             'verschillen': verschillen, 'case_hash': case_hash(case),
             'tarieven_hash': engine['tarieven_hash'],
             'dekking': 'alleen huishoudtotaal' if len(verschillen) == 1 else 'huishoudtotaal en vastgelegde componenten'}

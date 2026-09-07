@@ -1,7 +1,7 @@
 ## IB 2025 Validatierapport
 
-- Gegenereerd op: 2026-09-07 04:16
-- Aantal testcases: 11
+- Gegenereerd op: 2026-09-07 09:23
+- Aantal testcases: 13
 
 ## Samenvatting
 
@@ -18,6 +18,8 @@
 | tc_2025_015 | PASS | EUR 8,736.00 | EUR 8,736.00 | EUR 0.00 |
 | tc_2025_016 | PASS | EUR 4,447.00 | EUR 4,448.00 | EUR 1.00 |
 | tc_2025_017 | PASS | EUR 4,429.00 | EUR 4,428.00 | EUR -1.00 |
+| tc_2025_018 | PASS | EUR 5,847.00 | EUR 5,847.00 | EUR 0.00 |
+| tc_2025_019 | PASS | EUR 5,411.00 | EUR 5,412.00 | EUR 1.00 |
 
 ## tc_2025_006 - IB2025 TC1 - Alleenstaand werkend zonder eigen woning
 
@@ -289,3 +291,52 @@
 | box1_ib_p2 | EUR 2,170.00 | EUR 2,170.00 | EUR 0.00 | PASS |
 | totaal_premies_p2 | n.v.t. | EUR 2,590.00 | EUR 0.00 | NVT |
 | totaal_kortingen_p2 | n.v.t. | EUR 3,571.00 | EUR 0.00 | NVT |
+
+## tc_2025_018 - Alleenstaand met AOW en pensioen (SVB-bronbedragen)
+
+### Huishouden
+
+| Verwacht | Berekend | Verschil | Status |
+|---:|---:|---:|---|
+| EUR 5,847.00 | EUR 5,847.00 | EUR 0.00 | PASS |
+
+### Per persoon
+
+| Persoon | Verwacht | Berekend | Verschil | Status |
+|---|---:|---:|---:|---|
+| P1 | n.v.t. | EUR 5,847.00 | EUR 0.00 | NVT |
+
+### Componentniveau
+
+| Component | Verwacht | Berekend | Verschil | Status |
+|---|---:|---:|---:|---|
+| box1_ib_p1 | EUR 5,670.00 | EUR 5,670.00 | EUR 0.00 | PASS |
+| totaal_premies_p1 | n.v.t. | EUR 3,747.00 | EUR 0.00 | NVT |
+| totaal_kortingen_p1 | n.v.t. | EUR 3,570.00 | EUR 0.00 | NVT |
+| box3_heffing | n.v.t. | EUR 0.00 | EUR 0.00 | NVT |
+
+## tc_2025_019 - Partners met AOW en pensioen zonder vermogen (SVB-bronbedragen)
+
+### Huishouden
+
+| Verwacht | Berekend | Verschil | Status |
+|---:|---:|---:|---|
+| EUR 5,411.00 | EUR 5,412.00 | EUR 1.00 | PASS |
+
+### Per persoon
+
+| Persoon | Verwacht | Berekend | Verschil | Status |
+|---|---:|---:|---:|---|
+| P1 | n.v.t. | EUR 3,800.00 | EUR 0.00 | NVT |
+
+### Componentniveau
+
+| Component | Verwacht | Berekend | Verschil | Status |
+|---|---:|---:|---:|---|
+| box1_ib_p1 | EUR 3,293.00 | EUR 3,293.00 | EUR 0.00 | PASS |
+| totaal_premies_p1 | n.v.t. | EUR 3,747.00 | EUR 0.00 | NVT |
+| totaal_kortingen_p1 | n.v.t. | EUR 3,240.00 | EUR 0.00 | NVT |
+| box3_heffing | n.v.t. | EUR 0.00 | EUR 0.00 | NVT |
+| box1_ib_p2 | EUR 2,357.00 | EUR 2,357.00 | EUR 0.00 | PASS |
+| totaal_premies_p2 | n.v.t. | EUR 2,812.00 | EUR 0.00 | NVT |
+| totaal_kortingen_p2 | n.v.t. | EUR 3,557.00 | EUR 0.00 | NVT |

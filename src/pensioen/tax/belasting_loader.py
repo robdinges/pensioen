@@ -6,10 +6,12 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +64,32 @@ class Box3Config:
     disclaimer: str
 
 
+class AOWBedragPeriode(BaseModel):
+    """Bronbedragen voor een gesloten periode, exclusief vakantiegeld."""
+
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    vanaf: date
+    tot: date
+    alleenstaande_per_maand: Decimal = Field(ge=0, allow_inf_nan=False)
+    gehuwd_of_samenwonend_per_maand: Decimal = Field(ge=0, allow_inf_nan=False)
+    vakantiegeld_alleenstaande_per_maand: Decimal = Field(ge=0, allow_inf_nan=False)
+    vakantiegeld_samenwonend_per_maand: Decimal = Field(ge=0, allow_inf_nan=False)
+    bron: str = Field(min_length=1)
+
+    @model_validator(mode='after')
+    def controleer_periode(self) -> AOWBedragPeriode:
+        if self.tot < self.vanaf:
+            raise ValueError('AOW-periode eindigt vóór de begindatum.')
+        return self
+
+
 @dataclass
 class AOWBedragConfig:
     """Bruto AOW-bedragen per maand."""
 
     alleenstaande_per_maand: Decimal
     gehuwd_of_samenwonend_per_maand: Decimal
+    periodes: list[AOWBedragPeriode] = field(default_factory=list)
 
 
 @dataclass
@@ -262,6 +284,7 @@ def laad_tarieven(jaar: int) -> tuple[BelastingConfig, str]:
             gehuwd_of_samenwonend_per_maand=_d(
                 data["aow_bedrag"]["gehuwd_of_samenwonend_per_maand"]
             ),
+            periodes=[AOWBedragPeriode.model_validate(p) for p in data['aow_bedrag'].get('periodes', [])],
         ),
         premies=(
             PremiesConfig(
@@ -442,6 +465,12 @@ def pas_tariefwaarden_toe_op_config(
         aow_bedrag=AOWBedragConfig(
             alleenstaande_per_maand=waarden.get("aow_alleenstaand_pm", config.aow_bedrag.alleenstaande_per_maand),
             gehuwd_of_samenwonend_per_maand=waarden.get("aow_gehuwd_pm", config.aow_bedrag.gehuwd_of_samenwonend_per_maand),
+            periodes=[p.model_copy(update={
+                veld: waarden[sleutel]
+                for sleutel, veld in [('aow_alleenstaand_pm', 'alleenstaande_per_maand'),
+                                      ('aow_gehuwd_pm', 'gehuwd_of_samenwonend_per_maand')]
+                if sleutel in waarden and waarden[sleutel] != getattr(config.aow_bedrag, veld)
+            }) for p in config.aow_bedrag.periodes],
         ),
         premies=config.premies,  # Overnemen (niet in tariefwaarden)
         eigen_woning=config.eigen_woning,  # Overnemen (niet in tariefwaarden)

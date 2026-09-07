@@ -72,3 +72,19 @@ de bestaande resultaatservice met accountant-detail; de tool voegt geen fiscale
 formules toe. Invoer: case + tarieven 2025. Uitvoer: extern bewijs en vergelijking.
 Vervolg: gerichte correcties per fiscale bouwsteen met directe en regressietests.
 Tests van de tool staan in `tests/test_ola_tool.py`.
+
+
+## AOW-bron en formulierafronding (2025)
+
+De actieve pensioencases `verified/*_pensioen_svb.json` gebruiken officiële
+halfjaarbedragen plus de in mei betaalde vakantieopbouw. OLA accepteert hele
+euro’s: `formaat: "euro_heel_omlaag"` legt de keuze per inkomensveld vast.
+Casebedragen en enginecashflow behouden centen. Invulblad en vergelijkingsrapport
+vermelden de formulierbedragen apart (`formulierafrondingen`). Een PASS geldt
+voor de opgenomen resultaatvelden binnen €1 tolerantie, met deze expliciete
+formulierconversie; niet voor identieke centeninvoer in OLA.
+
+`config/ola/historisch/` bewaart de oorspronkelijke pensioenrecepten met oude
+AOW-bedragen. Hervergelijking met de actuele engine geeft `INVOER_VERSCHIL`;
+de fiscale tests bevriezen deze historische bruto invoer afzonderlijk.
+Zie `docs/OLA_VALIDATIE_2025.md` voor bronnen, opbouwtijdvak en beperkingen.

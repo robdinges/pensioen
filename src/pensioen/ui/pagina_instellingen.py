@@ -113,11 +113,23 @@ def toon_instellingen_pagina() -> None:
     # AOW-bedragen
     st.divider()
     st.subheader("AOW-bedragen")
-    col4, col5 = st.columns(2)
-    with col4:
-        st.metric("Alleenstaand (p/m)", fmt_eur(config.aow_bedrag.alleenstaande_per_maand))
-    with col5:
-        st.metric("Gehuwd/samenwonend (p/m)", fmt_eur(config.aow_bedrag.gehuwd_of_samenwonend_per_maand))
+    if config.aow_bedrag.periodes:
+        st.caption("Bruto per persoon, exclusief vakantiegeld. Opgebouwd vakantiegeld wordt in mei betaald.")
+        st.dataframe(pd.DataFrame([
+            {
+                "Vanaf": p.vanaf.strftime("%d-%m-%Y"),
+                "Tot en met": p.tot.strftime("%d-%m-%Y"),
+                "Alleenstaand p/m": fmt_eur(p.alleenstaande_per_maand, 2),
+                "Samenwonend p/m": fmt_eur(p.gehuwd_of_samenwonend_per_maand, 2),
+            }
+            for p in config.aow_bedrag.periodes if p.vanaf.year == jaar
+        ]), hide_index=True, use_container_width=True)
+    else:
+        col4, col5 = st.columns(2)
+        with col4:
+            st.metric("Alleenstaand (p/m)", fmt_eur(config.aow_bedrag.alleenstaande_per_maand))
+        with col5:
+            st.metric("Gehuwd/samenwonend (p/m)", fmt_eur(config.aow_bedrag.gehuwd_of_samenwonend_per_maand))
 
     st.caption(
         "ℹ️ Tarieven worden ingelezen uit `config/belasting_YYYY.json`. "

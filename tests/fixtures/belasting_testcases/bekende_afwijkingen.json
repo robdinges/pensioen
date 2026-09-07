@@ -71,6 +71,14 @@
       "eigenaar": "fiscaal_productbeheer",
       "vervolgstap": "verklaar interne OLA-afronding AHK; bewaak bestaande tolerantie van 1 euro",
       "reviewreden": "Live OLA IH2025 op 7 september 2026 met exact gelijke bruto invoer. IB/PVV voor kortingen en ouderenkorting exact; AHK 1 euro verschil tegenover gepubliceerde tabelformule. Zie docs/OLA_VALIDATIE_2025.md."
+    },
+    "tc_2025_019": {
+      "status": "PASS",
+      "verschil": "1.00",
+      "classificatie": "tolerantieverschil",
+      "eigenaar": "fiscaal_productbeheer",
+      "vervolgstap": "verklaar AHK-afronding bij partner 1; bewaak oorspronkelijke tolerantie 1 euro",
+      "reviewreden": "Live OLA met SVB AOW 13850.18 per persoon; uitsluitend formulierinvoer afgerond op 13850. OLA AHK P1 1206 tegenover app 1205. Huishoudtotaal 5411 tegenover 5412. Geen wijziging van oude bronwaarden of baselines."
     }
   }
 }

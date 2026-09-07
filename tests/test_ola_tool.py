@@ -177,8 +177,34 @@ def test_export_refuses_input_source_conflict() -> None:
 
 def test_export_preserves_single_elderly_credit() -> None:
     from tools.ola.vergelijking import raw_kandidaat
-    case = laad_case(Path('config/ola/verified/alleen_pensioen.json'))
+    case = laad_case(Path('config/ola/verified/alleen_pensioen_svb.json'))
     source = bron(case, '4447')
     source['waarnemingen']['alleenstaandeouderenkorting_p1'] = {'tekst': '531', 'bedrag': '531'}
     candidate = raw_kandidaat(case, source, engine_resultaat(case))
     assert candidate['verwachte_belasting']['alleenstaandeouderenkorting_p1'] == '531'
+
+
+def test_whole_euro_input_is_explicit_and_preserves_case_cents() -> None:
+    case = laad_case(Path('config/ola/verified/alleen_pensioen_svb.json'))
+    step = next(s for s in case.ola.stappen if s.waarde_pad == 'personen.0.bruto_aow')
+    assert stap_waarde(case, step) == '20192'
+    assert case.personen[0].bruto_aow == Decimal('20192.44')
+
+
+def test_report_preserves_explicit_form_input_rounding() -> None:
+    case = laad_case(Path('config/ola/verified/alleen_pensioen_svb.json'))
+    result = vergelijk(case, bron(case, '5847'), engine_resultaat(case))
+    assert result['status'] == 'PASS'
+    assert result['formulierafrondingen'] == [{
+        'pad': 'personen.0.bruto_aow', 'case': '20192.44',
+        'formulier': '20192', 'regel': 'euro_heel_omlaag',
+    }]
+
+
+@pytest.mark.parametrize('naam', ['alleen_pensioen', 'paar_pensioen'])
+def test_historical_ola_input_conflict_stays_visible(naam: str) -> None:
+    case = laad_case(Path('config/ola/historisch') / f'{naam}.json')
+    source = bron(case)
+    if len(case.personen) == 2:
+        source['waarnemingen']['verschuldigd_ib_pvv_p2'] = {'tekst': '1189', 'bedrag': '1189'}
+    assert vergelijk(case, source, engine_resultaat(case))['status'] == 'INVOER_VERSCHIL'

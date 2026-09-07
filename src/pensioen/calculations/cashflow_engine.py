@@ -290,18 +290,8 @@ def _bereken_jaar(
         aow_engine.bereken_aow_datum(persoon2.geboortedatum) if persoon2 else None
     )
 
-    # --- AOW-bedragen per maand ---
+    # --- Leefvorm voor AOW ---
     heeft_partner = persoon2 is not None
-    aow_maandbedrag_p1 = (
-        belasting_config.aow_bedrag.gehuwd_of_samenwonend_per_maand
-        if heeft_partner
-        else belasting_config.aow_bedrag.alleenstaande_per_maand
-    )
-    aow_maandbedrag_p2 = (
-        belasting_config.aow_bedrag.gehuwd_of_samenwonend_per_maand
-        if heeft_partner
-        else belasting_config.aow_bedrag.alleenstaande_per_maand
-    )
 
     # --- Stap 1: Maandelijkse bruto berekening ---
     maandresultaten: list[MaandResultaat] = []
@@ -388,13 +378,13 @@ def _bereken_jaar(
             )
 
         # AOW
-        aow_p1 = pensioen_engine.bereken_aow_maand(
-            persoon1.geboortedatum, aow_datum_p1, aow_maandbedrag_p1, jaar, maand
+        aow_p1 = aow_engine.bereken_aow_uitkering_maand(
+            aow_datum_p1, belasting_config, jaar, maand, heeft_partner
         )
         aow_p2 = Decimal("0")
         if persoon2 and aow_datum_p2:
-            aow_p2 = pensioen_engine.bereken_aow_maand(
-                persoon2.geboortedatum, aow_datum_p2, aow_maandbedrag_p2, jaar, maand
+            aow_p2 = aow_engine.bereken_aow_uitkering_maand(
+                aow_datum_p2, belasting_config, jaar, maand, heeft_partner
             )
 
         # Pensioen uit componenten (PENSIOEN_INKOMEN)

@@ -35,6 +35,8 @@ BASELINE_AFWIJKING, TOLERANTIE_BASELINE = _laad_baseline()
 
 
 BEKENDE_AFWIJKINGEN = {
+    "tc_2025_016": "Historische OLA-bruto AOW 16752 wijkt af van gecorrigeerde SVB 20192.44; nieuwe broncase 018.",
+    "tc_2025_017": "Historische OLA-bruto AOW 11568 wijkt af van SVB inclusief vakantiegeld; nieuwe broncase 019.",
     "tc_2025_010": (
         "E6-AFW-002: automatische AOW-bron wijkt af van het bruto AOW-bedrag "
         "in de externe testcase; bronkeuze vereist productvalidatie"
@@ -104,7 +106,7 @@ def test_api_berekeningen_regressie_genormaliseerde_cases(testcase_pad, testcase
         for maand in maanden
     )
 
-    if testcase.testcase_id in {"tc_2025_016", "tc_2025_017"}:
+    if testcase.testcase_id in {"tc_2025_016", "tc_2025_017", "tc_2025_018", "tc_2025_019"}:
         # OLA vergelijkt de fiscale jaaraanslag; maandsommen bevatten afzonderlijk
         # afgeronde belasting en korting. Bewaak die verdelingsafronding apart.
         detail = jaren[0]["accountant_detail"]
@@ -116,7 +118,7 @@ def test_api_berekeningen_regressie_genormaliseerde_cases(testcase_pad, testcase
     afwijking = abs(totaal_verschuldigd_api - verwacht)
 
     baseline = BASELINE_AFWIJKING.get(testcase.testcase_id)
-    if testcase.testcase_id in {"tc_2025_013", "tc_2025_014", "tc_2025_015", "tc_2025_016", "tc_2025_017"}:
+    if testcase.testcase_id in {"tc_2025_013", "tc_2025_014", "tc_2025_015", "tc_2025_016", "tc_2025_017", "tc_2025_018", "tc_2025_019"}:
         baseline = Decimal("1")  # De oorspronkelijke OLA-tolerantie blijft intact.
     assert baseline is not None, f"Geen baseline-afwijking geconfigureerd voor {testcase.testcase_id}"
     assert afwijking <= baseline + TOLERANTIE_BASELINE, (

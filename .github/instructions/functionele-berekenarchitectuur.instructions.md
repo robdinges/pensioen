@@ -79,3 +79,13 @@ Relevant guidance documents:
 - `UITVOERINGSPLAN_HERSTRUCTURERING.md`
 - `EPIC6_WERKPAKKET_REGRESSIE_VALIDATIE_GOVERNANCE.md`
 - `EPIC7_WERKPAKKET_OPSCHONING_DOELARCHITECTUUR.md`
+
+
+For 2025 AOW amounts, the owner is `tax/aow_engine.py::bereken_aow_uitkering_maand`.
+Preserve half-year source periods and May payment of fixed holiday accrual from
+May of the previous year through April. The 2024 periods in the 2025 config are
+accrual history only. No 8% shortcut and no holiday double counting. Tests:
+`test_aow_bedragen_2025.py`, current OLA sources `tc_2025_018/019`.
+Historic sources 016/017 keep their original gross inputs in fiscal tests;
+current API comparisons explicitly register their AOW input conflict.
+Whole-euro OLA input formatting belongs to the case recipe, not engine formulas.
