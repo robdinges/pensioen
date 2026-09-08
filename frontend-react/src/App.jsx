@@ -36,6 +36,7 @@ import {
 import ReportSection from "./components/ReportSection";
 import ResultsSection from "./components/ResultsSection";
 import ScenarioSection from "./components/ScenarioSection";
+import ActuarielePensioenSimulator from "./components/ActuarielePensioenSimulator";
 import {
   analyzeMpoRows,
   parseCsvText,
@@ -100,6 +101,7 @@ function AppContent() {
   const [importStatsP2, setImportStatsP2] = useState(null);
   const [pendingImports, setPendingImports] = useState({ P1: null, P2: null });
   const [resultaat, setResultaat] = useState(null);
+  const [opbouwDraft, setOpbouwDraft] = useState({});
   const [inputSignatureAtCalculation, setInputSignatureAtCalculation] = useState("");
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [thirdScenarioId, setThirdScenarioId] = useState("");
@@ -229,6 +231,7 @@ function AppContent() {
       importStatsP1,
       importStatsP2,
       resultaat,
+      opbouwDraft,
       inputSignatureAtCalculation,
       calculationStatus: state.calculationStatus,
     });
@@ -251,6 +254,7 @@ function AppContent() {
   const hydrateFromScenarioSnapshot = (snapshot, { includePeriod = false } = {}) => {
     const source = normalizeScenarioSnapshot(snapshot);
     setPosts(source.posts);
+    setOpbouwDraft(source.opbouwDraft || {});
     if (includePeriod) {
       setJaarVan(source.jaarVan);
       setJaarTot(source.jaarTot);
@@ -328,6 +332,7 @@ function AppContent() {
       jaarVan,
       jaarTot,
       resultaat,
+      opbouwDraft,
       inputSignatureAtCalculation,
       calculationStatus: state.calculationStatus,
     });
@@ -336,6 +341,7 @@ function AppContent() {
   const hydrateFromSnapshot = (snapshot) => {
     const source = normalizeHouseholdSnapshot(snapshot);
     setPosts(source.posts);
+    setOpbouwDraft(source.opbouwDraft || {});
     setApiBase(source.apiBase);
     setPersoonNaam(source.persoonNaam);
     setGeboortedatum(source.geboortedatum);
@@ -832,6 +838,7 @@ function AppContent() {
     jaarVan,
     jaarTot,
     resultaat,
+    opbouwDraft,
     inputSignatureAtCalculation,
     activeStep: state.activeStep,
     currentHousehold: activeHouseholdName,
@@ -903,6 +910,7 @@ function AppContent() {
     jaarVan,
     jaarTot,
     resultaat,
+    opbouwDraft,
     inputSignatureAtCalculation,
     state.activeStep,
     activeHouseholdName,
@@ -1007,6 +1015,7 @@ function AppContent() {
     jaarVan,
     jaarTot,
     resultaat,
+    opbouwDraft,
     inputSignatureAtCalculation,
     state.calculationStatus,
   ]);
@@ -1304,6 +1313,7 @@ function AppContent() {
 
     if (activeStep === "scenario") {
       return (
+        <>
         <ScenarioSection
           SectionHeader={SectionHeader}
           activeScenario={activeScenario}
@@ -1332,6 +1342,8 @@ function AppContent() {
           euro={euro}
           decimalLike={decimalLike}
         />
+        <ActuarielePensioenSimulator key={`${activeHouseholdId}-${activeScenarioId}`} baseRequest={createBerekeningPayload()} apiBase={apiBase} euro={euro} draft={opbouwDraft} onDraft={setOpbouwDraft} />
+        </>
       );
     }
 

@@ -1264,3 +1264,7 @@ th {
 .scenario-explanation { line-height: 1.65; }
 .scenario-year-detail summary, .scenario-technical summary { cursor: pointer; padding: .8rem 0; color: #165d48; font-weight: 600; }
 .scenario-interen { background: #fff5ee; }
+
+.opbouw-simulator { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #d8e5df; }
+.opbouw-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 1rem; margin: 1rem 0; }
+.opbouw-simulator .kpi small { display: block; line-height: 1.5; }

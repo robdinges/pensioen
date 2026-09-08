@@ -5,16 +5,18 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from decimal import Decimal
 
 from fastapi import FastAPI, HTTPException
 from fastapi import File, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from pensioen.api.referentietabellen import codes_en_labels, input_hints
-from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest, PensioenopbouwRequest
+from pensioen.api.schemas import BerekeningRequest, RapportageRequest, VergelijkingRequest, PensioenopbouwRequest, ActuarieleSchattingRequest
 from pensioen.api.serialisatie import naar_json_compatibel
 from pensioen.calculations.resultaat_service import bereken_resultaten
 from pensioen.calculations.inheritance_engine import validate_inheritance_tree, resolve_scenario
+from pensioen.calculations.actuariele_scenarios import bouw_actuariele_scenarios
 from pensioen.calculations.pensioenopbouw_simulator import bouw_opbouwscenarios, bouw_opbouwuitkomst
 from pensioen.parsers.parser_mpo import MPOParser
 from pensioen.calculations.scenario_engine import vergelijk_scenarios
@@ -170,6 +172,28 @@ def vergelijking_endpoint(request: VergelijkingRequest) -> JSONResponse:
     return JSONResponse({"vergelijking": payload})
 
 
+@app.post("/api/v1/simulaties/actuarieel")
+def actuariele_schatting_endpoint(request: ActuarieleSchattingRequest) -> JSONResponse:
+    basis=request.berekening
+    lijst=basis.scenario_lijst or [basis.scenario]
+    _valideer_inheritance(lijst)
+    persoon=basis.persoon1 if request.keuze.persoon=="P1" else basis.persoon2
+    if persoon is None:
+        raise HTTPException(status_code=422,detail="Voeg eerst de partner toe aan je scenario.")
+    try:
+        scenarios,raming=bouw_actuariele_scenarios(resolve_scenario(basis.scenario,lijst),persoon,
+                                                 request.keuze,basis.jaar_van,basis.jaar_tot)
+    except ValueError as exc:
+        raise HTTPException(status_code=422,detail=str(exc)) from exc
+    vergelijking=vergelijk_scenarios(scenarios,basis.persoon1,basis.persoon2,basis.records1,basis.records2,
+                                    basis.jaar_van,basis.jaar_tot)
+    met=vergelijking.scenario_resultaten[2].cashflow
+    zonder=vergelijking.scenario_resultaten[1].cashflow
+    raming["totale_premie"]=sum((j.huishoudelijke_uitgaven for j in met.jaren),Decimal("0"))-sum((j.huishoudelijke_uitgaven for j in zonder.jaren),Decimal("0"))
+    raming["aannames"]+=list(dict.fromkeys(a for item in vergelijking.scenario_resultaten for a in item.cashflow.aannames))
+    return JSONResponse(naar_json_compatibel({"raming":raming,"vergelijking":vergelijking}))
+
+
 @app.post("/api/v1/simulaties/pensioenopbouw")
 def pensioenopbouw_endpoint(request: PensioenopbouwRequest) -> JSONResponse:
     basis = request.berekening
@@ -197,7 +221,7 @@ def pensioenopbouw_endpoint(request: PensioenopbouwRequest) -> JSONResponse:
             "Alleen de gekozen pensioenpost en het werkinkomen van die persoon veranderen. Andere pensioenposten en de partner blijven ongewijzigd.",
             "De bestaande rendements- en indexatieaannames blijven gelden. De opgegeven pensioenbedragen gelden vanaf de gekozen pensioendatum.",
             "Het omslagpunt vergelijkt cumulatieve netto cashflow met en zonder doorbetalen, inclusief berekend rendement, tot het einde van de horizon; geen levenslange garantie.",
-        ],
+        ] + list(dict.fromkeys(aanname for item in vergelijking.scenario_resultaten for aanname in item.cashflow.aannames)),
     }))
 
 

@@ -187,6 +187,7 @@ export function createDefaultScenarioData() {
     importStatsP1: null,
     importStatsP2: null,
     resultaat: null,
+    opbouwDraft: {},
     inputSignatureAtCalculation: "",
     calculationStatus: "idle",
   };
@@ -206,6 +207,7 @@ export function createScenarioSnapshot(state) {
     importStatsP1: state.importStatsP1,
     importStatsP2: state.importStatsP2,
     resultaat: state.resultaat,
+    opbouwDraft: state.opbouwDraft || {},
     inputSignatureAtCalculation: state.inputSignatureAtCalculation,
     calculationStatus: state.calculationStatus,
   };
@@ -249,6 +251,7 @@ export function normalizeScenarioSnapshot(snapshot, fallback = {}) {
     importStatsP1: source.importStatsP1 && typeof source.importStatsP1 === "object" ? source.importStatsP1 : defaults.importStatsP1,
     importStatsP2: source.importStatsP2 && typeof source.importStatsP2 === "object" ? source.importStatsP2 : defaults.importStatsP2,
     resultaat: source.resultaat || defaults.resultaat,
+    opbouwDraft: source.opbouwDraft && typeof source.opbouwDraft === "object" ? source.opbouwDraft : {},
     inputSignatureAtCalculation:
       typeof source.inputSignatureAtCalculation === "string"
         ? source.inputSignatureAtCalculation
@@ -284,6 +287,7 @@ export function createHouseholdSnapshot(state) {
     jaarVan: state.jaarVan,
     jaarTot: state.jaarTot,
     resultaat: state.resultaat,
+    opbouwDraft: state.opbouwDraft || {},
     inputSignatureAtCalculation: state.inputSignatureAtCalculation,
     calculationStatus: state.calculationStatus,
   };

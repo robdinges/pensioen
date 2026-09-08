@@ -322,3 +322,10 @@ Gebruik voor iedere Codex-opdracht een aparte branch en houd bestaand werk gesch
 10. Verwijder de branch alleen na een succesvolle merge.
 
 Codex voert geen commit, push, merge, pull of pull request uit zonder uitdrukkelijke toestemming.
+
+### Pensioenopbouw na stoppen
+
+Onder **Scenario’s → Wat krijg ik als ik eerder stop?** vergelijk je direct
+pensioen, wachten zonder premie en premie doorbetalen. Datums en bedragen komen
+uit je scenario; de actuariële schatting gebruikt AG2024 en zichtbare aannames. Zie
+[de handleiding en het rekencontract](docs/PENSIOENOPBOUW_SIMULATOR.md).

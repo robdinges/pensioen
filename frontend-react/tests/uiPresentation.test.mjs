@@ -153,3 +153,38 @@ test('scenario selection offers a distinct optional third plan', async () => {
   assert.match(thirdSelect,/value="c" selected=""/);
   assert.doesNotMatch(thirdSelect,/value="a"|value="b"/);
 });
+
+test('opbouw simulator makes assumptions, premium and source explicit', async () => {
+  const {default:Simulator}=await server.ssrLoadModule('/src/components/PensioenopbouwSimulator.jsx');
+  const props={baseRequest:{scenario:{naam:'Plan',componenten:[{categorie:'pensioen_inkomen',persoon:'P1',omschrijving:'Fonds'}]},jaar_van:2025,jaar_tot:2040},apiBase:'/api/v1',euro:v=>`EUR ${v}`,onDraft(){}};
+  const html=renderToStaticMarkup(React.createElement(Simulator,{...props,draft:{keuze:{pensioen_index:'0',premie_per_maand:'800'}}}));
+  assert.match(html,/Pensioenopbouw na stoppen/);
+  assert.match(html,/P1 · Fonds/);
+  assert.match(html,/werkgeversdeel/);
+  assert.match(html,/geen belastingaftrek/);
+  assert.match(html,/EUR 800/);
+  assert.match(html,/Bewaar configuratie als JSON/);
+  const confirmed=renderToStaticMarkup(React.createElement(Simulator,{...props,draft:{keuze:{modus:'uitvoerder'}}}));
+  assert.match(confirmed,/Datum uitvoerdersberekening/);
+  assert.doesNotMatch(confirmed,/type="range"/);
+});
+
+const { default: ActuarielePensioenSimulator } = await server.ssrLoadModule("/src/components/ActuarielePensioenSimulator.jsx");
+
+test("automatic pension estimate starts from scenario and exposes paid-up assumptions", () => {
+  const html = renderToStaticMarkup(React.createElement(ActuarielePensioenSimulator, {
+    baseRequest: { persoon1: { naam: "Test" }, scenario: { naam: "Stop op 65", componenten: [
+      { persoon: "P1", categorie: "pensioen_inkomen", omschrijving: "Oud fonds", begindatum: "2027-01-01", bedrag: "1000" },
+    ] } }, apiBase: "/api/v1", euro: String, onDraft: () => {},
+    draft: { actuarieel: { rekenrente_pct: 0, opgebouwde_regelingen: [
+      JSON.stringify(["P1", "Oud fonds", "2027-01-01", "1000"])
+    ] } },
+  }));
+  assert.match(html, /Stop op 65/);
+  assert.match(html, /Bereken mijn drie opties/);
+  assert.match(html, /Oud fonds.*al opgebouwd/);
+  assert.match(html, /type="checkbox" checked=""/);
+  assert.doesNotMatch(html, /type="date"/);
+  assert.match(html, /Je hoeft geen offerte/);
+  assert.match(html, /value="0"/);
+});

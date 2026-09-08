@@ -109,6 +109,31 @@
       "gemiddelde": "300.00",
       "laagste_buffer": "-50",
       "laagste_buffer_maand": "2025-02"
+    },
+    "regressies_opbouw": {
+      "bron": "Interne simulatieregressie; geen OLA-verwachting en geen uitvoerdersofferte",
+      "keuze": {
+        "pensioen_index": 1,
+        "laatste_werkdag": "2025-03-31",
+        "doorwerken_tot": "2025-12-31",
+        "pensioen_vanaf": "2026-01-01",
+        "premie_per_maand": "800",
+        "pensioen_doorwerken": "1200",
+        "pensioen_zonder": "1000",
+        "pensioen_met": "1200",
+        "modus": "aannames"
+      },
+      "verwachte_premie": "7200"
+    },
+    "regressies_actuarieel": {
+      "bron": "Interne actuariële regressie, geen OLA-verwachting",
+      "geboortedatum": "1960-01-01",
+      "stop": "2025-01-01",
+      "normaal": "2027-01-01",
+      "bruto_maand": "1000",
+      "opbouw_maanden": 480,
+      "totaal_maanden": 504,
+      "premiemaanden": 24
     }
   }
 }

@@ -174,3 +174,12 @@ test('outside horizon wealth is unknown and a temporary monthly deficit remains 
   assert.equal(buildScenarioDecisionCards(comparison,'a','b')[1].vermogenDelta,null);
   assert.match(buildScenarioDecisionAdvice(comparison,'a','b'),/niet beschikbaar/);
 });
+
+test('opbouw configuration survives scenario and household hydration', async () => {
+  const {createScenarioSnapshot,normalizeScenarioSnapshot,normalizeHouseholdSnapshot}=await import('../src/planner/plannerCore.js');
+  const opbouwDraft={keuze:{premie_per_maand:'800',modus:'aannames'},berekening:{scenario:{naam:'Bestand',componenten:[]}}};
+  const snapshot=createScenarioSnapshot({posts:[],opbouwDraft});
+  assert.deepEqual(normalizeScenarioSnapshot(JSON.parse(JSON.stringify(snapshot))).opbouwDraft,opbouwDraft);
+  const household=normalizeHouseholdSnapshot({scenarios:[{id:'a',naam:'Plan'}],activeScenarioId:'a',scenarioSnapshots:{a:snapshot}});
+  assert.deepEqual(household.activeScenarioSnapshot.opbouwDraft,opbouwDraft);
+});

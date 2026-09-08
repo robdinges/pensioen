@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pensioen.models.opbouw_simulatie import OpbouwKeuze
+from pensioen.models.opbouw_simulatie import OpbouwKeuze, ActuarieleKeuze
 
 from typing import Any
 
@@ -175,3 +175,8 @@ class PensioenopbouwRequest(BaseModel):
         if self.keuze.pensioen_vanaf.year > self.berekening.jaar_tot:
             raise ValueError("Verleng de berekeningsperiode tot minstens het jaar waarin het pensioen ingaat.")
         return self
+
+
+class ActuarieleSchattingRequest(BaseModel):
+    berekening: BerekeningRequest
+    keuze: ActuarieleKeuze = Field(default_factory=ActuarieleKeuze)

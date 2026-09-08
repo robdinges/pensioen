@@ -36,7 +36,7 @@ export default function PensioenopbouwSimulator({baseRequest,apiBase,euro,draft=
       const file=event.target.files?.[0];if(!file)return;
       if(file.size>2_000_000)throw new Error('Het configuratiebestand is te groot.');
       const data=JSON.parse(await file.text());
-      if(data.versie!==1 || !Array.isArray(data.berekening?.scenario?.componenten) || !data.keuze || typeof data.keuze!=='object')throw new Error('Dit is geen pensioenopbouw-configuratie versie 1.');
+      if(data.versie!==1 || !Array.isArray(data.berekening?.scenario?.componenten) || !data.berekening.scenario.componenten.every(c=>c && typeof c.categorie==='string' && typeof c.persoon==='string' && typeof c.omschrijving==='string') || typeof data.berekening.scenario.naam!=='string' || !data.keuze || typeof data.keuze!=='object')throw new Error('Dit is geen pensioenopbouw-configuratie versie 1.');
       onDraft({berekening:data.berekening,keuze:data.keuze});setResult(null);setError('');
     }catch(e){setError(e.message);}finally{event.target.value='';}
   };
@@ -52,7 +52,7 @@ export default function PensioenopbouwSimulator({baseRequest,apiBase,euro,draft=
   return <section className="scenario-comparison opbouw-simulator">
     <h3>Pensioenopbouw na stoppen</h3>
     <p>Vergelijk doorwerken, stoppen zonder premie en stoppen met zelf doorbetalen. Je geeft het pensioen per optie op; de app leidt dit niet af uit de premie.</p>
-    <p className="notice">Kies één doorlopend pensioen. Andere pensioenposten blijven zoals ingevoerd. De premie loopt vanaf de dag na eerder stoppen tot de dag vóór de pensioenuitkering begint. Neem ook een eventueel werkgeversdeel mee. Er wordt geen belastingaftrek voor deze premie toegepast.</p>
+    <p className="notice">Deze simulator rekent hele maanden: laatste werkdag aan het einde van een maand, pensioen vanaf de eerste dag. Kies één doorlopend pensioen. Andere pensioenposten blijven zoals ingevoerd. De premie loopt vanaf de dag na eerder stoppen tot de dag vóór de pensioenuitkering begint. Neem ook een eventueel werkgeversdeel mee. Er wordt geen belastingaftrek voor deze premie toegepast.</p>
     {draft.berekening ? <p className="notice">Je gebruikt de basisinvoer uit een opgeslagen configuratie ({basis.scenario.naam}). <button type="button" className="ghost" onClick={()=>onDraft({keuze:{...form,pensioen_index:"",pensioen_bron:""}})}>Gebruik het actieve plan</button></p> : <p>Basis: {basis?.scenario?.naam} · {basis?.jaar_van}–{basis?.jaar_tot}</p>}
     <form onSubmit={run}>
       <div className="household-controls">
@@ -67,7 +67,7 @@ export default function PensioenopbouwSimulator({baseRequest,apiBase,euro,draft=
       {!candidates.length ? <p className="notice">Voeg eerst een pensioenpost en het bijbehorende werkinkomen toe aan je plan.</p> : null}
       <div className="opbouw-fields">{fields.map(([key,label,type])=><label className="field" key={key}><span>{label}</span><input required type={type} min={type==='number'?'0':undefined} step={type==='number'?'0.01':undefined} value={form[key]} onChange={e=>change(key,e.target.value)} /></label>)}</div>
       {form.modus==='aannames' ? <label className="field"><span>Verken de premie: {form.premie_per_maand===''?'nog niet ingevuld':euro(Number(form.premie_per_maand))} per maand</span><input aria-label="Premie verkennen" type="range" min="0" max={Math.max(5000,Number(form.premie_per_maand)||0)} step="25" value={Number(form.premie_per_maand)||0} onChange={e=>change('premie_per_maand',e.target.value)} /></label> : null}
-      <div className="household-controls"><label className="field"><span>Bron / toelichting {form.modus==='aannames'?'(optioneel)':''}</span><input required={form.modus==='uitvoerder'} value={form.bron} onChange={e=>change('bron',e.target.value)} /></label><label className="field"><span>Datum uitvoerdersberekening</span><input type="date" required={form.modus==='uitvoerder'} value={form.brondatum} onChange={e=>change('brondatum',e.target.value)} /></label></div>
+      <div className="household-controls"><label className="field"><span>Bron / toelichting {form.modus==='aannames'?'(optioneel)':''}</span><input required={form.modus==='uitvoerder'} value={form.bron} onChange={e=>change('bron',e.target.value)} /></label><label className="field"><span>Datum uitvoerdersberekening</span><input type="date" required={form.modus==='uitvoerder'} value={form.brondatum || ""} onChange={e=>change('brondatum',e.target.value)} /></label></div>
       <button type="submit" disabled={busy || !selected}>{busy?'Simuleren…':'Vergelijk pensioenopbouw'}</button>
     </form>
     <div className="household-controls"><button type="button" className="ghost" onClick={save}>Bewaar configuratie als JSON</button><label className="field"><span>Open opgeslagen configuratie</span><input type="file" accept=".json,application/json" onChange={load} /></label></div>
@@ -80,6 +80,7 @@ export default function PensioenopbouwSimulator({baseRequest,apiBase,euro,draft=
         <div className="kpi"><span>Extra netto pensioen per maand door doorbetalen</span><strong>{current.opbouw.extra_netto_pensioen_per_maand==null?'Niet beschikbaar':euro(Number(current.opbouw.extra_netto_pensioen_per_maand))}</strong><small>Gemiddelde volledige pensioenmaanden, effect na box 1; exclusief rendement.</small></div>
         <div className="kpi"><span>Omslagpunt tegenover niet doorbetalen</span><strong>{Number(current.opbouw.totale_premie)===0?'Geen premie-uitgave':current.opbouw.omslag_maand?`${current.opbouw.omslag_maand} · leeftijd ${current.opbouw.omslag_leeftijd}`:'Niet bereikt binnen de periode'}</strong><small>Cumulatieve netto cashflow, inclusief berekend rendement; blijft tot de horizon niet negatief.</small></div>
       </div>
+      <p className="notice">Extra geld nodig tot de pensioenstart, ten opzichte van doorwerken: zonder doorbetalen {euro(Number(current.opbouw.extra_geld_tot_pensioen_zonder))}; met doorbetalen {euro(Number(current.opbouw.extra_geld_tot_pensioen_met))}. Inclusief het effect op belasting en berekend rendement; een negatief verschil betekent minder geld nodig.</p>
       <details><summary>Aannames en beperkingen</summary><ul>{current.aannames.map(x=><li key={x}>{x}</li>)}</ul></details>
       <ScenarioComparison comparisonResult={current.vergelijking} activeScenarioName="Doorwerken" euro={euro} />
       <details><summary>Controleer het omslagpunt per maand</summary><div className="table-wrap"><table><thead><tr><th>Maand</th><th>Cumulatief verschil met − zonder doorbetalen</th></tr></thead><tbody>{current.opbouw.maandvergelijking.map(row=><tr key={row.maand}><td>{row.maand}</td><td>{euro(Number(row.cumulatief_verschil))}</td></tr>)}</tbody></table></div></details>

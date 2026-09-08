@@ -115,3 +115,20 @@ of insolvency. `ScenarioComparison` renders engine `klantbeeld` on both pages;
 never relabel median as average or recreate these KPI formulas in React.
 Fixture: internal `regressies_scenariokaarten` in case 018; tests:
 `tests/test_scenario_klantbeeld.py` and `uiPresentation.test.mjs`.
+
+The legacy manual pensioenopbouw endpoint is a Scenario recipe, not an actuarial engine.
+Preserve explicit input pension amounts, whole-month boundaries, selected-person
+ownership, immutable base input and one premium expense without tax deduction.
+Cashflow/tax/return calculations remain in existing owners. Summarize the
+break-even from engine cashflows and disclose the finite horizon; do not infer
+pension accrual from premiums. Contract: docs/PENSIOENOPBOUW_SIMULATOR.md;
+regressions: test_pensioenopbouw_simulator.py and internal case-018 regressies_opbouw.
+
+The automatic actuarial estimator belongs to **Pensioen** and is owned by
+calculations/actuariele_schatting.py. Keep missing-accrual assumptions separate
+from survival-weighted early-retirement factors. Pin AG2024 source data and
+configurable assumptions; paid-up rights receive no accrual reduction. The
+scenario adapter adds one premium expense without tax deduction; existing
+engines own downstream calculations. Tests: test_actuariele_schatting.py and
+case-018 regressies_actuarieel. Never describe estimated financing premiums
+as fund quotes or interest sensitivity as a confidence interval.

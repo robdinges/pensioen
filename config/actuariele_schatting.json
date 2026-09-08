@@ -1,0 +1,9 @@
+{
+  "versie": 1,
+  "rekenrente_pct": "3",
+  "gevoeligheid_rentes_pct": ["1", "5"],
+  "startleeftijd_opbouw": 25,
+  "premie_kostenopslag_pct": "10",
+  "sterftemix_man": "0.5",
+  "toelichting": "Verkenningsaannames, geen fondsgrondslagen: 3% nominale rekenrente, 50/50 sterftemix, lineaire opbouw vanaf 25, 10% opslag op actuariële netto premie. Reeds opgebouwd pensioen krijgt geen opbouwkorting."
+}

@@ -73,6 +73,7 @@ def bouw_opbouwscenarios(basis: Scenario, keuze: OpbouwKeuze) -> list[Scenario]:
 def bouw_opbouwuitkomst(vergelijking: ScenarioVergelijking, keuze: OpbouwKeuze,
                         geboortedatum: date) -> dict[str, Any]:
     """Resultaten samenvatten uit de bestaande maandengine, zonder fiscale herrekening."""
+    doorwerken = {(m.jaar,m.maand): m for j in vergelijking.scenario_resultaten[0].cashflow.jaren for m in j.maanden}
     zonder = vergelijking.scenario_resultaten[1].cashflow
     met = vergelijking.scenario_resultaten[2].cashflow
     m_zonder = {(m.jaar, m.maand): m for j in zonder.jaren for m in j.maanden}
@@ -99,7 +100,11 @@ def bouw_opbouwuitkomst(vergelijking: ScenarioVergelijking, keuze: OpbouwKeuze,
         if premie > 0 and punt['datum'] >= keuze.pensioen_vanaf and toekomst_min >= 0:
             omslag = punt['datum']
     leeftijd = (omslag.year - geboortedatum.year - ((omslag.month, omslag.day) < (geboortedatum.month, geboortedatum.day))) if omslag else None
+    brug_zonder = sum((doorwerken[key].netto - m.netto for key,m in m_zonder.items() if date(m.jaar,m.maand,1) < keuze.pensioen_vanaf), Decimal('0'))
+    brug_met = sum((doorwerken[(m.jaar,m.maand)].netto - m.netto for m in m_met if date(m.jaar,m.maand,1) < keuze.pensioen_vanaf), Decimal('0'))
     return {
+        'extra_geld_tot_pensioen_zonder': brug_zonder,
+        'extra_geld_tot_pensioen_met': brug_met,
         'totale_premie': premie,
         'extra_netto_pensioen_per_maand': (sum(verschil_inkomen, Decimal('0')) / Decimal(len(verschil_inkomen))).quantize(Decimal('.01'), rounding=ROUND_HALF_UP) if verschil_inkomen else None,
         'omslag_maand': omslag.strftime('%Y-%m') if omslag else None,
