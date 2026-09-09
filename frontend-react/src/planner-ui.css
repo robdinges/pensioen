@@ -69,3 +69,54 @@ summary { cursor: pointer; color: var(--primary); font-weight: 600; padding: 0.4
   .flow-position { margin-left: auto; }
   .flow-nav > button:last-child { width: 100%; }
 }
+
+/* Resultatendashboard: eerst overzicht, dan ontwikkeling en keuzes. */
+.results-dashboard { container-type: inline-size; }
+.dashboard-hero { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 1.8rem; margin: 1.5rem 0; border-radius: 18px; background: #173f34; color: #fff; }
+.dashboard-eyebrow { display: block; font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.dashboard-hero .dashboard-eyebrow, .dashboard-hero p { color: #c8ded3; }
+.dashboard-hero h3 { color: #fff; font-size: clamp(1.5rem, 3vw, 2.2rem); margin: .35rem 0; overflow-wrap: anywhere; }
+.dashboard-hero p { margin: 0; }
+.dashboard-status { display: grid; gap: .4rem; max-width: 260px; padding: 1rem 1.2rem; background: #ffffff12; border: 1px solid #ffffff30; border-radius: 12px; }
+.dashboard-status span { color: #c8ded3; font-size: .8rem; }
+.dashboard-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.8rem 0 1rem; }
+.dashboard-heading h3 { margin: 0 0 .3rem; font-size: 1.2rem; }
+.dashboard-heading p { color: var(--muted); margin: 0; max-width: 65ch; font-size: .9rem; }
+.dashboard-heading .field { flex: 0 0 130px; }
+.dashboard-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.dashboard-kpi { display: flex; flex-direction: column; gap: .65rem; padding: 1.2rem; border: 1px solid var(--line); border-radius: 14px; background: white; min-width: 0; }
+.dashboard-kpi > span { color: var(--muted); font-size: .85rem; }
+.dashboard-kpi strong { font-size: clamp(1.15rem, 2vw, 1.65rem); letter-spacing: -.04em; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.dashboard-kpi small { color: var(--muted); margin-top: auto; }
+.dashboard-kpi.is-positive { background: #eef7f1; border-color: #bad9c7; }
+.dashboard-kpi.is-negative { background: #fff5ed; border-color: #ebc3a3; }
+.dashboard-kpi.is-negative strong { color: #96451e; }
+.results-dashboard .charts-stack { margin-top: 1.5rem; }
+.results-dashboard .chart-card { border-radius: 16px; padding: 1.3rem; }
+.results-dashboard .chart-heading { flex-wrap: wrap; gap: .75rem; }
+.results-dashboard .chart-heading h3 { font-size: 1rem; }
+.dashboard-scenarios { margin-top: 2rem; border-top: 1px solid var(--line); }
+.dashboard-scenarios .dashboard-eyebrow { color: #47785e; margin-bottom: .4rem; }
+.dashboard-comparison-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; padding: 1.1rem; border-radius: 12px; background: #edf3ef; }
+.dashboard-comparison-controls .field { flex: 1 1 180px; min-width: 0; }
+.dashboard-year-detail { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.results-dashboard td:not(:first-child) { font-variant-numeric: tabular-nums; }
+@container (max-width: 850px) { .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 500px) {
+  .dashboard-hero, .dashboard-heading { flex-direction: column; align-items: stretch; }
+  .dashboard-hero { padding: 1.2rem; }
+  .dashboard-status { max-width: none; }
+  .dashboard-heading .field { flex-basis: auto; }
+  .dashboard-kpis { grid-template-columns: 1fr; }
+  .dashboard-comparison-controls > button { width: 100%; }
+  .results-dashboard .chart-card { padding: .6rem; }
+}
+
+.chart-selected-year { stroke: #165d48; stroke-width: 2; stroke-dasharray: 4 4; opacity: .6; pointer-events: none; }
+.results-dashboard .chart-hit-area { cursor: pointer; }
+.results-dashboard .chart-hit-area:focus-visible { outline: none; stroke: #165d48; stroke-width: 3; }
+.chart-selection-help { margin: .5rem 0 0; color: var(--muted); font-size: .85rem; }
+.dashboard-selected-detail { margin-top: 1.5rem; padding: 1rem; background: #f4f8f6; border: 1px solid var(--line); border-radius: 12px; }
+.dashboard-selected-detail h3 { margin: 0 0 .75rem; }
+.dashboard-selected-detail caption { text-align: left; color: var(--muted); padding-bottom: .5rem; }
+.results-dashboard .is-selected-year { background: #e5f2e9; font-weight: 600; }

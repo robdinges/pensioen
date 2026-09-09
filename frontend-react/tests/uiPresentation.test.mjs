@@ -188,3 +188,68 @@ test("automatic pension estimate starts from scenario and exposes paid-up assump
   assert.match(html, /Je hoeft geen offerte/);
   assert.match(html, /value="0"/);
 });
+
+const { PensioenPostStatus } = await server.ssrLoadModule("/src/components/ActuarielePensioenSimulator.jsx");
+test("partial pension estimate identifies every post without suggesting complete advice", () => {
+  const html = renderToStaticMarkup(React.createElement(PensioenPostStatus, {
+    euro: value => 'EUR ' + value,
+    raming: { volledig: false, posten: [
+      {index: 1, naam: 'Tijdelijk fonds', bedrag: '500', bedrag_type: 'bruto', frequentie: 'maandelijks',
+       begindatum: '2027-01-01', einddatum: '2030-12-31', status: 'niet_berekend', reden: 'Einddatum 2030-12-31: tijdelijk pensioen.'},
+      {index: 2, naam: 'Geldig fonds', bedrag: '1000', status: 'berekend', reden: 'Drie opties beschikbaar.'},
+      {index: 3, naam: 'Lopend fonds', bedrag: '100', status: 'ongewijzigd', reden: 'Al ingegaan.'},
+    ]},
+  }));
+  for (const label of ['Onvolledige raming', 'Tijdelijk fonds', 'Geldig fonds', 'Lopend fonds',
+    'Nog niet berekend', 'Berekend', 'Ongewijzigd', '2030-12-31', 'geen totaaladvies']) {
+    assert.ok(html.includes(label), label);
+  }
+});
+
+const { ActuarieleJaarvergelijking } = await server.ssrLoadModule("/src/components/ActuarielePensioenSimulator.jsx");
+test("annual pension comparison shows engine tax deltas and AOW transition without recalculating", () => {
+  const row={jaar:2027,aow_fase:'AOW-overgangsjaar',bruto_inkomen:'12000',box1_na_kortingen:'1234',
+    box3:'56',belastingverschil:'-789',belastingdruk:'12.3',belastingdrukverschil_pp:'-4.5',
+    netto_inkomen:'10766',netto_verschil:'321',voortzettingspremie:'444',over_na_uitgaven:'555',vermogen:'666'};
+  const html=renderToStaticMarkup(React.createElement(ActuarieleJaarvergelijking,{
+    data:{persoon:'Test',aow_datum:'2027-01-01',referentie:'Wachten zonder doorbetalen',
+      varianten:[{naam:'Direct pensioen',jaren:[row]}]},euro:value=>'EUR '+value}));
+  for (const text of ['AOW-overgangsjaar','EUR -789','EUR 1234','EUR 56','EUR 444','EUR 555','EUR 666','12,3%','-4,5 pp','Wachten zonder doorbetalen']) {
+    assert.ok(html.includes(text),text);
+  }
+});
+
+test("unchanged pension assumption remains visible in a complete comparison", () => {
+  const html=renderToStaticMarkup(React.createElement(PensioenPostStatus,{
+    euro:String,raming:{volledig:true,posten:[{index:0,naam:'Fonds',bedrag:'500',
+      begindatum:'2027-01-01',einddatum:'2030-12-31',status:'ongewijzigde_aanname',
+      reden:'Oorspronkelijke invoer behouden.'}]}}));
+  assert.match(html,/Gelijk in alle drie varianten/);
+  assert.match(html,/meerjarenoverzicht en de belastingberekening/);
+  assert.doesNotMatch(html,/Onvolledige raming/);
+});
+
+test("applied pension variant offers return to source instead of only a disabled calculate button",()=>{
+  const props={baseRequest:{persoon1:{naam:'Test'},scenario:{naam:'Variant',componenten:[]}},
+    euro:String,onDraft:()=>{},onChooseAgain:()=>{},
+    draft:{toegepast:[{persoon:'P1',variant:'Direct pensioen',bronScenarioId:'base'}]},
+    scenarios:[{id:'base',naam:'Oorspronkelijk'}]};
+  const html=renderToStaticMarkup(React.createElement(ActuarielePensioenSimulator,props));
+  assert.match(html,/Andere variant kiezen/);
+  assert.doesNotMatch(html,/bij oudere keuzes/);
+  const legacy=renderToStaticMarkup(React.createElement(ActuarielePensioenSimulator,{
+    ...props,draft:{toegepast:[{persoon:'P1',variant:'Direct pensioen'}]}}));
+  assert.match(legacy,/Kies je oorspronkelijke scenario/);
+  assert.match(legacy,/Oorspronkelijk/);
+});
+
+test("household scenario shows both choices and allows reselecting a stored modern choice",()=>{
+  const html=renderToStaticMarkup(React.createElement(ActuarielePensioenSimulator,{
+    baseRequest:{persoon1:{naam:'Partner Een'},persoon2:{naam:'Partner Twee'},scenario:{naam:'Stopplan',componenten:[]}},
+    euro:String,onDraft:()=>{},onViewPlan:()=>{},
+    draft:{toegepast:[{persoon:'P1',variant:'Direct pensioen',basisPosten:[]},{persoon:'P2',variant:'Doorbetalen',basisPosten:[]}]}
+  }));
+  for(const text of ['Pensioenkeuzes in Stopplan','Partner Een','Partner Twee','Direct pensioen','Doorbetalen',
+    'Bekijk het gezamenlijke meerjarenplan','Vergelijk opnieuw voor deze persoon']) assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/Kies je oorspronkelijke scenario/);
+});

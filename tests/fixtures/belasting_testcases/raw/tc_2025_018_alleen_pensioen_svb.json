@@ -133,7 +133,27 @@
       "bruto_maand": "1000",
       "opbouw_maanden": 480,
       "totaal_maanden": 504,
-      "premiemaanden": 24
+      "premiemaanden": 24,
+      "gedeeltelijke_raming": {
+        "einddatum": "2030-12-31",
+        "status": "ongewijzigde_aanname",
+        "andere_posten_blijven_zichtbaar": true,
+        "vergelijking": "Alle drie varianten met oorspronkelijke invoer"
+      },
+      "toepassen_en_jaarvergelijking": {
+        "referentie": "Wachten zonder doorbetalen",
+        "belastingverschil": "100",
+        "netto_verschil": "-100",
+        "box1_na_kortingen": "250",
+        "box3": "20",
+        "herberekening_variant": "identieke jaaroutput"
+      },
+      "huishoudkeuzes": {
+        "standaard": "actief scenario bijwerken",
+        "keuzes_per_persoon": 1,
+        "herkeuze": "oorspronkelijke pensioenposten; eerdere premie vervangen; partner behouden",
+        "test": "frontend-react/tests/actuarialVariant.test.mjs"
+      }
     }
   }
 }

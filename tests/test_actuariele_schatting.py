@@ -58,6 +58,21 @@ def test_api_uses_existing_scenario_dates_and_generates_three_variants() -> None
     assert Decimal(first(wachten)['pensioen_p1_bruto'])==0
     assert Decimal(first(met)['huishoudelijke_uitgaven'])==Decimal(r['premie_per_maand_bij_start'])
     assert Decimal(r['totale_premie'])==Decimal(r['premie_per_maand_bij_start'])*24
+    assert len(data['varianten']) == 3
+    for variant, expected in zip(data['varianten'], data['vergelijking']['scenario_resultaten']):
+        saved = TestClient(app).post('/api/v1/berekeningen', json={
+            'scenario': variant, 'persoon1': {'naam': 'Test', 'geboortedatum': '1960-01-01'},
+            'jaar_van': 2025, 'jaar_tot': 2030,
+        })
+        assert saved.status_code == 200, saved.text
+        assert saved.json()['cashflow']['jaren'] == expected['cashflow']['jaren']
+    annual = data['jaarvergelijking']
+    assert annual['referentie'] == 'Wachten zonder doorbetalen'
+    for variant in annual['varianten']:
+        assert [row['aow_fase'] for row in variant['jaren'][:4]] == ['Vóór AOW', 'Vóór AOW', 'AOW-overgangsjaar', 'Na AOW']
+    assert Decimal(annual['varianten'][2]['jaren'][0]['voortzettingspremie']) == Decimal(r['premie_per_maand_bij_start'])*12
+    assert all(Decimal(row['belastingverschil']) == 0 for row in annual['varianten'][1]['jaren'])
+
 
 
 @pytest.mark.bouwsteen
@@ -135,10 +150,74 @@ def test_unsupported_pension_does_not_hide_other_estimates(afwijking: dict, rede
         'jaar_van': 2025, 'jaar_tot': 2030}})
     assert response.status_code == 200, response.text
     data = response.json()
-    assert data['vergelijking'] is None
-    assert data['raming']['volledig'] is False
+    ontbreekt_datum = afwijking.get('begindatum', 'aanwezig') is None
+    assert (data['vergelijking'] is None) == ontbreekt_datum
+    assert data['raming']['volledig'] is not ontbreekt_datum
     assert [r['naam'] for r in data['raming']['regelingen']] == ['Geldige regeling']
     posten = data['raming']['posten']
-    assert [p['status'] for p in posten] == ['niet_berekend', 'berekend', 'ongewijzigd']
+    assert [p['status'] for p in posten] == ['niet_berekend' if ontbreekt_datum else 'ongewijzigde_aanname', 'berekend', 'ongewijzigd']
     assert reden in posten[0]['reden']
     assert Decimal(data['raming']['regelingen'][0]['direct_bruto_maand']) > 0
+
+
+@pytest.mark.bouwsteen
+def test_all_unsupported_posts_return_explanations_and_leave_source_unchanged() -> None:
+    import json
+    from pathlib import Path
+    from pensioen.calculations.actuariele_scenarios import bouw_actuariele_scenarios
+    from pensioen.models.scenario import Scenario
+    from pensioen.models.persoon import Persoon
+    from pensioen.models.opbouw_simulatie import ActuarieleKeuze
+    fixture = json.loads((Path(__file__).parent / 'fixtures/belasting_testcases/normalized/tc_2025_018_normalized.json').read_text())
+    case = fixture['metadata']['regressies_actuarieel']['gedeeltelijke_raming']
+    basis = Scenario(naam='Alleen tijdelijk', componenten=[
+        {'omschrijving': 'Loon', 'categorie': 'arbeidsinkomen', 'persoon': 'P1', 'bedrag': '2000', 'einddatum': '2024-12-31'},
+        {'omschrijving': 'Tijdelijk', 'categorie': 'pensioen_inkomen', 'persoon': 'P1', 'bedrag': '500',
+         'begindatum': '2027-01-01', 'einddatum': case['einddatum']},
+    ])
+    original = basis.model_dump()
+    scenarios, raming = bouw_actuariele_scenarios(basis, Persoon(naam='Test', geboortedatum=date(1960, 1, 1)), ActuarieleKeuze(), 2025, 2035)
+    assert raming['volledig'] is True
+    assert raming['regelingen'] == []
+    assert raming['posten'][0]['status'] == case['status']
+    assert case['einddatum'] in raming['posten'][0]['reden']
+    assert basis.model_dump() == original
+    assert all(s.componenten == basis.componenten for s in scenarios)
+    from fastapi.testclient import TestClient
+    from pensioen.api.main import app
+    response = TestClient(app).post('/api/v1/simulaties/actuarieel', json={'berekening': {
+        'scenario': basis.model_dump(mode='json'), 'persoon1': {'naam':'Test','geboortedatum':'1960-01-01'},
+        'jaar_van':2025,'jaar_tot':2035}})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert len(data['varianten']) == 3
+    outcomes = data['vergelijking']['scenario_resultaten']
+    assert outcomes[0]['cashflow']['jaren'] == outcomes[1]['cashflow']['jaren'] == outcomes[2]['cashflow']['jaren']
+    assert all(v['componenten'] == basis.model_dump(mode='json')['componenten'] for v in data['varianten'])
+    assert Decimal(data['raming']['totale_premie']) == 0
+
+
+
+@pytest.mark.bouwsteen
+def test_annual_comparison_subtracts_credits_once_and_keeps_tax_delta_sign() -> None:
+    from pensioen.calculations.actuariele_jaarvergelijking import bouw_actuariele_jaarvergelijking
+    from pensioen.models.cashflow import JaarResultaat, MaandResultaat
+    from pensioen.models.persoon import Persoon
+    from types import SimpleNamespace
+    def variant(name: str, tax: str, credit: str):
+        month = MaandResultaat(jaar=2025, maand=1, pensioen_p1_bruto=Decimal('1000'),
+                               belasting_p1=Decimal(tax), heffingskorting_p1=Decimal(credit),
+                               box3_heffing=Decimal('20'))
+        return SimpleNamespace(scenario_naam=name, cashflow=SimpleNamespace(jaren=[JaarResultaat(2025,[month])]))
+    result = bouw_actuariele_jaarvergelijking(
+        SimpleNamespace(scenario_resultaten=[variant('Direct','300','50'),variant('Wachten','200','50'),variant('Premie','200','50')]),
+        Persoon(naam='Test', geboortedatum=date(1960,1,1)))
+    first = result['varianten'][0]['jaren'][0]
+    import json
+    from pathlib import Path
+    fixture = json.loads((Path(__file__).parent / 'fixtures/belasting_testcases/normalized/tc_2025_018_normalized.json').read_text())
+    expected = fixture['metadata']['regressies_actuarieel']['toepassen_en_jaarvergelijking']
+    assert first['box1_na_kortingen'] == Decimal(expected['box1_na_kortingen'])
+    assert first['belasting_totaal'] == 270
+    assert first['belastingverschil'] == Decimal(expected['belastingverschil'])
+    assert first['netto_verschil'] == Decimal(expected['netto_verschil'])

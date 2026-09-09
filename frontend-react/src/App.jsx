@@ -36,6 +36,7 @@ import {
 import ReportSection from "./components/ReportSection";
 import ResultsSection from "./components/ResultsSection";
 import ScenarioSection from "./components/ScenarioSection";
+import {applyActuarialVariant, prepareActuarialSnapshot} from "./planner/actuarialVariant";
 import ActuarielePensioenSimulator from "./components/ActuarielePensioenSimulator";
 import {
   analyzeMpoRows,
@@ -457,6 +458,41 @@ function AppContent() {
     setActiveScenarioId(nextId);
     hydrateFromScenarioSnapshot(clonedData);
     setNewScenarioName("");
+  };
+
+  const applyPensioenVariant = (data, index, asCopy = false) => {
+    const variant = data.varianten[index];
+    const item = data.vergelijking.scenario_resultaten[index];
+    const current = buildCurrentScenarioSnapshot();
+    const nextId = asCopy ? crypto.randomUUID() : activeScenarioId;
+    const baseName = asCopy ? `${activeScenarioName} · ${variant.naam}` : activeScenarioName;
+    let name = baseName, suffix = 2;
+    while (asCopy && scenarios.some(s => s.naam === name)) name = `${baseName} (${suffix++})`;
+    const result = validateCalculationResponse({
+      cashflow: {...item.cashflow, scenario_naam: name},
+      aannames: [...item.cashflow.aannames, ...data.raming.aannames],
+      output_contract: data.output_contract,
+    });
+    const next = applyActuarialVariant(current, variant, data.raming, result);
+    next.opbouwDraft.toegepast[next.opbouwDraft.toegepast.length - 1].bronScenarioId = activeScenarioId;
+    next.inputSignatureAtCalculation = buildInputSignature(scenarioRequestFromSnapshot(next, name));
+    setScenarioSnapshots(prev => ({...prev, [activeScenarioId]: current, [nextId]: next}));
+    if (asCopy) setScenarios(prev => [...prev, {id: nextId, naam: name}]);
+    setPendingImports({P1: null, P2: null});
+    if (asCopy) setCompareScenarioId(activeScenarioId);
+    setActiveScenarioId(nextId);
+    hydrateFromScenarioSnapshot(next);
+    actions.setActiveStep("scenario");
+  };
+
+  const pensioenBasis = () => {
+    try {
+      const person = opbouwDraft.actuarieel?.persoon || "P1";
+      const snapshot = prepareActuarialSnapshot(buildCurrentScenarioSnapshot(), person);
+      return {request: scenarioRequestFromSnapshot(snapshot, activeScenarioName), error: ""};
+    } catch (error) {
+      return {request: createBerekeningPayload(), error: error.message};
+    }
   };
 
   const switchScenario = (nextScenarioId) => {
@@ -1191,6 +1227,7 @@ function AppContent() {
     <ResultsSection
       SectionHeader={SectionHeader}
       jaarRows={jaarRows}
+      jaren={resultaat?.cashflow?.jaren || []}
       geboortedatum={geboortedatum}
       euro={euro}
       signedEuro={signedEuro}
@@ -1198,6 +1235,15 @@ function AppContent() {
       aannames={resultaat?.aannames || []}
       calculationStatus={state.calculationStatus}
       onStepSelect={actions.setActiveStep}
+      scenarios={scenarios}
+      activeScenarioId={activeScenarioId}
+      compareScenarioId={compareScenarioId}
+      thirdScenarioId={thirdScenarioId}
+      setCompareScenarioId={setCompareScenarioId}
+      setThirdScenarioId={setThirdScenarioId}
+      runScenarioComparison={runScenarioComparison}
+      isComparing={isComparing}
+      comparisonError={comparisonError}
       comparisonResult={validComparisonResult}
       activeScenarioName={activeScenarioName}
       compareScenarioName={compareScenarioName}
@@ -1342,7 +1388,7 @@ function AppContent() {
           euro={euro}
           decimalLike={decimalLike}
         />
-        <ActuarielePensioenSimulator key={`${activeHouseholdId}-${activeScenarioId}`} baseRequest={createBerekeningPayload()} apiBase={apiBase} euro={euro} draft={opbouwDraft} onDraft={setOpbouwDraft} />
+        <ActuarielePensioenSimulator key={`${activeHouseholdId}-${activeScenarioId}`} baseRequest={pensioenBasis().request} preparationError={pensioenBasis().error} onViewPlan={()=>actions.setActiveStep("resultaten")} apiBase={apiBase} euro={euro} draft={opbouwDraft} onDraft={setOpbouwDraft} onApply={applyPensioenVariant} scenarios={scenarios.filter(s=>s.id!==activeScenarioId)} onChooseAgain={id=>{switchScenario(id);actions.setActiveStep("scenario");}} />
         </>
       );
     }

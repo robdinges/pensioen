@@ -1,9 +1,29 @@
 # BACKLOG - Pensioenplanner Feature & Improvement Backlog
 
-> Statuscontrole 26 juli 2026: dit is de brede productbacklog en bevat ook
-> historische planning en nog niet opnieuw gevalideerde statussen. Voor de
-> actuele richting is `UITVOERINGSPLAN_HERSTRUCTURERING.md` leidend. De
-> afgeronde Epic 1–7-uitwerking staat in `docs/archive/epics/`.
+> Statuscontrole 9 september 2026: productbacklog gecontroleerd op de lokale
+> werkmap, inclusief nog niet gecommitteerde wijzigingen. De hieronder benoemde
+> actualisaties zijn code-gecontroleerd; overige items behouden hun historische
+> status en zijn niet opnieuw functioneel gevalideerd. Voor berekenarchitectuur
+> blijft `UITVOERINGSPLAN_HERSTRUCTURERING.md` leidend. Epic 6 en 7 staan daar
+> als afgerond geregistreerd; uitwerkingen staan in `docs/archive/epics/`.
+
+## Actueel vervolg — 9 september 2026
+
+1. **#116: frontendtests opgenomen in CI-configuratie** — lokaal gevalideerd;
+   een echte CI-run en controle van branchbescherming staan nog open.
+2. **#117: handmatige gebruikerscontrole bevestigd** — jaarselectie, drie
+   scenario’s en verouderde resultaten door gebruiker gecontroleerd. Mobiel,
+   toetsenbord en foutpaden niet afzonderlijk aangetoond.
+3. **#104: grafiek gekoppeld aan jaardetails** — geïmplementeerd in de werkmap;
+   jaarselectie door gebruiker bevestigd; grafiekperiode nu instelbaar.
+   Inkomensdetails per gekozen jaar zijn nu ook beschikbaar uit bestaande
+   engine-detailoutput; handmatige acceptatie van deze uitbreiding staat open.
+
+**Lokale verificatie dashboard (9 september 2026):** 47 frontendtests geslaagd,
+productiebuild geslaagd en `git diff --check` schoon. Dit is geen bewijs van een
+CI-run, browseracceptatie of actuele Python-coverage. Pensioenkeuzes per persoon
+zijn eveneens in de werkmap aanwezig; volledige backendacceptatie daarvan is
+in deze backlogcontrole niet opnieuw uitgevoerd.
 
 ## 📋 GEREGISTREERDE PRODUCTSCOPE (v1.0)
 
@@ -202,7 +222,12 @@ Scope eerste iteratie:
 
 **Afhankelijkheden**: #401, #402
 
-**Status**: 📝 PLANNED
+**Status**: 🟡 DEELS GEÏMPLEMENTEERD — resterende scope verifiëren
+
+Gedateerde saldostanden voor liquide vermogensitems zijn aanwezig in
+`vermogen_engine.py` en `PostCard.jsx` (zie #019). Dit bewijst niet dat alle
+bovenstaande modeluitbreidingen compleet zijn; resterende onderdelen apart
+van acceptatiecriteria voorzien voordat dit epic wordt afgesloten.
 
 ---
 
@@ -217,7 +242,20 @@ Scope eerste iteratie:
 
 **Afhankelijkheden**: #401
 
-**Status**: 📝 PLANNED
+**Status**: 🟡 GEÏMPLEMENTEERD — browseracceptatie open (#117)
+
+**Gecontroleerd op 9 september 2026**:
+- React-wizard, expliciete berekening en actueel/verouderd-status aanwezig in
+  `frontend-react/src/components/layout/` en de applicatiestate.
+- Resultatendashboard met jaarselectie, netto inkomen, vrije cashflow, vermogen,
+  belasting, meerjarengrafieken en uitklapbare jaartabel.
+- Twee of drie scenario’s direct vergelijken vanuit het dashboard; gedeelde
+  scenariokaarten tonen engine-KPI’s en verschillen ten opzichte van actief.
+- Bron stap **Resultaten**: bestaande cashflow-output en
+  `calculations/scenario_klantbeeld.py`; geen eigen fiscale herberekening in UI.
+- Bewijs: `ResultsSection.jsx`, `ScenarioComparison.jsx`,
+  `resultsDashboard.test.mjs`, `uiPresentation.test.mjs` en `resultsMapping.test.mjs`.
+  Werkmapimplementatie; nog niet gecommit of gepubliceerd.
 
 ---
 
@@ -513,7 +551,13 @@ Scope eerste iteratie:
 
 **Impact**: Nauwkeurigere vermogensprognose, elimineren van cumulatieve rekenfouten
 
-**Status**: 📝 PLANNED
+**Status**: 🟡 DEELS GEÏMPLEMENTEERD — liquide saldostanden aanwezig
+
+Codebewijs: `LiquidePortefeuille` in `vermogen_engine.py`, saldostandenbeheer
+in `PostCard.jsx` en `frontend-react/tests/vermogenPayload.test.mjs`.
+Alle vermogenstypen en correcties midden in een periode zijn in deze controle
+niet opnieuw functioneel gevalideerd. De bovenstaande pro-ratavoorbeelden
+zijn historische wensen; `docs/VERMOGEN_REKENCONTRACT.md` bepaalt het rekencontract.
 
 ---
 
@@ -601,7 +645,37 @@ Scope eerste iteratie:
 - Klik op lijn → component details
 - Zoom in/out op tijdslijn
 
-**Status**: 💡 IDEA
+**Status**: 🟡 DEELS GEÏMPLEMENTEERD — verdere interactie gepland
+
+**Aanwezig (9 september 2026)**: klikken, Enter of spatie op een grafiekpunt
+selecteert hetzelfde jaar als de keuzelijst. Beide grafieken markeren dat jaar;
+de vier kerncijfers en de direct zichtbare jaardetails gebruiken dezelfde
+engine-jaarregel. De volledige jaartabel markeert de geselecteerde rij.
+Tooltips blijven beschikbaar via muis en toetsenbordfocus.
+
+**Berekenstap**: Resultaten; bestaande cashflow-output blijft de bron, zonder
+fiscale herberekening. Implementatie in `ResultsSection.jsx` en `planner-ui.css`.
+**Verificatie**: 49 frontendtests geslaagd, productiebuild en diffcontrole groen.
+`resultsDashboard.test.mjs` controleert selectiemarkeringen, toegankelijke
+knoppen, jaardetails en éénjaarsweergave. Render-tests bewijzen niet de werkelijke
+browserinteractie: jaarselectie is inmiddels handmatig bevestigd door gebruiker.
+
+**Periodezoom toegevoegd**: vanaf/tot-keuze filtert beide grafieken op bestaande
+jaarregels. Jaarselectie blijft binnen de gekozen periode; keuze van een jaar
+buiten het venster herstelt het volledige venster. ‘Hele periode’ reset de zoom.
+Scenario’s en volledige jaartabel behouden de totale horizon. Geen nieuwe
+berekeningen of dependencies. Tests: `chartPeriod.test.mjs`; 51 frontendtests
+slagen en productiebuild is groen. Interactieve controle van deze nieuwe
+periodekeuze staat nog open.
+**Inkomensdetails toegevoegd**: uitklapbare inkomensbronnen per gekozen jaar
+(arbeid, AOW, pensioen, overig; bruto/netto invoer apart) en de engine-aansluiting
+van bruto naar netto inclusief gezamenlijke bedragen. Partnerkolom alleen bij
+partner; ontbrekende waarden blijven ‘Niet beschikbaar’. Bron:
+`detail_output_engine.py` → `accountant_detail`; geen fiscale herberekening.
+Implementatie: `YearIncomeDetails.jsx`, gekoppeld vanuit `ResultsSection.jsx`
+en `App.jsx`. 53 frontendtests en productiebuild geslaagd. Dit is een
+uitsplitsing per inkomenssoort; individuele pensioenregelingen zijn hiermee
+niet afzonderlijk ontsloten. Handmatige controle van de nieuwe details open.
 
 ---
 
@@ -631,7 +705,7 @@ Scope eerste iteratie:
 **Beschrijving**: Meer importformaten
 
 **Details**:
-- MPO PDF (nu alleen CSV/JSON/Excel)
+- MPO PDF: backendparser aanwezig; React-import en representatieve documenten nog accepteren (#202)
 - ING/Rabobank bankafschriften
 - Belastingaangifte XML
 
@@ -714,10 +788,15 @@ Scope eerste iteratie:
 293 tests slagen en 2 bekende externe afwijkingen zijn strikt als `xfail`
 geregistreerd
 
-**Doel**: 80%+ line coverage, 200+ tests
+**Actuele aanvulling (9 september 2026)**: 47 lokale frontendtests geslaagd;
+frontend- en Python-coverage niet opnieuw gemeten. De meting hierboven is
+historisch en mag niet als actuele nulmeting worden gebruikt.
+
+**Doel**: 80%+ line coverage met gerichte regressiedekking per berekenstap;
+geen minimumaantal tests als vervanging voor inhoudelijke dekking.
 
 **Focus**:
-- UI code (nu 0% coverage)
+- Browserinteracties en integratie tussen UI en API (zie #116/#117)
 - Edge cases (negatief vermogen, extreem hoge inkomens)
 - Integratietests (end-to-end scenarios)
 
@@ -763,6 +842,67 @@ geregistreerd
 
 ---
 
+#### #116: Frontendregressies verplicht uitvoeren in CI 🔴 HIGH
+
+**Doel**: bestaande frontendtests beschermen dashboard, scenarioselectie,
+resultaatmapping en opgeslagen pensioenkeuzes bij iedere wijziging.
+
+**Implementatie**: `.github/workflows/ci.yml` voert in de React-job nu
+`npm ci` → `npm test` → `npm run build` uit. De teststap heeft geen
+`continue-on-error`; de bestaande jobnaam blijft behouden.
+
+**Acceptatiecriteria**:
+- Na `npm ci` draait `npm test` vóór de productiebuild.
+- Een falende frontendtest laat de CI-job falen; geen `continue-on-error`.
+- Bestaande Python- en fixturepoorten blijven intact.
+- Een echte CI-run bevestigt de werking; branchbescherming apart controleren
+  voordat de poort als verplicht voor merges wordt beschreven.
+
+**Status**: 🟡 GEÏMPLEMENTEERD — lokale verificatie geslaagd; CI-bevestiging open
+
+**Verificatie (9 september 2026)**: 47 frontendtests en productiebuild opnieuw
+lokaal geslaagd; `git diff --check` schoon. Python-poorten ongewijzigd.
+Geen commit/push of externe CI-run uitgevoerd. `actionlint` is niet beschikbaar;
+workflowdiff handmatig gecontroleerd. Geen nieuwe dependency toegevoegd.
+
+---
+
+#### #117: Browseracceptatie resultatendashboard en scenario’s 🔴 HIGH
+
+**Berekenstap**: Resultaten. UI consumeert bestaande engine-output;
+geen tariefwijziging of zelfstandig fiscaal rekenpad.
+
+**Acceptatiecriteria**:
+- Op desktop en mobiel zijn kaarten, labels en grafieken leesbaar; tabellen
+  scrollen binnen hun eigen vlak en veroorzaken geen pagina-overloop.
+- Jaarselectie actualiseert alle vier kaarten met de juiste engine-jaarregel;
+  grafieken en scenariovergelijking behouden hun expliciet benoemde periode.
+- Twee en drie verschillende scenario’s zijn vanuit het dashboard te
+  vergelijken; wijzigen van invoer/selectie verbergt ongeldige vergelijkingen.
+- Laden, API-fouten, ontbrekende resultaten en verouderde berekeningen zijn
+  herkenbaar en herstelbaar zonder verlies van invoer.
+- Tekorten, negatief vermogen en ontbrekend vermogen-op-80 blijven verschillend
+  weergegeven; bedragen sluiten aan op jaarregels en scenario-engine-output.
+- Toetsenbordbediening, focus en uitklapbare details werken. Leg uitkomst en
+  eventuele bevindingen vast bij dit item; automatiseer relevante interacties.
+
+**Bewijs tot nu toe**: render-/regressietests en productiebuild geslaagd.
+Interacties en visuele layout zijn hiermee niet bewezen.
+
+**Status**: 🟡 GEBRUIKERSCONTROLE BEVESTIGD — resterende dekking expliciet open
+
+**Gebruikersacceptatie**: gebruiker bevestigt gelijke jaarselectie in grafieken,
+kaarten en jaardetails; screenshot toont drie scenario’s; gebruiker bevestigt
+ook verouderd-status en ongeldig worden van de vergelijking na invoerwijziging.
+Dit is handmatige gebruikerscontrole, geen geautomatiseerde browsertest.
+Mobiele layout, toetsenbord en API-foutpaden zijn niet afzonderlijk vastgelegd.
+
+**Hercontrole (9 september 2026)**: browserdetectie opnieuw uitgevoerd; geen
+browser beschikbaar. Bovenstaande gebruikerscontrole vult de controle aan;
+automatische browseracceptatie is niet uitgevoerd.
+
+---
+
 ## 🐛 BEKENDE ISSUES
 
 #### #201: Box 3 disclaimer altijd tonen 🟢 LOW
@@ -775,13 +915,16 @@ geregistreerd
 ---
 
 #### #202: MPO parser ondersteunt geen PDF 🟡 MEDIUM
-**Beschrijving**: PDF-parsing is stubbed maar niet geïmplementeerd
+**Beschrijving**: De historische melding dat PDF-parsing een stub is, klopt
+niet meer: `MPOParser.parse_pdf()` bevat best-effort extractie via pdfplumber.
+Representatieve PDF-varianten en de React-importflow moeten nog samen worden
+geaccepteerd voordat volledige PDF-ondersteuning kan worden geclaimd.
 
 **Workaround**: Gebruik CSV of JSON export
 
-**Fix**: pdfplumber integreren voor tabelextractie
+**Vervolg**: verifieer parser én importflow met representatieve PDF-fixtures; koppel aan #107.
 
-**Status**: 📝 PLANNED
+**Status**: 🟡 PARSER AANWEZIG — integratieacceptatie open
 
 ---
 
@@ -922,8 +1065,9 @@ en toon na opslaan een melding dat herstart nodig is.
 
 ### Historische roadmap (opgesteld vóór 26 juli 2026)
 
-Onderstaande kwartaalindeling is planningshistorie. De actuele prioriteit is
-Epic 6, gevolgd door Epic 7.
+Onderstaande kwartaalindeling is planningshistorie. De actuele productprioriteit
+staat bovenaan onder “Actueel vervolg”; herstructurerings-Epic 6 en 7 zijn
+volgens het uitvoeringsplan afgerond.
 
 ### Q2 2026 (afgelopen)
 - ✅ Sparen & beleggen split implementatie (DONE)
@@ -967,11 +1111,11 @@ Epic 6, gevolgd door Epic 7.
 ## 📝 BIJDRAGEN
 
 Voor het oppakken van items uit deze backlog:
-1. Claim een issue door een comment te plaatsen
-2. Maak een feature branch: `feature/#XXX-korte-beschrijving`
+1. Kies een afgebakend item; plaats alleen na expliciete toestemming extern een comment.
+2. Volg `AGENTS.md`: voor Codex een aparte branch `codex/<korte-beschrijving>`.
 3. Implementeer met tests (vereist voor #001-#018)
 4. Update BACKLOG.md met status
-5. Pull request met referentie naar #XXX
+5. Commit, push en pull request uitsluitend na expliciete toestemming; verwijs naar #XXX.
 
 ---
 
@@ -992,5 +1136,5 @@ Voor het oppakken van items uit deze backlog:
 
 ---
 
-*Laatste statuscontrole: 26 juli 2026*
-*Versie: 1.3 - actuele herstructureringsbron en Epic 6-nulmeting toegevoegd*
+*Laatste statuscontrole: 9 september 2026 (gerichte codecontrole, geen volledige productacceptatie)*
+*Versie: 1.4 - dashboardstatus, CI- en browseracceptatie en achterhaalde deelstatussen bijgewerkt*

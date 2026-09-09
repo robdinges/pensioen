@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pensioen.calculations.actuariele_jaarvergelijking import bouw_actuariele_jaarvergelijking
+
 import os
 import tempfile
 from pathlib import Path
@@ -185,13 +187,20 @@ def actuariele_schatting_endpoint(request: ActuarieleSchattingRequest) -> JSONRe
                                                  request.keuze,basis.jaar_van,basis.jaar_tot)
     except ValueError as exc:
         raise HTTPException(status_code=422,detail=str(exc)) from exc
+    if not raming["volledig"]:
+        # Alleen losse pensioenramingen: geen volledige huishoudvergelijking
+        # suggereren wanneer een pensioenpost niet kan worden aangepast.
+        raming["totale_premie"]=None
+        return JSONResponse(naar_json_compatibel({"raming":raming,"vergelijking":None}))
     vergelijking=vergelijk_scenarios(scenarios,basis.persoon1,basis.persoon2,basis.records1,basis.records2,
                                     basis.jaar_van,basis.jaar_tot)
     met=vergelijking.scenario_resultaten[2].cashflow
     zonder=vergelijking.scenario_resultaten[1].cashflow
     raming["totale_premie"]=sum((j.huishoudelijke_uitgaven for j in met.jaren),Decimal("0"))-sum((j.huishoudelijke_uitgaven for j in zonder.jaren),Decimal("0"))
     raming["aannames"]+=list(dict.fromkeys(a for item in vergelijking.scenario_resultaten for a in item.cashflow.aannames))
-    return JSONResponse(naar_json_compatibel({"raming":raming,"vergelijking":vergelijking}))
+    return JSONResponse(naar_json_compatibel({"raming":raming,"vergelijking":vergelijking,"varianten":scenarios,
+        "jaarvergelijking":bouw_actuariele_jaarvergelijking(vergelijking,persoon),
+        "output_contract":OUTPUT_CONTRACT}))
 
 
 @app.post("/api/v1/simulaties/pensioenopbouw")

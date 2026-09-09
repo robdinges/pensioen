@@ -132,3 +132,28 @@ scenario adapter adds one premium expense without tax deduction; existing
 engines own downstream calculations. Tests: test_actuariele_schatting.py and
 case-018 regressies_actuarieel. Never describe estimated financing premiums
 as fund quotes or interest sensitivity as a confidence interval.
+
+Validate automatic pension estimates per post: unsupported posts retain their
+source data and an explicit reason, while valid estimates remain visible.
+Incomplete estimates must not expose full household comparisons or total advice.
+Regressions: test_actuariele_schatting.py and case-018 gedeeltelijke_raming.
+
+For applying actuarial variants, preserve engine component amounts/dates and
+unrelated original posts in a new scenario. Never apply the same person's
+accrual reduction twice. Annual comparisons belong to Resultaten in
+actuariele_jaarvergelijking.py; subtract credits once, use the existing effective
+rate definition, and compare against waiting without premiums. Verify saved
+variants reproduce the simulator's year output and survive browser persistence.
+
+User-approved fallback: unsupported actuarial posts with an original start date
+retain every original component field in all three variants, with visible
+ongewijzigde_aanname status. These variants are applicable and fully compared.
+Missing start dates remain blocking. Do not add premiums or change end dates
+for fallback posts; all-fallback variants must have identical year output.
+
+Household scenario selection: default actuarial application updates the active
+scenario; creating a new scenario requires the explicit copy action. Keep one
+choice per person, original affected pension posts and generated premium IDs.
+When reselecting, restore only that person's original inputs and remove only
+their prior premium posts. Preserve the partner's choice and all unrelated
+inputs. Reject restoring over manually edited or removed affected posts.

@@ -1,8 +1,10 @@
+import { selectChartPeriod } from "../planner/chartPeriod.js";
+import YearIncomeDetails from "./YearIncomeDetails";
 import ScenarioComparison from "./ScenarioComparison";
 import { useState } from "react";
 import { computeStopmomentSummary } from "../planner/plannerCore.js";
 
-function TrendChart({ title, rows, series, euro }) {
+function TrendChart({ title, rows, series, euro, gekozenJaar, onJaarSelect }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const width = 900;
   const height = 250;
@@ -26,7 +28,8 @@ function TrendChart({ title, rows, series, euro }) {
           ))}
         </div>
       </div>
-      <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+      <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title}>
+        {rows.map((row, index) => row.jaar === gekozenJaar ? <line key={`selection-${row.jaar}`} x1={x(index)} x2={x(index)} y1={padding.top} y2={height - padding.bottom} className="chart-selected-year" /> : null)}
         {ticks.map((tick) => (
           <g key={tick}>
             <line x1={padding.left} x2={width - padding.right} y1={y(tick)} y2={y(tick)} className="chart-gridline" />
@@ -35,6 +38,8 @@ function TrendChart({ title, rows, series, euro }) {
             </text>
           </g>
         ))}
+        {minValue < 0 && maxValue > 0 ? <line x1={padding.left} x2={width - padding.right} y1={y(0)} y2={y(0)} stroke="#73857c" strokeDasharray="5 5" /> : null}
+        <text x={padding.left} y="14" className="chart-axis-label">Bedragen in euro</text>
         {series.map((item) => {
           const points = rows.map((row, index) => `${x(index)},${y(Number(row[item.key]) || 0)}`).join(" ");
           return (
@@ -51,7 +56,7 @@ function TrendChart({ title, rows, series, euro }) {
                 };
                 return (
                   <g key={`${item.key}-${row.jaar}`}>
-                    <circle cx={point.x} cy={point.y} r="4" fill={item.color} />
+                    <circle cx={point.x} cy={point.y} r={row.jaar === gekozenJaar ? "6" : "4"} fill={item.color} />
                     <circle
                       cx={point.x}
                       cy={point.y}
@@ -59,7 +64,16 @@ function TrendChart({ title, rows, series, euro }) {
                       fill="transparent"
                       className="chart-hit-area"
                       tabIndex="0"
-                      aria-label={`${row.jaar}, ${item.label}: ${euro(row[item.key])}`}
+                      role="button"
+                      aria-pressed={row.jaar === gekozenJaar}
+                      onClick={() => onJaarSelect(row.jaar)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onJaarSelect(row.jaar);
+                        }
+                      }}
+                      aria-label={`Bekijk ${row.jaar}, ${item.label}: ${euro(row[item.key])}`}
                       onMouseEnter={() => setHoveredPoint(point)}
                       onMouseLeave={() => setHoveredPoint(null)}
                       onFocus={() => setHoveredPoint(point)}
@@ -101,6 +115,7 @@ function TrendChart({ title, rows, series, euro }) {
           </g>
         ) : null}
       </svg>
+      <p className="chart-selection-help">Klik op een punt of gebruik Tab en Enter/spatie. Gekozen jaar: {gekozenJaar}.</p>
     </article>
   );
 }
@@ -108,24 +123,44 @@ function TrendChart({ title, rows, series, euro }) {
 export default function ResultsSection({
   SectionHeader,
   jaarRows,
+  jaren = [],
   euro,
   aannames = [],
   calculationStatus,
   onStepSelect,
   comparisonResult,
   activeScenarioName,
-  compareScenarioName,
   geboortedatum = "",
   partnerGeboortedatum = "",
-  signedEuro,
-  signedPercentagePoints,
+  scenarios = [], activeScenarioId, compareScenarioId = "", thirdScenarioId = "",
+  setCompareScenarioId, setThirdScenarioId, runScenarioComparison,
+  isComparing = false, comparisonError = "",
+
 }) {
   const stopmoment = computeStopmomentSummary(jaarRows, geboortedatum);
+  const [gekozenJaar, setGekozenJaar] = useState("");
+  const jaar = jaarRows.find(row => String(row.jaar) === gekozenJaar) || jaarRows[0];
+  const [grafiekVan, setGrafiekVan] = useState("");
+  const [grafiekTot, setGrafiekTot] = useState("");
+  const grafiekRows = selectChartPeriod(jaarRows, grafiekVan, grafiekTot);
+  const selecteerJaar = waarde => {
+    setGekozenJaar(String(waarde));
+    if (!grafiekRows.some(row => String(row.jaar) === String(waarde))) {
+      setGrafiekVan(""); setGrafiekTot("");
+    }
+  };
+  const wijzigPeriode = (van, tot) => {
+    setGrafiekVan(String(van)); setGrafiekTot(String(tot));
+    const rows = selectChartPeriod(jaarRows, van, tot);
+    if (!rows.some(row => row.jaar === jaar?.jaar)) setGekozenJaar(String(rows[0].jaar));
+  };
+  const laatsteJaar = jaarRows.at(-1);
+  const alternatieven = scenarios.filter(item => item.id !== activeScenarioId);
 
 
   return (
-    <section className="section">
-      <SectionHeader title="Je pensioenplan in beeld" description="Bekijk je inkomen, wat er overblijft en hoe je vermogen zich ontwikkelt." />
+    <section className="section results-dashboard">
+      <SectionHeader title="Je pensioenplan in beeld" description="Inzicht in je inkomen, je buffer en de keuzes voor later." />
       {jaarRows.length === 0 ? (
         <div className="empty-state">
           <h3>Hoe ziet jouw financiële toekomst eruit?</h3>
@@ -135,18 +170,30 @@ export default function ResultsSection({
       ) : (
         <>
           {calculationStatus !== "fresh" ? <p className="feedback-banner warning" role="status">Deze uitkomsten horen bij een eerdere berekening. Bereken opnieuw om je huidige invoer te bekijken.</p> : null}
-          <div className="kpis">
-            <div className="kpi"><span>Periode</span><strong>{`${jaarRows[0].jaar} - ${jaarRows[jaarRows.length - 1].jaar}`}</strong></div>
-            <div className="kpi"><span>Gemiddeld netto per jaar</span><strong>{euro(jaarRows.reduce((sum, row) => sum + row.netto, 0) / jaarRows.length)}</strong></div>
-            <div className="kpi"><span>Eindvermogen</span><strong>{euro(jaarRows[jaarRows.length - 1].vermogenEinde)}</strong></div>
-            <div className="kpi"><span>Plancontrole</span><strong>{calculationStatus === "fresh" ? stopmoment.stopMomentLabel : "Bereken opnieuw"}</strong></div>
+          <div className="dashboard-hero">
+            <div><span className="dashboard-eyebrow">Jouw financiële vooruitblik</span>
+              <h3>{activeScenarioName || "Je pensioenplan"}</h3>
+              <p>{jaarRows[0].jaar}–{laatsteJaar.jaar} · Bedragen voor het huishouden</p>
+            </div>
+            <div className="dashboard-status"><span>Plancontrole</span><strong>{calculationStatus === "fresh" ? stopmoment.stopMomentLabel : "Bereken opnieuw"}</strong></div>
+          </div>
+          <div className="dashboard-heading">
+            <div><h3>Wat betekent dit voor je geld?</h3><p>De kaarten tonen jaarbedragen voor {jaar.jaar}. De grafiekperiode kies je hieronder; scenario’s tonen de hele berekeningsperiode.</p></div>
+            <label className="field"><span>Bekijk jaar</span><select value={jaar.jaar} onChange={event => selecteerJaar(event.target.value)}>
+              {jaarRows.map(row => <option key={row.jaar} value={row.jaar}>{row.jaar}</option>)}
+            </select></label>
+          </div>
+          <div className="dashboard-kpis">
+            <article className="dashboard-kpi"><span>Netto inkomen</span><strong>{euro(jaar.netto)}</strong><small>Na belasting · in {jaar.jaar}</small></article>
+            <article className={`dashboard-kpi ${jaar.cashflow < 0 ? "is-negative" : "is-positive"}`}><span>{jaar.cashflow < 0 ? "Aan te vullen uit vermogen" : "Over na geldstromen"}</span><strong>{euro(Math.abs(jaar.cashflow))}</strong><small>Vrije cashflow · {jaar.cashflow < 0 ? "tekort" : "overschot"} in {jaar.jaar}</small></article>
+            <article className={`dashboard-kpi ${jaar.vermogenEinde < 0 ? "is-negative" : ""}`}><span>Vermogen einde jaar</span><strong>{euro(jaar.vermogenEinde)}</strong><small>Verwachte stand eind {jaar.jaar}</small></article>
+            <article className="dashboard-kpi"><span>Belasting</span><strong>{euro(jaar.belasting)}</strong><small>Berekend over {jaar.jaar}</small></article>
           </div>
           {calculationStatus === "fresh" ? <div className="notice" role="status">
             <strong>Plancontrole:</strong> {stopmoment.summaryText}
             {stopmoment.firstShortfallYear !== null ? ` Eerste tekortjaar: ${stopmoment.firstShortfallYear}.` : ""}
             {stopmoment.wealthAt80 === null ? " Vermogen op 80: niet beschikbaar binnen deze berekeningsperiode." : ` Vermogen eind jaar waarin persoon 1 80 wordt: ${euro(stopmoment.wealthAt80)}.`}
           </div> : null}
-          {comparisonResult ? <ScenarioComparison comparisonResult={comparisonResult} activeScenarioName={activeScenarioName} euro={euro} geboortedatum={geboortedatum} partnerGeboortedatum={partnerGeboortedatum} /> : null}
           <p className="notice">Netto inkomen is je inkomen na belasting. Vrije cashflow laat zien wat er na de overige geldstromen overblijft; een negatief bedrag betekent dat je inteert op je vermogen.</p>
           {aannames.length > 0 ? (
             <details className="assumptions-panel">
@@ -154,10 +201,22 @@ export default function ResultsSection({
               <ul>{aannames.map((aanname, index) => <li key={index}>{aanname}</li>)}</ul>
             </details>
           ) : null}
+          <div className="dashboard-comparison-controls" aria-label="Grafiekperiode">
+            <label className="field"><span>Grafieken vanaf</span><select value={grafiekRows[0].jaar} onChange={event => wijzigPeriode(event.target.value, grafiekRows.at(-1).jaar)}>
+              {jaarRows.filter(row => row.jaar <= grafiekRows.at(-1).jaar).map(row => <option key={row.jaar} value={row.jaar}>{row.jaar}</option>)}
+            </select></label>
+            <label className="field"><span>Grafieken tot en met</span><select value={grafiekRows.at(-1).jaar} onChange={event => wijzigPeriode(grafiekRows[0].jaar, event.target.value)}>
+              {jaarRows.filter(row => row.jaar >= grafiekRows[0].jaar).map(row => <option key={row.jaar} value={row.jaar}>{row.jaar}</option>)}
+            </select></label>
+            <button type="button" className="ghost" onClick={() => { setGrafiekVan(""); setGrafiekTot(""); }}>Hele periode</button>
+          </div>
+          <p className="chart-selection-help">Beide grafieken tonen {grafiekRows[0].jaar}–{grafiekRows.at(-1).jaar}. De assen schalen mee. Kies je bovenaan een jaar buiten deze periode, dan tonen de grafieken weer de hele periode.</p>
           <div className="charts-stack">
             <TrendChart
-              title="Inkomen over de berekeningsperiode"
-              rows={jaarRows}
+              title="Je inkomen en bestedingsruimte · per jaar"
+              rows={grafiekRows}
+              gekozenJaar={jaar.jaar}
+              onJaarSelect={selecteerJaar}
               euro={euro}
               series={[
                 { key: "bruto", label: "Bruto inkomen", color: "#557c3e" },
@@ -166,14 +225,44 @@ export default function ResultsSection({
               ]}
             />
             <TrendChart
-              title="Vermogensontwikkeling"
-              rows={jaarRows}
+              title="Hoe ontwikkelt je vermogen zich? · einde jaar"
+              rows={grafiekRows}
+              gekozenJaar={jaar.jaar}
+              onJaarSelect={selecteerJaar}
               euro={euro}
               series={[
                 { key: "vermogenEinde", label: "Vermogen einde jaar", color: "#b56b2f" },
               ]}
             />
           </div>
+          <section className="dashboard-selected-detail" aria-label="Details gekozen jaar">
+            <h3 aria-live="polite">Jaardetails · {jaar.jaar}</h3>
+            <div className="table-wrap"><table>
+              <caption>Bedragen voor het gekozen jaar {jaar.jaar}</caption>
+              <thead><tr><th scope="col">Jaar</th><th scope="col">Bruto</th><th scope="col">Belasting</th><th scope="col">Netto inkomen</th><th scope="col">Vrije cashflow</th><th scope="col">Vermogen einde jaar</th></tr></thead>
+              <tbody><tr><th scope="row">{jaar.jaar}</th><td>{euro(jaar.bruto)}</td><td>{euro(jaar.belasting)}</td><td>{euro(jaar.netto)}</td><td>{euro(jaar.cashflow)}</td><td>{euro(jaar.vermogenEinde)}</td></tr></tbody>
+            </table></div>
+            <YearIncomeDetails jaar={jaar.jaar} jaren={jaren} euro={euro} />
+          </section>
+          <div className="dashboard-scenarios">
+            <div className="dashboard-heading"><div><span className="dashboard-eyebrow">Keuzes naast elkaar</span><h3>Vergelijk je scenario’s</h3><p>Ontdek wat een ander plan betekent voor je bestedingsruimte en buffer.</p></div>
+              <button type="button" className="ghost" onClick={() => onStepSelect("scenario")}>Scenario’s beheren</button>
+            </div>
+            {alternatieven.length > 0 ? <div className="dashboard-comparison-controls">
+              <label className="field"><span>Vergelijk met</span><select value={compareScenarioId} disabled={isComparing} onChange={event => { setCompareScenarioId(event.target.value); if (event.target.value === thirdScenarioId) setThirdScenarioId(""); }}>
+                <option value="" disabled>Kies een scenario</option>
+                {alternatieven.map(item => <option key={item.id} value={item.id}>{item.naam}</option>)}
+              </select></label>
+              <label className="field"><span>Derde scenario (optioneel)</span><select value={thirdScenarioId} disabled={isComparing} onChange={event => setThirdScenarioId(event.target.value)}>
+                <option value="">Geen derde scenario</option>
+                {alternatieven.filter(item => item.id !== compareScenarioId).map(item => <option key={item.id} value={item.id}>{item.naam}</option>)}
+              </select></label>
+              <button type="button" disabled={isComparing || !compareScenarioId} onClick={runScenarioComparison}>{isComparing ? "Scenario’s berekenen…" : "Vergelijk scenario’s"}</button>
+            </div> : !comparisonResult ? <p className="notice">Maak een kopie van je plan via ‘Scenario’s beheren’ en pas bijvoorbeeld je stopdatum aan. Daarna zie je hier de verschillen.</p> : null}
+            {comparisonError ? <p className="feedback-banner warning" role="alert">{comparisonError}</p> : null}
+            {comparisonResult ? <ScenarioComparison comparisonResult={comparisonResult} activeScenarioName={activeScenarioName} euro={euro} geboortedatum={geboortedatum} partnerGeboortedatum={partnerGeboortedatum} /> : alternatieven.length > 0 ? <p className="notice">Kies je alternatieven en vergelijk opnieuw om actuele verschillen te bekijken.</p> : null}
+          </div>
+          <details className="dashboard-year-detail"><summary>Alle jaarbedragen bekijken · {jaarRows[0].jaar}–{laatsteJaar.jaar}</summary>
           <div className="table-wrap">
             <table>
               <thead>
@@ -181,13 +270,14 @@ export default function ResultsSection({
               </thead>
               <tbody>
                 {jaarRows.map((row) => (
-                  <tr key={row.jaar}>
+                  <tr key={row.jaar} className={row.jaar === jaar.jaar ? "is-selected-year" : undefined}>
                     <td>{row.jaar}</td><td>{euro(row.bruto)}</td><td>{euro(row.belasting)}</td><td>{euro(row.netto)}</td><td>{euro(row.cashflow)}</td><td>{euro(row.vermogenEinde)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </details>
         </>
       )}
     </section>
