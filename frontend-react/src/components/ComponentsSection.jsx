@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export default function ComponentsSection({
   SectionHeader,
   NewPostPicker,
@@ -11,6 +13,7 @@ export default function ComponentsSection({
   inkomstenPosts,
   updatePost,
   removePost,
+  removePosts,
   vermogenTypes,
   vermogenType,
   setVermogenType,
@@ -19,6 +22,17 @@ export default function ComponentsSection({
   layoutVariant,
   setLayoutVariant,
 }) {
+  const [selectie, setSelectie] = useState([]);
+  const [bevestigen, setBevestigen] = useState(false);
+  const [melding, setMelding] = useState("");
+  const allePosten = [...inkomstenPosts, ...vermogenPosts];
+  const geselecteerd = allePosten.filter(post => selectie.includes(post.id));
+  const kies = (ids) => { setSelectie(ids); setBevestigen(false); setMelding(""); };
+  const verwijderSelectie = () => {
+    removePosts(geselecteerd.map(post => post.id));
+    setMelding(`${geselecteerd.length} posten verwijderd. Bereken je plan opnieuw voor actuele resultaten.`);
+    setSelectie([]); setBevestigen(false);
+  };
   const categories = [
     {
       id: "inkomsten",
@@ -85,6 +99,23 @@ export default function ComponentsSection({
         </details>
       </header>
 
+      {removePosts ? <section className="bulk-post-actions" aria-label="Meerdere posten beheren">
+        <div className="bulk-post-toolbar">
+          <strong>{geselecteerd.length} posten geselecteerd</strong>
+          <button type="button" className="ghost" disabled={!allePosten.length} onClick={() => kies(allePosten.map(post => post.id))}>Selecteer alle posten</button>
+          <button type="button" className="ghost" disabled={!geselecteerd.length} onClick={() => kies([])}>Selectie wissen</button>
+          <button type="button" disabled={!geselecteerd.length} onClick={() => setBevestigen(true)}>Verwijder selectie…</button>
+        </div>
+        {bevestigen && geselecteerd.length > 0 ? <div className="bulk-post-confirmation">
+          <h2>Deze {geselecteerd.length} posten verwijderen?</h2>
+          <ul>{geselecteerd.map(post => <li key={post.id}>{post.titel || typeConfig[post.type].label}{post.values?.persoon ? ` · ${post.values.persoon}` : ""}</li>)}</ul>
+          <p>De posten worden uit het actieve scenario verwijderd.</p>
+          <button type="button" onClick={verwijderSelectie}>Verwijder {geselecteerd.length} posten</button>{" "}
+          <button type="button" className="ghost" onClick={() => setBevestigen(false)}>Annuleren</button>
+        </div> : null}
+        <p role="status">{melding}</p>
+      </section> : null}
+
       {layoutVariant === "masterpiece" ? (
         <section className="component-command">
           <div>
@@ -133,7 +164,10 @@ export default function ComponentsSection({
             {category.posts.length > 0 ? (
               <div className="tiles">
                 {category.posts.map((post) => (
-                  <PostCard key={post.id} post={post} onChange={updatePost} onDelete={removePost} config={typeConfig[post.type]} fieldMeta={fieldMeta} />
+                  <div key={post.id} className={`selectable-post ${selectie.includes(post.id) ? "is-selected" : ""}`}>
+                    {removePosts ? <label className="post-selection"><input type="checkbox" checked={selectie.includes(post.id)} onChange={event => kies(event.target.checked ? [...selectie, post.id] : selectie.filter(id => id !== post.id))} />Selecteer {post.titel || typeConfig[post.type].label}{post.values?.persoon ? ` · ${post.values.persoon}` : ""}</label> : null}
+                    <PostCard post={post} onChange={updatePost} onDelete={removePost} config={typeConfig[post.type]} fieldMeta={fieldMeta} />
+                  </div>
                 ))}
               </div>
             ) : (

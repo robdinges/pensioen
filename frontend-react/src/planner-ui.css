@@ -120,3 +120,13 @@ summary { cursor: pointer; color: var(--primary); font-weight: 600; padding: 0.4
 .dashboard-selected-detail h3 { margin: 0 0 .75rem; }
 .dashboard-selected-detail caption { text-align: left; color: var(--muted); padding-bottom: .5rem; }
 .results-dashboard .is-selected-year { background: #e5f2e9; font-weight: 600; }
+
+.bulk-post-actions { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: #f4f8f6; }
+.bulk-post-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.bulk-post-confirmation { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.bulk-post-confirmation h2 { font-size: 1.1rem; }
+.bulk-post-actions [role="status"]:empty { display: none; }
+.selectable-post { min-width: 0; border: 2px solid transparent; border-radius: 12px; }
+.selectable-post.is-selected { border-color: #165d48; background: #eef7f1; }
+.post-selection { display: flex; align-items: center; gap: .6rem; padding: .65rem; cursor: pointer; overflow-wrap: anywhere; }
+.post-selection input { flex: 0 0 auto; width: 18px; height: 18px; }

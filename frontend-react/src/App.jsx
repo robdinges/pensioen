@@ -1,3 +1,4 @@
+import { removeSelectedPosts } from "./planner/postSelection.js";
 import { useEffect, useMemo, useState } from "react";
 import { compactSession, saveSession } from "./planner/sessionStorage";
 import AccountantSection from "./components/AccountantSection";
@@ -1396,6 +1397,7 @@ function AppContent() {
     if (activeStep === "componenten") {
       return (
         <ComponentsSection
+          key={`${activeHouseholdId}-${activeScenarioId}`}
           SectionHeader={SectionHeader}
           NewPostPicker={NewPostPicker}
           PostCard={PostCard}
@@ -1408,6 +1410,7 @@ function AppContent() {
           inkomstenPosts={inkomstenPosts}
           updatePost={updatePost}
           removePost={removePost}
+          removePosts={ids => setPosts(prev => removeSelectedPosts(prev, ids))}
           vermogenTypes={vermogenTypes}
           vermogenType={vermogenType}
           setVermogenType={(value) => updateHouseholdPreference("vermogenType", value)}
